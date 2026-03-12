@@ -57,11 +57,12 @@ interface CollapsiblePanelProps {
   icon?: React.ReactNode;
   count?: number;
   defaultOpen?: boolean;
+  headerRight?: React.ReactNode;
   children: React.ReactNode;
 }
 
 export const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
-  title, icon, count, defaultOpen = true, children
+  title, icon, count, defaultOpen = true, headerRight, children
 }) => {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -84,12 +85,15 @@ export const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
       >
         {icon}
         <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{title}</span>
-        {count !== undefined && (
-          <span style={{ fontSize: 12, color: '#666', marginLeft: 'auto', marginRight: 8 }}>
-            {count}
-          </span>
-        )}
-        {open ? <ChevronDown size={14} color="#888" style={count === undefined ? { marginLeft: 'auto' } : undefined} /> : <ChevronRight size={14} color="#888" style={count === undefined ? { marginLeft: 'auto' } : undefined} />}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {headerRight}
+          {count !== undefined && (
+            <span style={{ fontSize: 12, color: '#666', marginRight: 8 }}>
+              {count}
+            </span>
+          )}
+          {open ? <ChevronDown size={14} color="#888" /> : <ChevronRight size={14} color="#888" />}
+        </div>
       </button>
       {open && <div>{children}</div>}
     </div>
@@ -164,6 +168,29 @@ const DiagnosticReportContent: React.FC<{ metadata: any }> = ({ metadata }) => {
       }}>
         {metadata.is_warranty ? '保修免费' : '付费/拒保'}
       </span>
+    </div>
+  );
+};
+
+const OpRepairReportContent: React.FC<{ metadata: any }> = ({ metadata }) => {
+  // Extract key info from repair report metadata
+  const partsCount = metadata?.repair_process?.parts_replaced?.length || 0;
+  const actionsCount = metadata?.repair_process?.actions_taken?.length || 0;
+  const conclusion = metadata?.conclusion?.summary || metadata?.diagnosis?.findings || '';
+  const shortConclusion = conclusion.substring(0, 30) + (conclusion.length > 30 ? '...' : '');
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px' }}>
+      <span style={{ color: '#FFD200', fontWeight: 600 }}>提交了维修记录</span>
+      {partsCount > 0 && (
+        <span style={{ color: '#666', fontSize: 12 }}>[更换零件: {partsCount}件]</span>
+      )}
+      {actionsCount > 0 && (
+        <span style={{ color: '#666', fontSize: 12 }}>[维修操作: {actionsCount}项]</span>
+      )}
+      {shortConclusion && (
+        <span style={{ color: '#888', fontSize: 12, fontStyle: 'italic' }}>{shortConclusion}</span>
+      )}
     </div>
   );
 };
@@ -272,24 +299,44 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   const [showSystemEvents, setShowSystemEvents] = useState(false);
 
   // Define activity type categories
-  const COMMENT_TYPES = ['comment', 'diagnostic_report'];
+  // Key outputs: user-driven important outputs that should appear in "讨论与诊断"
+  const COMMENT_TYPES = ['comment', 'diagnostic_report', 'op_repair_report'];
+  const KEY_OUTPUT_TYPES = ['document_published', 'document_recalled']; // PI/维修报告发布撤回
   const SYSTEM_TYPES = ['status_change', 'assignment_change', 'field_update', 'system_event', 'creation', 'assignment', 'priority_change', 'soft_delete'];
 
   // Filter out standalone 'mention' type activities (merged into comments now)
   const filteredActivities = activities.filter(a => a.activity_type !== 'mention');
 
-  // Helper to check if a comment is actually a system operation (e.g., 【完成收货入库】)
-  const isSystemOperationComment = (activity: Activity): boolean => {
+  // Helper to check if a comment is a key output (logistics, repair content, etc.)
+  // These should appear in "讨论与诊断" not "系统变更"
+  const isKeyOutputComment = (activity: Activity): boolean => {
     if (activity.activity_type !== 'comment') return false;
     const content = activity.content || '';
-    // Match patterns like 【完成收货入库】, 【提交诊断报告】, etc.
-    return /^【[^】]+】/.test(content) || /^(完成|提交|确认|创建|修改|删除)/.test(content);
+    // Match key output patterns: 物流信息、收发货、维修内容等
+    return /^【(货代中转|完成收货|发货|入库|物流|快递)/.test(content) ||
+           /^【.*发出.*件/.test(content) ||
+           /(单号|快递|物流|收货|发货)/.test(content);
   };
 
-  // Split activities into comments and system events
-  // System operation comments (e.g., 【完成收货入库】) are treated as system events
-  const commentActivities = filteredActivities.filter(a => COMMENT_TYPES.includes(a.activity_type) && !isSystemOperationComment(a));
-  const systemActivities = filteredActivities.filter(a => SYSTEM_TYPES.includes(a.activity_type) || isSystemOperationComment(a));
+  // Helper to check if a comment is a pure system operation (status changes, etc.)
+  const isSystemOperationComment = (activity: Activity): boolean => {
+    if (activity.activity_type !== 'comment') return false;
+    if (isKeyOutputComment(activity)) return false; // Key outputs are not system events
+    const content = activity.content || '';
+    // Only match pure system operations like state transitions
+    return /^【(状态|指派|节点|系统)/.test(content);
+  };
+
+  // Split activities into comments/key outputs and system events
+  const commentActivities = filteredActivities.filter(a => 
+    COMMENT_TYPES.includes(a.activity_type) ||
+    KEY_OUTPUT_TYPES.includes(a.activity_type) ||
+    isKeyOutputComment(a)
+  ).filter(a => !isSystemOperationComment(a));
+  const systemActivities = filteredActivities.filter(a => 
+    SYSTEM_TYPES.includes(a.activity_type) || 
+    isSystemOperationComment(a)
+  );
   const getVisibilityBadge = (visibility: string) => {
     if (visibility === 'all') return null;
     return (
@@ -318,6 +365,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       case 'attachment': return <Paperclip size={12} />;
       case 'field_update': return <Edit3 size={12} />;
       case 'diagnostic_report': return <Wrench size={12} />;
+      case 'op_repair_report': return <Wrench size={12} />;
       case 'soft_delete': return <Trash2 size={12} />;
       default: return <Clock size={12} />;
     }
@@ -333,6 +381,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       case 'mention': return '#8B5CF6';
       case 'field_update': return '#FFD700';
       case 'diagnostic_report': return '#10B981';
+      case 'op_repair_report': return '#FFD200'; // Kine Yellow for OP repair report
       case 'soft_delete': return '#EF4444';
       default: return '#666';
     }
@@ -382,7 +431,8 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
         {/* Main Body */}
         <div style={{ flex: 1, minWidth: 0, fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap' }}>
-            <span style={{ fontWeight: 600, color: isSystemEvent ? 'var(--text-tertiary)' : 'var(--text-main)', flexShrink: 0, fontSize: 13 }}>{actorName}</span>
+            {/* 系统事件不显示操作人姓名 */}
+            {!isSystemEvent && <span style={{ fontWeight: 600, color: 'var(--text-main)', flexShrink: 0, fontSize: 13 }}>{actorName}</span>}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, minWidth: 0 }}>
               {getVisibilityBadge(activity.visibility)}
@@ -394,6 +444,8 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                 />
               ) : activity.activity_type === 'diagnostic_report' && activity.metadata ? (
                 <DiagnosticReportContent metadata={activity.metadata as any} />
+              ) : activity.activity_type === 'op_repair_report' && activity.metadata ? (
+                <OpRepairReportContent metadata={activity.metadata as any} />
               ) : (
                 <div
                   style={{ color: isSystemEvent ? '#666' : '#888', wordBreak: 'break-word', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 13 }}
@@ -747,19 +799,34 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
         {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* User Info */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,215,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFD700', fontWeight: 600, fontSize: 14 }}>
-              {activity.actor?.name?.[0]?.toUpperCase() || '?'}
-            </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{activity.actor?.name || 'System'}</div>
-              <div style={{ fontSize: 12, color: '#888' }}>{new Date(activity.created_at).toLocaleString('zh-CN')}</div>
-            </div>
-          </div>
+          {/* User Info - 系统事件不显示操作人 */}
+          {(() => {
+            const isSystemEvent = ['status_change', 'assignment', 'assignment_change', 'field_update', 'system_event', 'document_published', 'document_recalled'].includes(activity.activity_type);
+            return isSystemEvent ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3B82F6', fontWeight: 600, fontSize: 14 }}>
+                  S
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#888' }}>系统</div>
+                  <div style={{ fontSize: 12, color: '#888' }}>{new Date(activity.created_at).toLocaleString('zh-CN')}</div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,215,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFD700', fontWeight: 600, fontSize: 14 }}>
+                  {activity.actor?.name?.[0]?.toUpperCase() || '?'}
+                </div>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{activity.actor?.name || 'System'}</div>
+                  <div style={{ fontSize: 12, color: '#888' }}>{new Date(activity.created_at).toLocaleString('zh-CN')}</div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Text Content */}
-          {activity.content && !(activity.activity_type === 'comment' && activity.metadata?.action === 'repair_complete') && !(activity.activity_type === 'diagnostic_report') && (
+          {activity.content && !(activity.activity_type === 'comment' && activity.metadata?.action === 'repair_complete') && !(activity.activity_type === 'diagnostic_report') && !(activity.activity_type === 'op_repair_report') && (
             <div style={{
               fontSize: 14, color: '#ddd', lineHeight: 1.6, wordBreak: 'break-word',
               background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8
@@ -851,6 +918,97 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   <div style={{ fontSize: 13 }}>
                     <div style={{ color: '#888', marginBottom: 4 }}>老化/测试结论:</div>
                     <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.test_result}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* OP Repair Report Content - Full Detail View */}
+          {activity.activity_type === 'op_repair_report' && activity.metadata && (() => {
+            const meta = activity.metadata as any;
+            const repairProcess = meta?.repair_process || {};
+            const conclusion = meta?.conclusion || {};
+            const laborCharges = meta?.labor_charges || [];
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#FFD200', fontWeight: 600, fontSize: 14 }}>
+                  <Wrench size={18} />
+                  <span>OP维修记录</span>
+                </div>
+
+                {/* Repair Actions */}
+                {repairProcess.actions_taken && repairProcess.actions_taken.length > 0 && (
+                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: '#888', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>维修操作</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {repairProcess.actions_taken.map((action: string, i: number) => (
+                        <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                          <span style={{ color: '#FFD200', fontSize: 12, fontWeight: 600 }}>{i + 1}.</span>
+                          <span style={{ fontSize: 13, color: '#ddd', lineHeight: 1.5, flex: 1 }}>{action}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Parts Replaced */}
+                {repairProcess.parts_replaced && repairProcess.parts_replaced.length > 0 && (
+                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: '#888', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>更换零件</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {repairProcess.parts_replaced.map((part: any, i: number) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: 6 }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <span style={{ fontSize: 13, color: '#ddd' }}>{part.name}</span>
+                            {part.part_number && <span style={{ fontSize: 11, color: '#666', fontFamily: 'monospace' }}>{part.part_number}</span>}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ fontSize: 12, color: '#888' }}>x{part.quantity}</span>
+                            <span style={{ fontSize: 13, color: '#FFD200', fontWeight: 500 }}>¥{(part.unit_price * part.quantity).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Labor Charges */}
+                {laborCharges.length > 0 && (
+                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: '#888', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>工时费用</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {laborCharges.map((labor: any, i: number) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div style={{ fontSize: 13, color: '#ddd' }}>{labor.description || '维修工时'}</div>
+                            <div style={{ fontSize: 11, color: '#666' }}>{labor.hours}小时 x ¥{labor.rate}/小时</div>
+                          </div>
+                          <span style={{ fontSize: 13, color: '#FFD200', fontWeight: 500 }}>¥{labor.total.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Conclusion */}
+                {(conclusion.summary || conclusion.test_result) && (
+                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: '#888', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>维修结论</div>
+                    {conclusion.summary && (
+                      <div style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: '#666' }}>总结</div>
+                        <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.5 }}>{conclusion.summary}</div>
+                      </div>
+                    )}
+                    {conclusion.test_result && (
+                      <div>
+                        <div style={{ fontSize: 11, color: '#666' }}>测试结果</div>
+                        <div style={{ fontSize: 13, color: '#10B981', lineHeight: 1.5 }}>{conclusion.test_result}</div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

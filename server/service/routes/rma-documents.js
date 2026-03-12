@@ -378,7 +378,7 @@ module.exports = function (db, authenticate) {
 
     /**
      * POST /api/v1/rma-documents/pi/:id/submit
-     * Submit PI for review
+     * Submit PI - directly publish (no review needed)
      */
     router.post('/pi/:id/submit', authenticate, (req, res) => {
         try {
@@ -394,11 +394,11 @@ module.exports = function (db, authenticate) {
             if (pi.status !== 'draft') {
                 return res.status(400).json({
                     success: false,
-                    error: { code: 'INVALID_STATUS', message: '只有草稿状态可以提交审核' }
+                    error: { code: 'INVALID_STATUS', message: '只有草稿状态可以提交' }
                 });
             }
 
-            // Only creator or admin can submit
+            // Only creator or Lead/Admin can submit
             if (pi.created_by !== req.user.id && !['Admin', 'Lead'].includes(req.user.role)) {
                 return res.status(403).json({
                     success: false,
@@ -406,18 +406,74 @@ module.exports = function (db, authenticate) {
                 });
             }
 
+            // Directly publish - no review needed
             db.prepare(`
                 UPDATE proforma_invoices
-                SET status = 'pending_review', submitted_for_review_at = CURRENT_TIMESTAMP, submitted_by = ?, updated_at = CURRENT_TIMESTAMP
+                SET status = 'published', 
+                    submitted_for_review_at = CURRENT_TIMESTAMP, submitted_by = ?,
+                    published_at = CURRENT_TIMESTAMP, published_by = ?,
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            `).run(req.user.id, req.params.id);
+            `).run(req.user.id, req.user.id, req.params.id);
 
             // Log audit
-            logDocumentAudit(db, 'pi', req.params.id, 'submitted', req.user.id, req.user.display_name || req.user.username, null, null);
+            const piNumber = pi.pi_number || `PI-${req.params.id}`;
+            logDocumentAudit(db, 'pi', req.params.id, 'published', req.user.id, req.user.display_name || req.user.username, null, '提交发布');
+
+            // Add to ticket timeline and notify all participants
+            try {
+                const ticket = db.prepare('SELECT id, ticket_number FROM tickets WHERE id = ?').get(pi.ticket_id);
+                const submitterName = req.user.display_name || req.user.username;
+                const now = new Date().toISOString();
+
+                // Add timeline entry
+                db.prepare(`
+                    INSERT INTO ticket_activities (
+                        ticket_id, actor_id, actor_name, actor_role, activity_type, content, metadata, visibility, created_at
+                    ) VALUES (?, ?, ?, ?, 'document_published', ?, ?, 'all', ?)
+                `).run(
+                    pi.ticket_id,
+                    req.user.id,
+                    submitterName,
+                    req.user.department || 'MS',
+                    `${submitterName} 发布了 PI ${piNumber}`,
+                    JSON.stringify({ document_type: 'pi', document_id: req.params.id, pi_number: piNumber }),
+                    now
+                );
+
+                // Notify all ticket participants
+                const participants = db.prepare(`
+                    SELECT DISTINCT user_id FROM (
+                        SELECT assignee_id AS user_id FROM tickets WHERE id = ? AND assignee_id IS NOT NULL
+                        UNION SELECT reporter_id AS user_id FROM tickets WHERE id = ? AND reporter_id IS NOT NULL
+                        UNION SELECT created_by AS user_id FROM tickets WHERE id = ?
+                        UNION SELECT user_id FROM ticket_activities WHERE ticket_id = ? AND user_id IS NOT NULL
+                    ) WHERE user_id != ?
+                `).all(pi.ticket_id, pi.ticket_id, pi.ticket_id, pi.ticket_id, req.user.id);
+
+                for (const p of participants) {
+                    db.prepare(`
+                        INSERT INTO notifications (
+                            recipient_id, notification_type, title, content, icon,
+                            related_type, related_id, action_url, metadata, created_at
+                        ) VALUES (?, 'document_update', ?, ?, 'file-text', 'ticket', ?, ?, ?, ?)
+                    `).run(
+                        p.user_id,
+                        `PI已发布: ${piNumber}`,
+                        `${submitterName} 发布了 PI ${piNumber}`,
+                        ticket?.id || pi.ticket_id,
+                        `/service/tickets/${ticket?.id || pi.ticket_id}`,
+                        JSON.stringify({ pi_id: req.params.id, pi_number: piNumber, ticket_number: ticket?.ticket_number }),
+                        now
+                    );
+                }
+            } catch (notifyErr) {
+                console.error('[RMA Documents] Failed to add timeline/notifications:', notifyErr);
+            }
 
             res.json({
                 success: true,
-                data: { id: parseInt(req.params.id), status: 'pending_review' }
+                data: { id: parseInt(req.params.id), status: 'published' }
             });
         } catch (err) {
             console.error('[RMA Documents] Submit PI error:', err);
@@ -549,7 +605,7 @@ module.exports = function (db, authenticate) {
 
     /**
      * POST /api/v1/rma-documents/pi/:id/recall
-     * Revert published/approved PI to draft
+     * Revert published PI to draft (Lead/Admin only)
      */
     router.post('/pi/:id/recall', authenticate, (req, res) => {
         try {
@@ -577,7 +633,59 @@ module.exports = function (db, authenticate) {
             `).run(req.params.id);
 
             // Log audit
-            logDocumentAudit(db, 'pi', req.params.id, 'recalled', req.user.id, req.user.display_name || req.user.username, null, 'Document recalled to draft');
+            const piNumber = pi.pi_number || `PI-${req.params.id}`;
+            logDocumentAudit(db, 'pi', req.params.id, 'recalled', req.user.id, req.user.display_name || req.user.username, null, '撤回发布');
+
+            // Add to ticket timeline and notify all participants
+            try {
+                const ticket = db.prepare('SELECT id, ticket_number FROM tickets WHERE id = ?').get(pi.ticket_id);
+                const submitterName = req.user.display_name || req.user.username;
+                const now = new Date().toISOString();
+
+                // Add timeline entry
+                db.prepare(`
+                    INSERT INTO ticket_activities (
+                        ticket_id, actor_id, actor_name, actor_role, activity_type, content, metadata, visibility, created_at
+                    ) VALUES (?, ?, ?, ?, 'document_recalled', ?, ?, 'all', ?)
+                `).run(
+                    pi.ticket_id,
+                    req.user.id,
+                    submitterName,
+                    req.user.department || 'MS',
+                    `${submitterName} 撤回了 PI ${piNumber} 的发布`,
+                    JSON.stringify({ document_type: 'pi', document_id: req.params.id, pi_number: piNumber }),
+                    now
+                );
+
+                // Notify all ticket participants
+                const participants = db.prepare(`
+                    SELECT DISTINCT user_id FROM (
+                        SELECT assignee_id AS user_id FROM tickets WHERE id = ? AND assignee_id IS NOT NULL
+                        UNION SELECT reporter_id AS user_id FROM tickets WHERE id = ? AND reporter_id IS NOT NULL
+                        UNION SELECT created_by AS user_id FROM tickets WHERE id = ?
+                        UNION SELECT user_id FROM ticket_activities WHERE ticket_id = ? AND user_id IS NOT NULL
+                    ) WHERE user_id != ?
+                `).all(pi.ticket_id, pi.ticket_id, pi.ticket_id, pi.ticket_id, req.user.id);
+
+                for (const p of participants) {
+                    db.prepare(`
+                        INSERT INTO notifications (
+                            recipient_id, notification_type, title, content, icon,
+                            related_type, related_id, action_url, metadata, created_at
+                        ) VALUES (?, 'document_update', ?, ?, 'file-text', 'ticket', ?, ?, ?, ?)
+                    `).run(
+                        p.user_id,
+                        `PI已撤回: ${piNumber}`,
+                        `${submitterName} 撤回了 PI ${piNumber} 的发布`,
+                        ticket?.id || pi.ticket_id,
+                        `/service/tickets/${ticket?.id || pi.ticket_id}`,
+                        JSON.stringify({ pi_id: req.params.id, pi_number: piNumber, ticket_number: ticket?.ticket_number }),
+                        now
+                    );
+                }
+            } catch (notifyErr) {
+                console.error('[RMA Documents] Failed to add timeline/notifications:', notifyErr);
+            }
 
             res.json({
                 success: true,
@@ -948,7 +1056,7 @@ module.exports = function (db, authenticate) {
 
     /**
      * POST /api/v1/rma-documents/repair-reports/:id/submit
-     * Submit repair report for review
+     * Submit repair report - directly publish (no review needed)
      */
     router.post('/repair-reports/:id/submit', authenticate, (req, res) => {
         try {
@@ -964,11 +1072,11 @@ module.exports = function (db, authenticate) {
             if (report.status !== 'draft') {
                 return res.status(400).json({
                     success: false,
-                    error: { code: 'INVALID_STATUS', message: '只有草稿状态可以提交审核' }
+                    error: { code: 'INVALID_STATUS', message: '只有草稿状态可以提交' }
                 });
             }
 
-            // Only creator or admin can submit
+            // Only creator or Lead/Admin can submit
             if (report.created_by !== req.user.id && !['Admin', 'Lead'].includes(req.user.role)) {
                 return res.status(403).json({
                     success: false,
@@ -976,18 +1084,74 @@ module.exports = function (db, authenticate) {
                 });
             }
 
+            // Directly publish - no review needed
             db.prepare(`
                 UPDATE repair_reports
-                SET status = 'pending_review', submitted_for_review_at = CURRENT_TIMESTAMP, submitted_by = ?, updated_at = CURRENT_TIMESTAMP
+                SET status = 'published', 
+                    submitted_for_review_at = CURRENT_TIMESTAMP, submitted_by = ?,
+                    published_at = CURRENT_TIMESTAMP, published_by = ?,
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            `).run(req.user.id, req.params.id);
+            `).run(req.user.id, req.user.id, req.params.id);
 
             // Log audit
-            logDocumentAudit(db, 'repair_report', req.params.id, 'submitted', req.user.id, req.user.display_name || req.user.username, null, null);
+            const reportNumber = report.report_number || `RR-${req.params.id}`;
+            logDocumentAudit(db, 'repair_report', req.params.id, 'published', req.user.id, req.user.display_name || req.user.username, null, '提交发布');
+
+            // Add to ticket timeline and notify all participants
+            try {
+                const ticket = db.prepare('SELECT id, ticket_number FROM tickets WHERE id = ?').get(report.ticket_id);
+                const submitterName = req.user.display_name || req.user.username;
+                const now = new Date().toISOString();
+
+                // Add timeline entry
+                db.prepare(`
+                    INSERT INTO ticket_activities (
+                        ticket_id, actor_id, actor_name, actor_role, activity_type, content, metadata, visibility, created_at
+                    ) VALUES (?, ?, ?, ?, 'document_published', ?, ?, 'all', ?)
+                `).run(
+                    report.ticket_id,
+                    req.user.id,
+                    submitterName,
+                    req.user.department || 'MS',
+                    `${submitterName} 发布了维修报告 ${reportNumber}`,
+                    JSON.stringify({ document_type: 'repair_report', document_id: req.params.id, report_number: reportNumber }),
+                    now
+                );
+
+                // Notify all ticket participants
+                const participants = db.prepare(`
+                    SELECT DISTINCT user_id FROM (
+                        SELECT assignee_id AS user_id FROM tickets WHERE id = ? AND assignee_id IS NOT NULL
+                        UNION SELECT reporter_id AS user_id FROM tickets WHERE id = ? AND reporter_id IS NOT NULL
+                        UNION SELECT created_by AS user_id FROM tickets WHERE id = ?
+                        UNION SELECT user_id FROM ticket_activities WHERE ticket_id = ? AND user_id IS NOT NULL
+                    ) WHERE user_id != ?
+                `).all(report.ticket_id, report.ticket_id, report.ticket_id, report.ticket_id, req.user.id);
+
+                for (const p of participants) {
+                    db.prepare(`
+                        INSERT INTO notifications (
+                            recipient_id, notification_type, title, content, icon,
+                            related_type, related_id, action_url, metadata, created_at
+                        ) VALUES (?, 'document_update', ?, ?, 'file-text', 'ticket', ?, ?, ?, ?)
+                    `).run(
+                        p.user_id,
+                        `维修报告已发布: ${reportNumber}`,
+                        `${submitterName} 发布了维修报告 ${reportNumber}`,
+                        ticket?.id || report.ticket_id,
+                        `/service/tickets/${ticket?.id || report.ticket_id}`,
+                        JSON.stringify({ report_id: req.params.id, report_number: reportNumber, ticket_number: ticket?.ticket_number }),
+                        now
+                    );
+                }
+            } catch (notifyErr) {
+                console.error('[RMA Documents] Failed to add timeline/notifications:', notifyErr);
+            }
 
             res.json({
                 success: true,
-                data: { id: parseInt(req.params.id), status: 'pending_review' }
+                data: { id: parseInt(req.params.id), status: 'published' }
             });
         } catch (err) {
             console.error('[RMA Documents] Submit report error:', err);
@@ -1118,7 +1282,7 @@ module.exports = function (db, authenticate) {
 
     /**
      * POST /api/v1/rma-documents/repair-reports/:id/recall
-     * Revert published/approved repair report to draft
+     * Revert published repair report to draft (Lead/Admin only)
      */
     router.post('/repair-reports/:id/recall', authenticate, (req, res) => {
         try {
@@ -1146,7 +1310,59 @@ module.exports = function (db, authenticate) {
             `).run(req.params.id);
 
             // Log audit
-            logDocumentAudit(db, 'repair_report', req.params.id, 'recalled', req.user.id, req.user.display_name || req.user.username, null, 'Document recalled to draft');
+            const reportNumber = report.report_number || `RR-${req.params.id}`;
+            logDocumentAudit(db, 'repair_report', req.params.id, 'recalled', req.user.id, req.user.display_name || req.user.username, null, '撤回发布');
+
+            // Add to ticket timeline and notify all participants
+            try {
+                const ticket = db.prepare('SELECT id, ticket_number FROM tickets WHERE id = ?').get(report.ticket_id);
+                const submitterName = req.user.display_name || req.user.username;
+                const now = new Date().toISOString();
+
+                // Add timeline entry
+                db.prepare(`
+                    INSERT INTO ticket_activities (
+                        ticket_id, actor_id, actor_name, actor_role, activity_type, content, metadata, visibility, created_at
+                    ) VALUES (?, ?, ?, ?, 'document_recalled', ?, ?, 'all', ?)
+                `).run(
+                    report.ticket_id,
+                    req.user.id,
+                    submitterName,
+                    req.user.department || 'MS',
+                    `${submitterName} 撤回了维修报告 ${reportNumber} 的发布`,
+                    JSON.stringify({ document_type: 'repair_report', document_id: req.params.id, report_number: reportNumber }),
+                    now
+                );
+
+                // Notify all ticket participants
+                const participants = db.prepare(`
+                    SELECT DISTINCT user_id FROM (
+                        SELECT assignee_id AS user_id FROM tickets WHERE id = ? AND assignee_id IS NOT NULL
+                        UNION SELECT reporter_id AS user_id FROM tickets WHERE id = ? AND reporter_id IS NOT NULL
+                        UNION SELECT created_by AS user_id FROM tickets WHERE id = ?
+                        UNION SELECT user_id FROM ticket_activities WHERE ticket_id = ? AND user_id IS NOT NULL
+                    ) WHERE user_id != ?
+                `).all(report.ticket_id, report.ticket_id, report.ticket_id, report.ticket_id, req.user.id);
+
+                for (const p of participants) {
+                    db.prepare(`
+                        INSERT INTO notifications (
+                            recipient_id, notification_type, title, content, icon,
+                            related_type, related_id, action_url, metadata, created_at
+                        ) VALUES (?, 'document_update', ?, ?, 'file-text', 'ticket', ?, ?, ?, ?)
+                    `).run(
+                        p.user_id,
+                        `维修报告已撤回: ${reportNumber}`,
+                        `${submitterName} 撤回了维修报告 ${reportNumber} 的发布`,
+                        ticket?.id || report.ticket_id,
+                        `/service/tickets/${ticket?.id || report.ticket_id}`,
+                        JSON.stringify({ report_id: req.params.id, report_number: reportNumber, ticket_number: ticket?.ticket_number }),
+                        now
+                    );
+                }
+            } catch (notifyErr) {
+                console.error('[RMA Documents] Failed to add timeline/notifications:', notifyErr);
+            }
 
             res.json({
                 success: true,

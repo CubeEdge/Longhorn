@@ -84,6 +84,10 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
     const [skus, setSkus] = useState<ProductSku[]>([]);
     const [selectedModelName, setSelectedModelName] = useState('');
     const [selectedSkuId, setSelectedSkuId] = useState<number | ''>('');
+    
+    // Product line and family (for creating new products)
+    const [selectedProductLine, setSelectedProductLine] = useState<'Camera' | 'EVF' | 'Accessory'>('Camera');
+    const [selectedProductFamily, setSelectedProductFamily] = useState<'A' | 'B' | 'C' | 'D'>('A');
 
     // Customer search
     const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
@@ -328,6 +332,8 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                 model_name: selectedModelName,
                 product_sku: selectedSku ? selectedSku.sku_code : '',
                 sku_id: selectedSkuId || undefined,
+                product_line: selectedProductLine,
+                product_family: selectedProductFamily,
                 sale_source: saleSource,
                 sale_date: saleDate,
                 warranty_months: warrantyMonths,
@@ -372,7 +378,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
 
     return (
         <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000,
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1100,
             background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
@@ -496,6 +502,55 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                                 }).map(s => (
                                                     <option key={s.id} value={s.id}>{s.display_name} ({s.sku_code})</option>
                                                 ))}
+                                            </select>
+                                            <ChevronDown size={20} style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', pointerEvents: 'none' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Product Line */}
+                                    <div>
+                                        <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 12, letterSpacing: '-0.01em' }}>
+                                            产品线 <span style={{ color: '#EF4444' }}>*</span>
+                                        </div>
+                                        <div style={{ position: 'relative' }}>
+                                            <select
+                                                value={selectedProductLine}
+                                                onChange={(e) => setSelectedProductLine(e.target.value as 'Camera' | 'EVF' | 'Accessory')}
+                                                style={{
+                                                    width: '100%', height: 56, padding: '0 20px',
+                                                    background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(16,185,129,0.5)',
+                                                    borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none',
+                                                    cursor: 'pointer', appearance: 'none'
+                                                }}
+                                            >
+                                                <option value="Camera">Camera（相机）</option>
+                                                <option value="EVF">EVF（电子寻像器）</option>
+                                                <option value="Accessory">Accessory（配件）</option>
+                                            </select>
+                                            <ChevronDown size={20} style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', pointerEvents: 'none' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Product Family */}
+                                    <div>
+                                        <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 12, letterSpacing: '-0.01em' }}>
+                                            产品族群 <span style={{ color: '#EF4444' }}>*</span>
+                                        </div>
+                                        <div style={{ position: 'relative' }}>
+                                            <select
+                                                value={selectedProductFamily}
+                                                onChange={(e) => setSelectedProductFamily(e.target.value as 'A' | 'B' | 'C' | 'D')}
+                                                style={{
+                                                    width: '100%', height: 56, padding: '0 20px',
+                                                    background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(16,185,129,0.5)',
+                                                    borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none',
+                                                    cursor: 'pointer', appearance: 'none'
+                                                }}
+                                            >
+                                                <option value="A">A - 在售电影机</option>
+                                                <option value="B">B - 历史机型</option>
+                                                <option value="C">C - 电子寻像器</option>
+                                                <option value="D">D - 通用配件</option>
                                             </select>
                                             <ChevronDown size={20} style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', pointerEvents: 'none' }} />
                                         </div>
@@ -844,12 +899,12 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                 onClick={handleSubmit}
                                 disabled={loading || !selectedModelName || !saleSource || !saleDate || (saleSource === 'invoice' && !invoiceFile)}
                                 style={{
-                                    padding: '0 40px', height: 56, background: '#3B82F6', border: 'none',
-                                    color: '#fff', borderRadius: 16, fontWeight: 700,
+                                    padding: '0 40px', height: 56, background: '#FFD200', border: 'none',
+                                    color: '#000', borderRadius: 16, fontWeight: 700,
                                     cursor: loading || !selectedModelName || !saleSource || !saleDate || (saleSource === 'invoice' && !invoiceFile) ? 'not-allowed' : 'pointer',
                                     display: 'flex', alignItems: 'center', gap: 12,
                                     opacity: loading || !selectedModelName || !saleSource || !saleDate || (saleSource === 'invoice' && !invoiceFile) ? 0.7 : 1,
-                                    fontSize: 18, letterSpacing: '-0.01em', boxShadow: '0 8px 16px rgba(59,130,246,0.3)'
+                                    fontSize: 18, letterSpacing: '-0.01em', boxShadow: '0 8px 16px rgba(255,210,0,0.3)'
                                 }}
                             >
                                 {loading ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}

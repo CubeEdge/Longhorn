@@ -29,13 +29,16 @@ interface CustomerContextSidebarProps {
     ticketProductName?: string;
     onRequestEdit?: (correctModelName: string) => void;
     hideDeviceCard?: boolean;
+    collapsed?: boolean;
+    onToggleCollapse?: () => void;
 }
 
 const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     ticketId, accountId, contactId, reporterSnapshot,
     serialNumber, customerName, contactName,
     dealerId, dealerName, dealerCode, dealerContactName, dealerContactTitle,
-    onCleanComplete, onClose, ticketProductName, onRequestEdit, hideDeviceCard
+    onCleanComplete, onClose, ticketProductName, onRequestEdit, hideDeviceCard,
+    collapsed = false, onToggleCollapse
 }) => {
     // const { t } = useLanguage();
     const { token } = useAuthStore();
@@ -259,7 +262,39 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     return (
         <div style={sidebarStyle} className="customer-context-sidebar">
 
+            {/* Collapsible Header */}
+            <div
+                onClick={onToggleCollapse}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 16px',
+                    cursor: onToggleCollapse ? 'pointer' : 'default',
+                    userSelect: 'none',
+                    borderBottom: collapsed ? 'none' : '1px solid rgba(255,255,255,0.05)'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <User size={14} color="#888" />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>
+                        {data?.account?.name || '客户信息'}
+                    </span>
+                </div>
+                {onToggleCollapse && (
+                    <ChevronRight
+                        size={16}
+                        color="#888"
+                        style={{
+                            transform: collapsed ? 'rotate(90deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s'
+                        }}
+                    />
+                )}
+            </div>
+
             {/* Content - Three Cards Layout */}
+            {!collapsed && (
             <div style={{ ...contentStyle, padding: onClose ? '0 16px 16px' : '16px 0' }}>
                 {/* ===== Card 1: 经销商卡片 ===== */}
                 {(dealerId || dealerName) && (
@@ -873,6 +908,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                     </div>
                 )}
             </div>
+            )}
 
             {/* Modals */}
             {showCleanModal && ticketId && data?.account && reporterSnapshot && (

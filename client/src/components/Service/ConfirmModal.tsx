@@ -11,6 +11,7 @@ interface ConfirmModalProps {
     onCancel: () => void;
     loading?: boolean;
     countdown?: number; // 倒计时秒数，设置后确认按钮需等待倒计时完成
+    showCancel?: boolean; // 是否显示取消按钮，默认 true
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -22,7 +23,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     onConfirm,
     onCancel,
     loading = false,
-    countdown = 0
+    countdown = 0,
+    showCancel = true
 }) => {
     const [remainingSeconds, setRemainingSeconds] = useState(countdown);
 
@@ -46,7 +48,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
         }}>
             <div style={{
                 background: '#1E1E1E', width: 400, borderRadius: 12,
@@ -71,12 +73,14 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 </div>
 
                 <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                    <button type="button" onClick={onCancel} style={{
-                        padding: '8px 16px', background: 'transparent',
-                        border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, color: '#ccc', cursor: 'pointer'
-                    }}>
-                        {cancelText}
-                    </button>
+                    {showCancel && (
+                        <button type="button" onClick={onCancel} style={{
+                            padding: '8px 16px', background: 'transparent',
+                            border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, color: '#ccc', cursor: 'pointer'
+                        }}>
+                            {cancelText}
+                        </button>
+                    )}
                     <button 
                         type="button" 
                         onClick={onConfirm} 

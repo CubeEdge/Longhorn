@@ -19,8 +19,6 @@
 
 1.  **权限分离**: 运维/访问/部署细节严禁写在本文档。**必须**查阅 `OPS.md`。
 2.  **Remote Ops**: 远程执行必须遵循 `OPS.md` 的 Non-interactive SSH 规范 (login shell)。
-3.  **Deployment & Verification**: 统一使用 `./scripts/deploy.sh` 部署。**代码修改执行后必须立即发布到远程服务器**。严禁仅在本地验证，所有功能修改必须在远程环境验证后方可交付。
-4.  **构建完整性**: 修改前端后**必须**执行 `npm run build` 并验证产物。部署前物理删除旧 `dist`。
 5.  **UI风格**：主题色为 **Kine Yellow** (#FFD700)。所有UI设计风格，Web 端遵循 **macOS26** 风格，iOS 端遵循 **iOS26** 风格。成功 选中采用 **Kine Green**(#10B981);警示危险紧急 采用 **kine red**(#EF4444)；**Kine Blue** (#3B82F6)。**AI 渐变色** (Bokeh Gradient)：青色(Teal #00BFA5)到淡紫色(Lavender #8E24AA)的渐变色。
 6.  **UI风格**：严格使用 macOS26 语义化颜色（Semantic Colors），以确保 UI 能自动适配浅色（Light）和深色（Dark）模式
 
@@ -36,6 +34,6 @@
 ## 3. 文档索引 (Authority Index)
 
 *   **运维/部署/访问 (必读)**: [OPS.md](/docs/OPS.md)
-*   **业务需求**: `/docs/Service_PRD.md` / `Service_API.md`
+*   **业务需求**: `/docs/Service_PRD.md` / `Service_API.md`/`docs/Service PRD_P2.md`
 *   **开发日志**: `log_dev.md`
 *   **待办规划**: `log_backlog.md`

@@ -269,7 +269,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 if (oldAssigneeId && oldAssigneeId !== targetAssigneeId) {
                     const oldAssignee = db.prepare('SELECT username, display_name FROM users WHERE id = ?').get(oldAssigneeId);
                     const oldName = oldAssignee ? (oldAssignee.display_name || oldAssignee.username) : '原负责人';
-                    content = `[系统分发]: 指派人从 "${oldName}" 变更为 "${assigneeName}"。`;
+                    content = `[系统分发]: 对接人从 "${oldName}" 变更为 "${assigneeName}"。`;
                 }
 
                 db.prepare(`
@@ -2526,6 +2526,59 @@ module.exports = function (db, authenticate, serviceUpload) {
             res.json({ success: true });
         } catch (err) {
             console.error('[Tickets] Mark spam error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * POST /api/v1/tickets/:id/action
+     * 执行工单动作（如结案、转交等）
+     */
+    router.post('/:id/action', authenticate, (req, res) => {
+        try {
+            const id = parseInt(req.params.id);
+            const { action } = req.body;
+
+            if (!id || !action) {
+                return res.status(400).json({ success: false, error: '缺少必要参数' });
+            }
+
+            const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
+            if (!ticket) {
+                return res.status(404).json({ success: false, error: '工单不存在' });
+            }
+
+            if (action === 'settle') {
+                // 结案动作：将工单从 ms_closing 移动到 op_shipping
+                if (ticket.current_node !== 'ms_closing') {
+                    return res.status(400).json({ success: false, error: '工单状态不允许执行此操作' });
+                }
+
+                db.prepare('UPDATE tickets SET current_node = ?, updated_at = ? WHERE id = ?')
+                    .run('op_shipping', new Date().toISOString(), id);
+
+                // 记录活动
+                db.prepare(`
+                    INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
+                    VALUES (?, 'status_change', ?, ?, ?, ?, ?, 'all')
+                `).run(
+                    id,
+                    `状态变更: 最终结案 → 打包发货`,
+                    JSON.stringify({ from_node: 'ms_closing', to_node: 'op_shipping' }),
+                    req.user.id,
+                    req.user.name,
+                    req.user.department || 'MS'
+                );
+
+                // 触发自动分发规则（含防外泄拦截）
+                autoAssignTicket(id, 'op_shipping', ticket.ticket_type, req.user.id);
+
+                return res.json({ success: true, message: '工单已移交至打包发货' });
+            }
+
+            return res.status(400).json({ success: false, error: `未知的操作: ${action}` });
+        } catch (err) {
+            console.error('[Tickets] Action error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });

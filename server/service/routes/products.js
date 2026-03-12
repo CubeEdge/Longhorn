@@ -137,6 +137,11 @@ module.exports = function (db, authenticate) {
         try {
             const {
                 serial_number,
+                model_name,
+                product_sku,
+                sku_id,
+                product_line,
+                product_family,
                 sale_source,
                 sale_date,
                 warranty_months = 24,
@@ -170,10 +175,9 @@ module.exports = function (db, authenticate) {
             }
 
             // Find product
-            let product = db.prepare('SELECT id, model_name FROM products WHERE serial_number = ?').get(serial_number);
+            let product = db.prepare('SELECT id, model_name, activation_date, sales_invoice_date, registration_date, sales_channel, ship_to_dealer_date FROM products WHERE serial_number = ?').get(serial_number);
             if (!product) {
                 // If product doesn't exist, create it if model_name is provided
-                const { model_name, product_sku, sku_id } = req.body;
                 if (!model_name) {
                     return res.status(404).json({
                         success: false,
@@ -181,18 +185,28 @@ module.exports = function (db, authenticate) {
                     });
                 }
 
-                // Create product inline
+                // Validate product_line if provided
+                const validProductLines = ['Camera', 'EVF', 'Accessory'];
+                const finalProductLine = validProductLines.includes(product_line) ? product_line : 'Camera';
+
+                // Validate product_family if provided
+                const validProductFamilies = ['A', 'B', 'C', 'D'];
+                const finalProductFamily = validProductFamilies.includes(product_family) ? product_family : 'A';
+
+                // Create product with user-provided values
                 const insertRes = db.prepare(`
                     INSERT INTO products (
-                        model_name, serial_number, product_sku, sku_id, status,
+                        model_name, serial_number, product_sku, sku_id, product_line, product_family, status,
                         sales_channel, sold_to_dealer_id, current_owner_id,
                         created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, 'ACTIVE', ?, ?, ?, datetime('now'), datetime('now'))
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, ?, datetime('now'), datetime('now'))
                 `).run(
-                    model_name,
+                    model_name || '未知型号',
                     serial_number,
                     product_sku || null,
                     sku_id || null,
+                    finalProductLine,
+                    finalProductFamily,
                     sold_to_dealer_id ? 'DEALER' : 'DIRECT',
                     sold_to_dealer_id || null,
                     current_owner_id || null
@@ -200,7 +214,12 @@ module.exports = function (db, authenticate) {
 
                 product = {
                     id: insertRes.lastInsertRowid,
-                    model_name: model_name
+                    model_name: model_name,
+                    activation_date: null,
+                    sales_invoice_date: null,
+                    registration_date: null,
+                    sales_channel: sold_to_dealer_id ? 'DEALER' : 'DIRECT',
+                    ship_to_dealer_date: null
                 };
             }
 
@@ -210,6 +229,34 @@ module.exports = function (db, authenticate) {
             // Build update query dynamically
             let updateFields = [`${updateField} = ?`];
             let updateValues = [sale_date];
+
+            // Update basic info fields if provided (for existing products)
+            if (model_name) {
+                updateFields.push('model_name = ?');
+                updateValues.push(model_name);
+            }
+            if (product_sku !== undefined) {
+                updateFields.push('product_sku = ?');
+                updateValues.push(product_sku || null);
+            }
+            if (sku_id !== undefined) {
+                updateFields.push('sku_id = ?');
+                updateValues.push(sku_id || null);
+            }
+            if (product_line) {
+                const validProductLines = ['Camera', 'EVF', 'Accessory'];
+                if (validProductLines.includes(product_line)) {
+                    updateFields.push('product_line = ?');
+                    updateValues.push(product_line);
+                }
+            }
+            if (product_family) {
+                const validProductFamilies = ['A', 'B', 'C', 'D'];
+                if (validProductFamilies.includes(product_family)) {
+                    updateFields.push('product_family = ?');
+                    updateValues.push(product_family);
+                }
+            }
 
             // Add optional fields
             if (sales_invoice_proof) {

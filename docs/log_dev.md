@@ -1,5 +1,22 @@
 # 开发会话日志 (Development Session Log)
 
+ ## [2026-03-12] 维修报告与PI编辑器UI精修与布局优化 (v12.3.184)
+ ### UI/UX Refinement
+ - **质量保证/保修条款合并优化**: 在 `RepairReportEditor.tsx` 中将原本独立的两个 Section 合并为一个紧凑布局，字体统一缩小至 12-13px，移除冗余的视觉层级。
+ - **保修条款通用化**: 废弃可编辑的除外条款列表，替换为一段固定的通用小字备注（11px），内容为摄影机维修保修标准条款，仅保留维修质保天数（默认90天）可编辑。
+ - **设备信息Panel精简**: 替换 `ProductSummaryCard` 组件为简化的单行信息条，仅显示产品型号和序列号，大幅降低视觉占用和页面厚重感。
+ - **费用项扩展**: 将"物流费用"改为"其他费用"，运输方式下拉框改为可编辑的"费用说明"输入框，支持自定义费用项如运费、包装费、检测费等。
+ - **PI财务汇总字体优化**: 服务项目小计字体调整为 13px/500 字重，财务汇总整体缩小，合计金额从 20px/700 字重降至 16px/600 字重，视觉层级更合理。
+ - **关闭按钮位置统一**: 维修报告和PI窗口的 Footer 统一改为左侧关闭按钮、右侧操作按钮的布局，符合用户操作习惯。
+
+ ### Backend & Timeline
+ - **时间轴活动记录修复**: 强制同步服务器代码 (`--force-server`)，确保 `document_published`/`document_recalled` 活动类型能正确记录到工单时间轴。
+
+ ### Infrastructure & Delivery
+ - **代码清理**: 移除未使用的导入（Clock、Truck、ProductSummaryCard），消除 TypeScript 编译警告。
+ - **版本发布**: 递增前端版本至 `client` v12.3.184。
+ - **全量部署**: 执行 `./scripts/deploy.sh` 完成生产环境热更新。
+
  ## [2026-03-12] MS 结案流程稳定性增强与黑屏崩溃修复 (v12.3.171)
  ### Bug Fixes & Stability
  - **黑屏崩溃根除**: 针对 `RepairReportEditor` 和 `PIEditor` 中所有可能导致 `TypeError` 的 `toFixed` 调用进行了数值安全处理 (`Number(val || 0)`), 彻底解决了 MS 操作员在特定场景下查看报告时组件崩溃的问题。

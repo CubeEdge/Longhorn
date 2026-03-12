@@ -160,7 +160,8 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
             'direct_ship': '直销发货日期+7天',
             'dealer_fallback': '经销商发货日期+90天',
             'damage_void': '人为损坏（保修失效）',
-            'ticket_created': '工单创建日期（兜底）'
+            'ticket_created': '保修依据缺失',
+            'unknown': '保修依据缺失'
         };
         return map[basis] || basis;
     };
@@ -475,7 +476,7 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                     {warrantyCalc.final_warranty_status === 'warranty_valid'
                                         ? <CheckCircle size={22} color="#10B981" />
                                         : <AlertTriangle size={22} color="#EF4444" />}
-                                    <span style={{ fontSize: 18, fontWeight: 700, color: warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444' }}>
+                                    <span style={{ fontSize: 15, fontWeight: 600, color: warrantyCalc.final_warranty_status === 'warranty_valid' ? '#10B981' : '#EF4444' }}>
                                         {warrantyCalc.final_warranty_status === 'warranty_valid' ? '在保期内 - 免费维修' : '已过保 - 付费维修'}
                                     </span>
                                 </div>

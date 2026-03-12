@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { ArrowLeft, Edit2, MoreHorizontal, User, Shield, Calculator, CheckCircle, AlertTriangle, Trash2, History, Package, Wifi, ShoppingCart, ChevronDown, ChevronUp, Power, AlertCircle, X } from 'lucide-react';
 import ProductModal from './Workspace/ProductModal';
 import ProductSummaryCard from './Workspace/ProductSummaryCard';
+import ProductWarrantyRegistrationModal from './Service/ProductWarrantyRegistrationModal';
 
 interface ProductDetail {
     id: number;
@@ -73,6 +74,8 @@ const ProductDetailPage: React.FC = () => {
     const [tickets, setTickets] = useState<any[]>([]);
     const [warrantyCalc, setWarrantyCalc] = useState<any>(null);
     const [showCalculationModal, setShowCalculationModal] = useState(false);
+    const [isWarrantyRegistrationOpen, setIsWarrantyRegistrationOpen] = useState(false);
+    const [selectedTicketType, setSelectedTicketType] = useState<string | null>(null);
 
     const handleStatusChange = async (newStatus: string) => {
         if (!product || !token) return;
@@ -144,6 +147,19 @@ const ProductDetailPage: React.FC = () => {
         }
     }, [token, product?.serial_number]);
 
+    const fetchWarrantyCalc = async () => {
+        try {
+            const res = await axios.get(`/api/v1/warranty/product/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.data.success) {
+                setWarrantyCalc(res.data.data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch warranty calc:', err);
+        }
+    };
+
     const fetchProductDetail = async () => {
         setLoading(true);
         try {
@@ -197,9 +213,10 @@ const ProductDetailPage: React.FC = () => {
     }
 
     // Use true calculated warranty engine logic
+    const isWarrantyUnknown = warrantyCalc?.final_warranty_status === 'warranty_unknown';
     const isWarrantyValid = warrantyCalc ? warrantyCalc.final_warranty_status === 'warranty_valid' : product.warranty_status === 'ACTIVE';
-    const activeColor = isWarrantyValid ? '#10B981' : '#EF4444';
-    const activeText = isWarrantyValid ? '保内' : '过保';
+    const activeColor = isWarrantyUnknown ? '#F59E0B' : (isWarrantyValid ? '#10B981' : '#EF4444');
+    const activeText = isWarrantyUnknown ? '保修待确认' : (isWarrantyValid ? '保内' : '过保');
 
     const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; section: string }> = ({ icon, title, section }) => (
         <div
@@ -474,52 +491,65 @@ const ProductDetailPage: React.FC = () => {
                         <SectionHeader icon={<Shield size={18} />} title="保修信息" section="warranty" />
                         {expandedSections.has('warranty') && (
                             <div style={{ padding: 20 }}>
+                                {/* Warranty Status Header - Simplified without rectangular box */}
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
-                                    padding: 20,
-                                    background: 'rgba(0,0,0,0.2)',
-                                    borderRadius: 12,
-                                    border: `2px solid ${activeColor}`
+                                    marginBottom: 20
                                 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                        <div style={{
-                                            width: 60,
-                                            height: 60,
-                                            borderRadius: '50%',
-                                            background: `${activeColor}20`,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            marginRight: 20
-                                        }}>
-                                            <Shield size={28} color={activeColor} />
-                                        </div>
-                                        <div>
-                                            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: activeColor }}>
-                                                {activeText}
-                                            </div>
-                                        </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <Shield size={24} color={activeColor} />
+                                        <span style={{ fontSize: '1.1rem', fontWeight: 600, color: activeColor }}>
+                                            {activeText}
+                                        </span>
                                     </div>
                                     {warrantyCalc && (
-                                        <button
-                                            onClick={() => setShowCalculationModal(true)}
-                                            style={{
-                                                padding: '8px 12px',
-                                                background: 'rgba(255,255,255,0.05)',
-                                                border: '1px solid var(--glass-border)',
-                                                borderRadius: 8,
-                                                color: 'var(--text-secondary)',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 8,
-                                                fontSize: '0.85rem'
-                                            }}
-                                        >
-                                            <Calculator size={16} /> 查看计算
-                                        </button>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            {/* One-click register button for unknown warranty */}
+                                            {isWarrantyUnknown ? (
+                                                <button
+                                                    onClick={() => setIsWarrantyRegistrationOpen(true)}
+                                                    style={{
+                                                        padding: '8px 14px',
+                                                        background: 'rgba(255,210,0,0.15)',
+                                                        border: '1px solid rgba(255,210,0,0.4)',
+                                                        borderRadius: 8,
+                                                        color: '#FFD200',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 6,
+                                                        fontSize: '0.85rem',
+                                                        fontWeight: 600,
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,210,0,0.25)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,210,0,0.15)'; }}
+                                                >
+                                                    <Shield size={14} /> 一键注册保修
+                                                </button>
+                                            ) : (
+                                                /* Only show "View Calculation" when warranty status is determined */
+                                                <button
+                                                    onClick={() => setShowCalculationModal(true)}
+                                                    style={{
+                                                        padding: '8px 12px',
+                                                        background: 'rgba(255,255,255,0.05)',
+                                                        border: '1px solid var(--glass-border)',
+                                                        borderRadius: 8,
+                                                        color: 'var(--text-secondary)',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 8,
+                                                        fontSize: '0.85rem'
+                                                    }}
+                                                >
+                                                    <Calculator size={16} /> 查看计算
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                                 <InfoGrid>
@@ -537,19 +567,120 @@ const ProductDetailPage: React.FC = () => {
                         {expandedSections.has('history') && (
                             <div style={{ padding: 20 }}>
                                 <div style={{ display: 'flex', gap: 16 }}>
-                                    <button onClick={() => window.open(`/service/inquiry-tickets?keyword=${product.serial_number}`, '_blank')} style={{ flex: 1, textAlign: 'center', padding: '16px 12px', background: 'rgba(59,130,246,0.1)', borderRadius: 12, border: '1px solid rgba(59,130,246,0.3)', cursor: 'pointer', transition: 'all 0.2s' }}>
-                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#3B82F6', letterSpacing: '-0.02em', lineHeight: 1.2 }}>{tickets.filter(t => t.type === 'inquiry').length}</div>
+                                    <button 
+                                        onClick={() => setSelectedTicketType(selectedTicketType === 'inquiry' ? null : 'inquiry')} 
+                                        style={{ 
+                                            flex: 1, textAlign: 'center', padding: '16px 12px', 
+                                            background: selectedTicketType === 'inquiry' ? 'rgba(59,130,246,0.2)' : 'rgba(59,130,246,0.1)', 
+                                            borderRadius: 12, 
+                                            border: selectedTicketType === 'inquiry' ? '2px solid #3B82F6' : '1px solid rgba(59,130,246,0.3)', 
+                                            cursor: 'pointer', transition: 'all 0.2s' 
+                                        }}
+                                    >
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#3B82F6', letterSpacing: '-0.02em', lineHeight: 1.2 }}>{product.inquiry_count}</div>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 6, fontWeight: 600 }}>咨询工单</div>
                                     </button>
-                                    <button onClick={() => window.open(`/service/rma-tickets?keyword=${product.serial_number}`, '_blank')} style={{ flex: 1, textAlign: 'center', padding: '16px 12px', background: 'rgba(255,210,0,0.1)', borderRadius: 12, border: '1px solid rgba(255,210,0,0.3)', cursor: 'pointer', transition: 'all 0.2s' }}>
-                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#FFD200', letterSpacing: '-0.02em', lineHeight: 1.2 }}>{tickets.filter(t => t.type === 'rma').length}</div>
+                                    <button 
+                                        onClick={() => setSelectedTicketType(selectedTicketType === 'rma' ? null : 'rma')} 
+                                        style={{ 
+                                            flex: 1, textAlign: 'center', padding: '16px 12px', 
+                                            background: selectedTicketType === 'rma' ? 'rgba(255,210,0,0.2)' : 'rgba(255,210,0,0.1)', 
+                                            borderRadius: 12, 
+                                            border: selectedTicketType === 'rma' ? '2px solid #FFD200' : '1px solid rgba(255,210,0,0.3)', 
+                                            cursor: 'pointer', transition: 'all 0.2s' 
+                                        }}
+                                    >
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#FFD200', letterSpacing: '-0.02em', lineHeight: 1.2 }}>{product.rma_count}</div>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 6, fontWeight: 600 }}>RMA返厂</div>
                                     </button>
-                                    <button style={{ flex: 1, textAlign: 'center', padding: '16px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: 12, border: '1px solid rgba(239,68,68,0.3)', cursor: 'default', opacity: 0.8 }}>
-                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#EF4444', letterSpacing: '-0.02em', lineHeight: 1.2 }}>{tickets.filter(t => t.type === 'dealer_repair').length}</div>
+                                    <button 
+                                        onClick={() => setSelectedTicketType(selectedTicketType === 'dealer_repair' ? null : 'dealer_repair')} 
+                                        style={{ 
+                                            flex: 1, textAlign: 'center', padding: '16px 12px', 
+                                            background: selectedTicketType === 'dealer_repair' ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.1)', 
+                                            borderRadius: 12, 
+                                            border: selectedTicketType === 'dealer_repair' ? '2px solid #EF4444' : '1px solid rgba(239,68,68,0.3)', 
+                                            cursor: product.repair_count > 0 ? 'pointer' : 'default', 
+                                            opacity: product.repair_count > 0 ? 1 : 0.6 
+                                        }}
+                                    >
+                                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#EF4444', letterSpacing: '-0.02em', lineHeight: 1.2 }}>{product.repair_count}</div>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 6, fontWeight: 600 }}>维修记录</div>
                                     </button>
                                 </div>
+
+                                {/* Ticket Cards */}
+                                {selectedTicketType && (
+                                    <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                                        {tickets.filter(t => t.type === selectedTicketType).length === 0 ? (
+                                            <div style={{ gridColumn: '1 / -1', padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>
+                                                暂无{selectedTicketType === 'inquiry' ? '咨询' : selectedTicketType === 'rma' ? 'RMA' : '维修'}工单
+                                            </div>
+                                        ) : (
+                                            tickets.filter(t => t.type === selectedTicketType).map((ticket: any) => (
+                                                <div
+                                                    key={ticket.id}
+                                                    onClick={() => window.open(`/service/${selectedTicketType === 'inquiry' ? 'inquiry-tickets' : 'rma-tickets'}/${ticket.id}`, '_blank')}
+                                                    style={{
+                                                        padding: 16,
+                                                        background: 'rgba(255,255,255,0.02)',
+                                                        border: '1px solid rgba(255,255,255,0.08)',
+                                                        borderRadius: 10,
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        borderLeft: `3px solid ${selectedTicketType === 'inquiry' ? '#3B82F6' : selectedTicketType === 'rma' ? '#FFD200' : '#EF4444'}`
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                                                >
+                                                    {/* Header: Ticket Number + Status */}
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                                                                {ticket.ticket_number}
+                                                            </span>
+                                                        </div>
+                                                        <span style={{ 
+                                                            fontSize: '0.7rem', 
+                                                            padding: '3px 10px', 
+                                                            borderRadius: 12, 
+                                                            background: ticket.status === 'resolved' || ticket.status === 'closed' ? 'rgba(16,185,129,0.15)' : 'rgba(255,210,0,0.15)',
+                                                            color: ticket.status === 'resolved' || ticket.status === 'closed' ? '#10B981' : '#FFD200',
+                                                            fontWeight: 500,
+                                                            textTransform: 'lowercase'
+                                                        }}>
+                                                            {ticket.status}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Problem Description */}
+                                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: 12, lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {ticket.problem_summary || ticket.problem_description || '无描述'}
+                                                    </div>
+
+                                                    {/* Footer: Product | Customer | Contact */}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                                                        {ticket.product_name && (
+                                                            <span style={{ color: '#888' }}>{ticket.product_name}</span>
+                                                        )}
+                                                        {ticket.product_name && ticket.account_name && (
+                                                            <span style={{ color: '#555' }}>|</span>
+                                                        )}
+                                                        {ticket.account_name && (
+                                                            <span>{ticket.account_name}</span>
+                                                        )}
+                                                        {(ticket.product_name || ticket.account_name) && ticket.contact_name && (
+                                                            <span style={{ color: '#555' }}>|</span>
+                                                        )}
+                                                        {ticket.contact_name && (
+                                                            <span>{ticket.contact_name}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                )}
 
                             </div>
                         )}
@@ -721,7 +852,8 @@ const ProductDetailPage: React.FC = () => {
                                                         'direct_ship': '直销发货日期+7天',
                                                         'dealer_fallback': '经销商发货日期+90天',
                                                         'damage_void': '人为损坏（保修失效）',
-                                                        'ticket_created': '工单创建日期（兜底）'
+                                                        'ticket_created': '保修依据缺失',
+                                                        'unknown': '保修依据缺失'
                                                     };
                                                     return map[warrantyCalc.calculation_basis?.toLowerCase()] || warrantyCalc.calculation_basis || '-';
                                                 })(),
@@ -753,6 +885,22 @@ const ProductDetailPage: React.FC = () => {
                             fetchProductDetail();
                         }}
                         editingProduct={product as any}
+                    />
+                )
+            }
+            {/* Warranty Registration Modal */}
+            {
+                product && (
+                    <ProductWarrantyRegistrationModal
+                        isOpen={isWarrantyRegistrationOpen}
+                        onClose={() => setIsWarrantyRegistrationOpen(false)}
+                        serialNumber={product.serial_number || ''}
+                        productName={product.model_name || ''}
+                        onRegistered={() => {
+                            setIsWarrantyRegistrationOpen(false);
+                            fetchProductDetail(); // Refresh product info
+                            fetchWarrantyCalc(); // Refresh warranty calc status
+                        }}
                     />
                 )
             }

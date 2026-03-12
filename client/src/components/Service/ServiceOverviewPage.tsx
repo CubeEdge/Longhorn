@@ -445,14 +445,14 @@ const ActionCard: React.FC<{
       <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{title}</div>
       <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{subtitle}</div>
 
-      {/* 方案A: Hover Tooltip - positioned above to avoid overlap */}
+      {/* 方案A: Hover Tooltip - positioned below the card */}
       {showTooltip && tooltip && (
         <div style={{
           position: 'absolute',
-          bottom: '100%',
+          top: '100%',
           left: '50%',
           transform: 'translateX(-50%)',
-          marginBottom: 8,
+          marginTop: 8,
           padding: '10px 14px',
           background: '#1C1C1E',
           border: '1px solid var(--glass-border)',

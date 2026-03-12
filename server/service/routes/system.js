@@ -145,9 +145,10 @@ module.exports = function (db, authenticate) {
             const { category } = req.query;
 
             // Get distinct model names from products (installed base) table
-            // Use GROUP BY to deduplicate by model_name, picking first non-null line/family
+            // Use MIN(id) as representative ID for each model_name
             let sql = `
                 SELECT 
+                    MIN(id) as id,
                     model_name as name, 
                     MAX(product_line) as line, 
                     MAX(product_family) as family
@@ -165,17 +166,9 @@ module.exports = function (db, authenticate) {
 
             const products = db.prepare(sql).all(...params);
 
-            // Generate unique IDs for dropdown
-            const uniqueProducts = products.map((p, index) => ({
-                id: index + 1,
-                name: p.name,
-                line: p.line,
-                family: p.family
-            }));
-
             res.json({
                 success: true,
-                data: uniqueProducts
+                data: products
             });
         } catch (err) {
             console.error('[System] Products error:', err);

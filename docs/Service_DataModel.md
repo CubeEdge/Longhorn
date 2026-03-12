@@ -1,8 +1,13 @@
 # Service 数据模型设计
 
-**版本**: 0.9.2 (Audit & Visibility Integration)
-**最后更新**: 2026-03-03
+**版本**: 0.9.3 (Audit & Visibility Integration)
+**最后更新**: 2026-03-12
 
+> **v0.9.3 更新 (产品台账与保修注册)**：
+> - 新增产品台账统计字段：`inquiry_count`, `rma_count`, `repair_count`
+> - 完善保修注册字段：`warranty_source`, `warranty_start_date`, `warranty_end_date`, `warranty_status`
+> - 新增销售信息字段：`sales_invoice_date`, `registration_date`, `sales_invoice_proof`
+>
 > **v0.9.2 更新 (审计与删除)**：
 > - 新增工单审计字段：`is_deleted`, `deleted_at`, `deleted_by`, `delete_reason`
 > - 完善 `ticket_activities`：明确 `field_update` 类型必须包含 `reason` (修正理由)

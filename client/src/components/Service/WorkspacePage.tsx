@@ -17,6 +17,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useConfirm } from '../../store/useConfirm';
 import { useViewAs } from '../Workspace/ViewAsComponents';
+import { useUIStore } from '../../store/useUIStore';
 // TicketDetailComponents now used via UnifiedTicketDetail
 import UnifiedTicketDetail from '../Workspace/UnifiedTicketDetail';
 
@@ -280,6 +281,7 @@ const WorkspacePage: React.FC = () => {
   // Detail view state - restore from saved state
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const confirm = useConfirm();
+  const { workspaceClearTrigger } = useUIStore();
 
   // Ref for scroll container
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -288,6 +290,13 @@ const WorkspacePage: React.FC = () => {
   useEffect(() => {
     setSelectedTicket(null);
   }, [currentView]);
+
+  // 监听侧边栏菜单点击，清除选中工单返回列表视图
+  useEffect(() => {
+    if (workspaceClearTrigger > 0) {
+      setSelectedTicket(null);
+    }
+  }, [workspaceClearTrigger]);
 
   // Fetch tickets
   useEffect(() => {

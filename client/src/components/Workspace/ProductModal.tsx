@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, Save, Plus, Edit2 } from 'lucide-react';
+import { X, Save, Plus, Edit2, Shield } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import ProductWarrantyRegistrationModal from '../Service/ProductWarrantyRegistrationModal';
 
 interface Product {
     id: number;
@@ -62,6 +63,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSuccess,
     const [saving, setSaving] = useState(false);
     const [models, setModels] = useState<ProductModel[]>([]);
     const [skus, setSkus] = useState<ProductSku[]>([]);
+    const [showWarrantyModal, setShowWarrantyModal] = useState(false);
     const [formData, setFormData] = useState<Partial<Product>>({
         model_name: '',
         serial_number: '',
@@ -297,12 +299,34 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSuccess,
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <label style={{ fontSize: '0.8rem', color: '#888', fontWeight: 600 }}>保修起始日期</label>
-                                <input
-                                    type="date"
-                                    value={formData.warranty_start_date || ''}
-                                    onChange={(e) => setFormData({ ...formData, warranty_start_date: e.target.value })}
-                                    style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: '0.9rem' }}
-                                />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ 
+                                        flex: 1, padding: '10px 12px', borderRadius: 8, 
+                                        border: '1px solid rgba(255,255,255,0.1)', 
+                                        background: 'rgba(255,255,255,0.02)', color: '#888', fontSize: '0.9rem'
+                                    }}>
+                                        {formData.warranty_start_date || '未设置 (系统自动计算)'}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowWarrantyModal(true)}
+                                        style={{
+                                            padding: '10px 14px', borderRadius: 8,
+                                            background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)',
+                                            color: '#3B82F6', fontSize: '0.8rem', fontWeight: 600,
+                                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                                            transition: 'all 0.2s'
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.2)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.1)'; }}
+                                    >
+                                        <Shield size={14} />
+                                        修改保修
+                                    </button>
+                                </div>
+                                <span style={{ fontSize: '0.7rem', color: '#666' }}>
+                                    * 保修日期由系统根据销售信息自动计算，点击"修改保修"录入销售日期
+                                </span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <label style={{ fontSize: '0.8rem', color: '#888', fontWeight: 600 }}>保修时长（月）</label>
@@ -324,7 +348,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSuccess,
                         disabled={saving}
                         style={{
                             width: '100%', padding: '10px', borderRadius: 10, fontWeight: 600,
-                            background: '#3B82F6', color: '#fff', border: 'none',
+                            background: '#FFD200', color: '#000', border: 'none',
                             cursor: saving ? 'wait' : 'pointer', fontSize: '0.88rem',
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                             opacity: saving ? 0.7 : 1
@@ -334,6 +358,18 @@ const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onSuccess,
                     </button>
                 </div>
             </div>
+
+            {/* Warranty Registration Modal */}
+            <ProductWarrantyRegistrationModal
+                isOpen={showWarrantyModal}
+                onClose={() => setShowWarrantyModal(false)}
+                serialNumber={formData.serial_number || ''}
+                productName={formData.model_name || ''}
+                onRegistered={() => {
+                    // Refresh to get updated warranty info
+                    setShowWarrantyModal(false);
+                }}
+            />
         </>
     );
 };

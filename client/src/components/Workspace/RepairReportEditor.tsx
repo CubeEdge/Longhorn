@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Wrench, AlertCircle, CheckCircle, Save, X, Download, Send, FileText, Stethoscope, Shield, Plus, Trash2, Clock } from 'lucide-react';
-import ProductSummaryCard from './ProductSummaryCard';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Wrench, AlertCircle, CheckCircle, Save, X, Download, Send, FileText, Stethoscope, Plus, Trash2, Settings, ChevronDown, ChevronUp, DollarSign, Package } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
-import { DocumentReviewModal } from './DocumentReviewModal';
+
 import { exportToPDF } from '../../utils/pdfExport';
+import ConfirmModal from '../Service/ConfirmModal';
 
 interface RepairReportEditorProps {
     isOpen: boolean;
@@ -138,15 +138,28 @@ const DEFAULT_CONTENT: ReportContent = {
 };
 
 export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
-    isOpen, onClose, ticketId, ticketNumber, reportId, currentNode, onSuccess
+    isOpen, onClose, ticketId, ticketNumber, reportId: initialReportId, currentNode, onSuccess
 }) => {
     const { token, user } = useAuthStore();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
-    const [showReviewModal, setShowReviewModal] = useState(false);
     const [ticketInfo, setTicketInfo] = useState<any>(null);
+    // Confirm modal state for publish/recall actions
+    const [confirmAction, setConfirmAction] = useState<{ type: 'publish' | 'recall' | null; isOpen: boolean }>({
+        type: null,
+        isOpen: false
+    });
+    // PDF settings panel visibility
+    const [showPdfSettings, setShowPdfSettings] = useState(false);
+    // Local state to track report ID after creation
+    const [localReportId, setLocalReportId] = useState<number | undefined>(initialReportId || undefined);
+    
+    // Sync with prop when it changes
+    useEffect(() => {
+        setLocalReportId(initialReportId || undefined);
+    }, [initialReportId]);
 
     const [reportData, setReportData] = useState<ReportData>({
         status: 'draft',
@@ -163,34 +176,42 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         version: 1
     });
 
-    const isReadOnly = reportData.status === 'published' || reportData.status === 'pending_review';
+    // PDF export settings - 扩展设置项
+    const [pdfSettings, setPdfSettings] = useState({
+        format: 'a4' as 'a4' | 'letter',
+        orientation: 'portrait' as 'portrait' | 'landscape',
+        language: 'original' as 'original' | 'zh-CN' | 'en-US' | 'ja-JP',
+        showHeader: true,
+        showFooter: true
+    });
+
+    const isReadOnly = reportData.status === 'published' || reportData.status === 'approved' || reportData.status === 'pending_review';
     const isOpMode = currentNode === 'op_repairing';
     const canEdit = !isReadOnly && (reportData.status === 'draft' || reportData.status === 'rejected');
     const canSubmit = canEdit && reportData.content.diagnosis.findings;
-    const canExport = reportData.status === 'published' || reportData.status === 'approved';
-    const canReview = ['Admin', 'Lead'].includes(user?.role || '') && (reportData.status === 'pending_review' || reportData.status === 'approved');
+    const canExport = true; // 任何时候都可以导出
 
-    // Auto-save logic
+    // Auto-save logic - only when report exists (localReportId is set)
     useEffect(() => {
-        if (!isOpen || !reportId || isReadOnly) return;
+        if (!isOpen || !localReportId || isReadOnly) return;
 
         const debounceTimer = setTimeout(() => {
-            saveDraft();
+            saveDraft(true); // silent auto-save, don't close modal
         }, 5000); // 5 seconds debounce
 
         return () => clearTimeout(debounceTimer);
-    }, [reportData.content, reportData.service_type, reportData.currency, reportData.payment_status]);
+    }, [reportData.content, reportData.service_type, reportData.currency, reportData.payment_status, localReportId]);
 
     useEffect(() => {
         if (isOpen) {
             fetchTicketInfo();
-            if (reportId) {
+            if (localReportId) {
                 loadReport();
             } else {
                 initializeFromTicket();
             }
         }
-    }, [isOpen, reportId, ticketId]);
+    }, [isOpen, localReportId, ticketId]);
 
     const fetchTicketInfo = async () => {
         try {
@@ -206,10 +227,10 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     };
 
     const loadReport = async () => {
-        if (!reportId) return;
+        if (!localReportId) return;
         setLoading(true);
         try {
-            const res = await axios.get(`/api/v1/rma-documents/repair-reports/${reportId}`, {
+            const res = await axios.get(`/api/v1/rma-documents/repair-reports/${localReportId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.success) {
@@ -376,7 +397,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         });
     };
 
-    const calculateTotals = () => {
+    const calculateTotals = useCallback(() => {
         const partsTotal = reportData.content.repair_process.parts_replaced.reduce(
             (sum: number, part: PartUsed) => sum + (part.quantity * (part.unit_price || 0)), 0
         );
@@ -395,7 +416,12 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         }));
 
         return { partsTotal, laborTotal, shippingTotal, total };
-    };
+    }, [reportData.content.repair_process.parts_replaced, reportData.content.labor_charges, reportData.content.logistics.shipping_fee]);
+
+    // Real-time fee calculation when parts, labor or shipping changes
+    useEffect(() => {
+        calculateTotals();
+    }, [reportData.content.repair_process.parts_replaced, reportData.content.labor_charges, reportData.content.logistics.shipping_fee]);
 
     const addLaborCharge = () => {
         const newCharge: LaborCharge = {
@@ -421,8 +447,13 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         updateContent('labor_charges', charges);
     };
 
-    const saveDraft = async () => {
-        setSaving(true);
+    const saveDraft = async (silent = false) => {
+        // For auto-save (silent), only proceed if we have a report ID
+        if (silent && !localReportId) {
+            console.log('Auto-save skipped: no report ID yet');
+            return;
+        }
+        if (!silent) setSaving(true);
         try {
             const { total } = calculateTotals();
             const payload = {
@@ -439,29 +470,41 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                 shipping_total: reportData.shipping_total
             };
 
-            if (reportId) {
-                await axios.patch(`/api/v1/rma-documents/repair-reports/${reportId}`, payload, {
+            if (localReportId) {
+                await axios.patch(`/api/v1/rma-documents/repair-reports/${localReportId}`, payload, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             } else {
-                await axios.post('/api/v1/rma-documents/repair-reports', payload, {
+                const res = await axios.post('/api/v1/rma-documents/repair-reports', payload, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
+                // Store the new report ID for subsequent saves
+                if (res.data.data?.id) {
+                    setLocalReportId(res.data.data.id);
+                }
             }
-            onSuccess();
+            // Only call onSuccess for manual saves (non-silent), not for auto-saves
+            if (!silent) {
+                onSuccess();
+            }
         } catch (err: any) {
-            alert(err.response?.data?.error || '保存失败');
+            if (!silent) {
+                alert(err.response?.data?.error || '保存失败');
+            } else {
+                console.error('Auto-save failed:', err);
+            }
         } finally {
-            setSaving(false);
+            if (!silent) setSaving(false);
         }
     };
 
     const submitForReview = async () => {
         setSubmitting(true);
         try {
-            await axios.post(`/api/v1/rma-documents/repair-reports/${reportId}/submit`, {}, {
+            await axios.post(`/api/v1/rma-documents/repair-reports/${localReportId}/submit`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            await loadReport();
             onSuccess();
         } catch (err: any) {
             alert(err.response?.data?.error || '提交审核失败');
@@ -470,30 +513,16 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         }
     };
 
-    const publishReport = async () => {
-        if (!window.confirm('确认发布维修报告？发布后文档将锁定，且不可直接修改。')) return;
-        setSubmitting(true);
-        try {
-            await axios.post(`/api/v1/rma-documents/repair-reports/${reportId}/publish`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            loadReport();
-            onSuccess();
-        } catch (err: any) {
-            alert(err.response?.data?.error || '发布失败');
-        } finally {
-            setSubmitting(false);
-        }
-    };
+
 
     const recallReport = async () => {
-        if (!window.confirm('确认撤回维修报告为草稿状态？')) return;
+        setConfirmAction({ type: null, isOpen: false });
         setSubmitting(true);
         try {
-            await axios.post(`/api/v1/rma-documents/repair-reports/${reportId}/recall`, {}, {
+            await axios.post(`/api/v1/rma-documents/repair-reports/${localReportId}/recall`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            loadReport();
+            await loadReport();
             onSuccess();
         } catch (err: any) {
             alert(err.response?.data?.error || '撤回失败');
@@ -503,18 +532,19 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     };
 
     const exportPDF = async () => {
+        // 直接导出，不弹确认框
         try {
             const previewElement = document.getElementById('repair-report-preview-content');
             if (!previewElement) {
-                alert('预览内容未找到');
+                alert('请先切换到预览模式');
                 return;
             }
 
             await exportToPDF({
                 filename: `${reportData.report_number || 'RepairReport'}.pdf`,
                 element: previewElement,
-                orientation: 'portrait',
-                format: 'a4'
+                orientation: pdfSettings.orientation,
+                format: pdfSettings.format
             });
         } catch (err) {
             console.error('PDF export error:', err);
@@ -524,16 +554,9 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
 
     if (!isOpen) return null;
 
-
-    const handleReviewSuccess = () => {
-        setShowReviewModal(false);
-        loadReport(); // Reload to get updated status
-        onSuccess();
-    };
-
     return (
         <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000,
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1050,
             background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
@@ -558,7 +581,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                         </div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>
-                                {reportId ? '编辑维修报告' : '新建维修报告'}
+                                {isReadOnly ? '查看 正式维修报告' : (localReportId ? '编辑 正式维修报告' : '新建 正式维修报告')}
                             </h3>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
                                 <span style={{ fontSize: 12, color: '#888' }}>工单 {ticketNumber}</span>
@@ -602,8 +625,12 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 预览
                             </button>
                         )}
-                        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: 8 }}>
-                            <X size={20} />
+                        <button
+                            onClick={() => setShowPdfSettings(true)}
+                            title="PDF导出设置"
+                            style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: 4 }}
+                        >
+                            <Settings size={18} />
                         </button>
                     </div>
                 </div>
@@ -652,17 +679,22 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     </div>
                                 </div>
                             ) : (
-                                <div style={{ padding: '0 0' }}>
-                                    <ProductSummaryCard
-                                        product={{
-                                            model_name: reportData.content.device_info.product_name,
-                                            serial_number: reportData.content.device_info.serial_number,
-                                            product_family: 'A', // Default or fetch
-                                            warranty_status: 'ACTIVE', // Default or fetch
-                                            is_iot_device: false
-                                        }}
-                                        hideBadges={true}
-                                    />
+                                <div style={{ padding: '12px 16px' }}>
+                                    {/* 简化的设备信息条 */}
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: 12,
+                                        padding: '10px 14px', background: 'rgba(255,255,255,0.03)',
+                                        borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)'
+                                    }}>
+                                        <Package size={18} color="#FFD200" />
+                                        <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
+                                            {reportData.content.device_info.product_name || '-'}
+                                        </div>
+                                        <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.15)' }} />
+                                        <div style={{ fontSize: 13, color: '#888' }}>
+                                            {reportData.content.device_info.serial_number || '-'}
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
@@ -745,64 +777,6 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     disabled={!canEdit}
                                     placeholder="维修操作描述"
                                 />
-
-                                {/* Parts Used */}
-                                <div style={{ marginTop: 16 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                        <label style={{ fontSize: 13, color: '#888' }}>更换零件</label>
-                                        {canEdit && (
-                                            <button
-                                                onClick={() => addArrayItem('repair_process.parts_replaced', { id: Date.now().toString(), name: '', part_number: '', quantity: 1, status: 'new' })}
-                                                style={{ padding: '4px 12px', background: '#3B82F6', border: 'none', borderRadius: 4, color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                                            >
-                                                <Plus size={14} /> 添加零件
-                                            </button>
-                                        )}
-                                    </div>
-                                    {reportData.content.repair_process.parts_replaced.map((part: PartUsed, index: number) => (
-                                        <div key={part.id} style={{ display: 'flex', gap: 8, marginBottom: 8, padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
-                                            <input
-                                                type="text"
-                                                value={part.name}
-                                                onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, name: e.target.value })}
-                                                placeholder="零件名称"
-                                                disabled={!canEdit}
-                                                style={{ flex: 1, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
-                                            />
-                                            <input
-                                                type="text"
-                                                value={part.part_number}
-                                                onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, part_number: e.target.value })}
-                                                placeholder="零件号"
-                                                disabled={!canEdit}
-                                                style={{ width: 120, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
-                                            />
-                                            <input
-                                                type="number"
-                                                value={part.quantity}
-                                                onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, quantity: parseInt(e.target.value) || 1 })}
-                                                placeholder="数量"
-                                                disabled={!canEdit}
-                                                style={{ width: 60, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'center' }}
-                                            />
-                                            <select
-                                                value={part.status}
-                                                onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, status: e.target.value as 'new' | 'refurbished' })}
-                                                disabled={!canEdit}
-                                                style={{ width: 100, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
-                                            >
-                                                <option value="new">新件</option>
-                                                <option value="refurbished">翻新件</option>
-                                            </select>
-                                            {canEdit && (
-                                                <button onClick={() => removeArrayItem('repair_process.parts_replaced', index)} style={{ padding: 8, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-
                                 <TextArea
                                     label="测试结果"
                                     value={reportData.content.repair_process.testing_results}
@@ -815,27 +789,38 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             {/* MS only sections */}
                             {!isOpMode && (
                                 <>
-                                    {/* QA Result */}
-                                    <Section title="质量保证" icon={<Shield size={16} />}>
-                                        <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: canEdit ? 'pointer' : 'default' }}>
+                                    {/* QA Result - 紧凑布局 */}
+                                    <Section title="质量保证" icon={<CheckCircle size={16} />}>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: canEdit ? 'pointer' : 'default' }}>
                                                 <input
                                                     type="checkbox"
                                                     checked={reportData.content.qa_result.passed}
                                                     onChange={e => updateContent('qa_result.passed', e.target.checked)}
                                                     disabled={!canEdit}
                                                 />
-                                                <span style={{ color: '#fff' }}>质检通过</span>
+                                                <span style={{ color: '#fff', fontSize: 13 }}>质检通过</span>
                                             </label>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <span style={{ color: '#888' }}>测试时长:</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ color: '#888', fontSize: 12 }}>测试时长:</span>
                                                 <input
                                                     type="text"
                                                     value={reportData.content.qa_result.test_duration}
                                                     onChange={e => updateContent('qa_result.test_duration', e.target.value)}
                                                     disabled={!canEdit}
-                                                    style={{ width: 100, padding: 6, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                    style={{ width: 80, padding: '4px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 12 }}
                                                 />
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ color: '#888', fontSize: 12 }}>维修质保:</span>
+                                                <input
+                                                    type="number"
+                                                    value={reportData.content.warranty_terms.repair_warranty_days}
+                                                    onChange={e => updateContent('warranty_terms.repair_warranty_days', parseInt(e.target.value) || 90)}
+                                                    disabled={!canEdit}
+                                                    style={{ width: 60, padding: '4px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 12, textAlign: 'center' }}
+                                                />
+                                                <span style={{ color: '#888', fontSize: 12 }}>天</span>
                                             </div>
                                         </div>
                                         <TextArea
@@ -845,161 +830,247 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                             disabled={!canEdit}
                                             placeholder="质检过程中的备注..."
                                         />
-                                    </Section>
-
-                                    {/* Warranty Terms */}
-                                    <Section title="保修条款" icon={<Clock size={16} />}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                                            <span style={{ color: '#888' }}>维修质保期 (天):</span>
-                                            <input
-                                                type="number"
-                                                value={reportData.content.warranty_terms.repair_warranty_days}
-                                                onChange={e => updateContent('warranty_terms.repair_warranty_days', parseInt(e.target.value) || 90)}
-                                                disabled={!canEdit}
-                                                style={{ width: 80, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
-                                            />
+                                        {/* 保修条款 - 简化为小字备注 */}
+                                        <div style={{ marginTop: 12, padding: 10, background: 'rgba(255,255,255,0.02)', borderRadius: 6, border: '1px dashed rgba(255,255,255,0.1)' }}>
+                                            <div style={{ fontSize: 11, color: '#666', lineHeight: 1.6 }}>
+                                                <strong style={{ color: '#888' }}>维修保修条款：</strong>本次维修服务自客户签收之日起享有{reportData.content.warranty_terms.repair_warranty_days || 90}天质保期，仅限于本次维修所涉及的部件及服务。质保不包括：人为损坏、流体侵入、擅自拆修或改装、电压异常等非正常使用导致的损坏。如有疑问，请联系售后服务。
+                                            </div>
                                         </div>
-                                        <ArrayField
-                                            label="保修除外条款"
-                                            items={reportData.content.warranty_terms.exclusions}
-                                            onAdd={() => addArrayItem('warranty_terms.exclusions', '')}
-                                            onRemove={(i) => removeArrayItem('warranty_terms.exclusions', i)}
-                                            onChange={(i, v) => updateArrayItem('warranty_terms.exclusions', i, v)}
-                                            disabled={!canEdit}
-                                            placeholder="除外条款"
-                                        />
                                     </Section>
 
-                                    {/* Labor Charges */}
-                                    <Section title="人工工时费用" icon={<Wrench size={16} />}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                            <label style={{ fontSize: 13, color: '#888' }}>工时费用明细</label>
+                                    {/* Fee Details - Unified Section */}
+                                    <Section title="费用明细" icon={<DollarSign size={16} />}>
+                                        {/* Parts Sub-section */}
+                                        <FeeSubSection 
+                                            title="更换零件" 
+                                            icon={<Package size={14} />}
+                                            subtotal={reportData.parts_total}
+                                            defaultOpen={true}
+                                        >
                                             {canEdit && (
-                                                <button
-                                                    onClick={addLaborCharge}
-                                                    style={{ padding: '4px 12px', background: '#3B82F6', border: 'none', borderRadius: 4, color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                                                >
-                                                    <Plus size={14} /> 添加工时
-                                                </button>
-                                            )}
-                                        </div>
-                                        {reportData.content.labor_charges.map((charge: LaborCharge, index: number) => (
-                                            <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8, padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
-                                                <input
-                                                    type="text"
-                                                    value={charge.description}
-                                                    onChange={e => updateLaborCharge(index, 'description', e.target.value)}
-                                                    placeholder="工作内容描述"
-                                                    disabled={!canEdit}
-                                                    style={{ flex: 1, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
-                                                />
-                                                <input
-                                                    type="number"
-                                                    value={charge.hours}
-                                                    onChange={e => updateLaborCharge(index, 'hours', parseFloat(e.target.value) || 0)}
-                                                    placeholder="工时"
-                                                    disabled={!canEdit}
-                                                    style={{ width: 70, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'center' }}
-                                                />
-                                                <input
-                                                    type="number"
-                                                    value={charge.rate}
-                                                    onChange={e => updateLaborCharge(index, 'rate', parseFloat(e.target.value) || 0)}
-                                                    placeholder="时薪"
-                                                    disabled={!canEdit}
-                                                    style={{ width: 90, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'right' }}
-                                                />
-                                                <div style={{ width: 100, padding: 8, textAlign: 'right', color: '#FFD700', fontWeight: 600 }}>
-                                                    ¥{Number(charge.total || 0).toFixed(2)}
-                                                </div>
-                                                {canEdit && (
-                                                    <button onClick={() => removeLaborCharge(index)} style={{ padding: 8, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ))}
-                                        {reportData.content.labor_charges.length === 0 && (
-                                            <div style={{ textAlign: 'center', padding: 20, color: '#666' }}>暂无工时费用</div>
-                                        )}
-                                    </Section>
-
-                                    {/* Logistics */}
-                                    <Section title="物流费用" icon={<FileText size={16} />}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>运费金额</label>
-                                                <input
-                                                    type="number"
-                                                    value={reportData.content.logistics.shipping_fee}
-                                                    onChange={e => updateContent('logistics.shipping_fee', parseFloat(e.target.value) || 0)}
-                                                    disabled={!canEdit}
-                                                    style={{ width: '100%', padding: 10, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13 }}
-                                                />
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>运输方式</label>
-                                                <select
-                                                    value={reportData.content.logistics.shipping_method}
-                                                    onChange={e => updateContent('logistics.shipping_method', e.target.value)}
-                                                    disabled={!canEdit}
-                                                    style={{ width: '100%', padding: 10, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13 }}
-                                                >
-                                                    <option value="Express">快递</option>
-                                                    <option value="Standard">标准</option>
-                                                    <option value="Air">空运</option>
-                                                    <option value="Sea">海运</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </Section>
-
-                                    {/* Financial Summary */}
-                                    <Section title="财务汇总" icon={<FileText size={16} />}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 400, marginLeft: 'auto' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa' }}>
-                                                <span>零件费用</span>
-                                                <span>¥{Number(reportData.parts_total || 0).toFixed(2)}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa' }}>
-                                                <span>人工费用</span>
-                                                <span>¥{Number(reportData.labor_total || 0).toFixed(2)}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa' }}>
-                                                <span>运费</span>
-                                                <span>¥{Number(reportData.shipping_total || 0).toFixed(2)}</span>
-                                            </div>
-                                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span style={{ color: '#FFD700', fontWeight: 600 }}>合计</span>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                    <select
-                                                        value={reportData.currency}
-                                                        onChange={e => setReportData((prev: ReportData) => ({ ...prev, currency: e.target.value }))}
-                                                        disabled={!canEdit}
-                                                        style={{ padding: '4px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                                                    <button
+                                                        onClick={() => addArrayItem('repair_process.parts_replaced', { id: Date.now().toString(), name: '', part_number: '', quantity: 1, unit_price: 0, status: 'new' })}
+                                                        style={{ padding: '4px 12px', background: '#3B82F6', border: 'none', borderRadius: 4, color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                                                     >
-                                                        <option value="CNY">CNY ¥</option>
-                                                        <option value="USD">USD $</option>
-                                                        <option value="EUR">EUR €</option>
+                                                        <Plus size={14} /> 添加零件
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {reportData.content.repair_process.parts_replaced.length > 0 && (
+                                                <div style={{ display: 'flex', gap: 8, marginBottom: 8, padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, fontSize: 12, color: '#666' }}>
+                                                    <span style={{ flex: 1 }}>零件名称</span>
+                                                    <span style={{ width: 100 }}>零件号</span>
+                                                    <span style={{ width: 50, textAlign: 'center' }}>数量</span>
+                                                    <span style={{ width: 80, textAlign: 'right' }}>单价</span>
+                                                    <span style={{ width: 70 }}>状态</span>
+                                                    <span style={{ width: 80, textAlign: 'right' }}>小计</span>
+                                                    {canEdit && <span style={{ width: 36 }}></span>}
+                                                </div>
+                                            )}
+                                            {reportData.content.repair_process.parts_replaced.map((part: PartUsed, index: number) => (
+                                                <div key={part.id} style={{ display: 'flex', gap: 8, marginBottom: 8, padding: 10, background: 'rgba(255,255,255,0.03)', borderRadius: 6, alignItems: 'center' }}>
+                                                    <input
+                                                        type="text"
+                                                        value={part.name}
+                                                        onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, name: e.target.value })}
+                                                        placeholder="零件名称"
+                                                        disabled={!canEdit}
+                                                        style={{ flex: 1, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={part.part_number}
+                                                        onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, part_number: e.target.value })}
+                                                        placeholder="零件号"
+                                                        disabled={!canEdit}
+                                                        style={{ width: 100, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        value={part.quantity}
+                                                        onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, quantity: parseInt(e.target.value) || 1 })}
+                                                        disabled={!canEdit}
+                                                        min={1}
+                                                        style={{ width: 50, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'center' }}
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        value={part.unit_price || 0}
+                                                        onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, unit_price: parseFloat(e.target.value) || 0 })}
+                                                        disabled={!canEdit}
+                                                        min={0}
+                                                        step={0.01}
+                                                        style={{ width: 80, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'right' }}
+                                                    />
+                                                    <select
+                                                        value={part.status}
+                                                        onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, status: e.target.value as 'new' | 'refurbished' })}
+                                                        disabled={!canEdit}
+                                                        style={{ width: 70, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 12 }}
+                                                    >
+                                                        <option value="new">新件</option>
+                                                        <option value="refurbished">翻新</option>
                                                     </select>
-                                                    <span style={{ color: '#FFD700', fontSize: 20, fontWeight: 700 }}>
+                                                    <div style={{ width: 80, textAlign: 'right', color: '#FFD700', fontWeight: 600, fontSize: 13 }}>
+                                                        ¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}
+                                                    </div>
+                                                    {canEdit && (
+                                                        <button onClick={() => removeArrayItem('repair_process.parts_replaced', index)} style={{ padding: 6, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {reportData.content.repair_process.parts_replaced.length === 0 && (
+                                                <div style={{ textAlign: 'center', padding: 16, color: '#666', fontSize: 13 }}>暂无零件费用</div>
+                                            )}
+                                        </FeeSubSection>
+
+                                        {/* Labor Sub-section */}
+                                        <FeeSubSection 
+                                            title="工时费用" 
+                                            icon={<Wrench size={14} />}
+                                            subtotal={reportData.labor_total}
+                                            defaultOpen={true}
+                                        >
+                                            {canEdit && (
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                                                    <button
+                                                        onClick={addLaborCharge}
+                                                        style={{ padding: '4px 12px', background: '#3B82F6', border: 'none', borderRadius: 4, color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                                                    >
+                                                        <Plus size={14} /> 添加工时
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {reportData.content.labor_charges.length > 0 && (
+                                                <div style={{ display: 'flex', gap: 8, marginBottom: 8, padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, fontSize: 12, color: '#666' }}>
+                                                    <span style={{ flex: 1 }}>工作内容</span>
+                                                    <span style={{ width: 70, textAlign: 'center' }}>工时</span>
+                                                    <span style={{ width: 80, textAlign: 'right' }}>时薪</span>
+                                                    <span style={{ width: 80, textAlign: 'right' }}>小计</span>
+                                                    {canEdit && <span style={{ width: 36 }}></span>}
+                                                </div>
+                                            )}
+                                            {reportData.content.labor_charges.map((charge: LaborCharge, index: number) => (
+                                                <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8, padding: 10, background: 'rgba(255,255,255,0.03)', borderRadius: 6, alignItems: 'center' }}>
+                                                    <input
+                                                        type="text"
+                                                        value={charge.description}
+                                                        onChange={e => updateLaborCharge(index, 'description', e.target.value)}
+                                                        placeholder="工作内容描述"
+                                                        disabled={!canEdit}
+                                                        style={{ flex: 1, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        value={charge.hours}
+                                                        onChange={e => updateLaborCharge(index, 'hours', parseFloat(e.target.value) || 0)}
+                                                        disabled={!canEdit}
+                                                        style={{ width: 70, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'center' }}
+                                                    />
+                                                    <input
+                                                        type="number"
+                                                        value={charge.rate}
+                                                        onChange={e => updateLaborCharge(index, 'rate', parseFloat(e.target.value) || 0)}
+                                                        disabled={!canEdit}
+                                                        style={{ width: 80, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'right' }}
+                                                    />
+                                                    <div style={{ width: 80, textAlign: 'right', color: '#FFD700', fontWeight: 600, fontSize: 13 }}>
+                                                        ¥{Number(charge.total || 0).toFixed(2)}
+                                                    </div>
+                                                    {canEdit && (
+                                                        <button onClick={() => removeLaborCharge(index)} style={{ padding: 6, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {reportData.content.labor_charges.length === 0 && (
+                                                <div style={{ textAlign: 'center', padding: 16, color: '#666', fontSize: 13 }}>暂无工时费用</div>
+                                            )}
+                                        </FeeSubSection>
+
+                                        {/* Other Charges Sub-section */}
+                                        <FeeSubSection 
+                                            title="其他费用" 
+                                            icon={<DollarSign size={14} />}
+                                            subtotal={reportData.content.logistics?.shipping_fee || 0}
+                                            defaultOpen={true}
+                                        >
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>费用金额</label>
+                                                    <input
+                                                        type="number"
+                                                        value={reportData.content.logistics.shipping_fee}
+                                                        onChange={e => updateContent('logistics.shipping_fee', parseFloat(e.target.value) || 0)}
+                                                        disabled={!canEdit}
+                                                        style={{ width: '100%', padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>费用说明</label>
+                                                    <input
+                                                        type="text"
+                                                        value={reportData.content.logistics.shipping_method}
+                                                        onChange={e => updateContent('logistics.shipping_method', e.target.value)}
+                                                        disabled={!canEdit}
+                                                        placeholder="如：运费、包装费、检测费..."
+                                                        style={{ width: '100%', padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </FeeSubSection>
+
+                                        {/* Fee Summary */}
+                                        <div style={{ marginTop: 16, padding: 16, background: 'rgba(255,210,0,0.05)', borderRadius: 8, border: '1px solid rgba(255,210,0,0.2)' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#aaa' }}>
+                                                    <span>零件合计</span>
+                                                    <span>¥{Number(reportData.parts_total || 0).toFixed(2)}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#aaa' }}>
+                                                    <span>工时合计</span>
+                                                    <span>¥{Number(reportData.labor_total || 0).toFixed(2)}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#aaa' }}>
+                                                    <span>其他费用</span>
+                                                    <span>¥{Number(reportData.content.logistics?.shipping_fee || 0).toFixed(2)}</span>
+                                                </div>
+                                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <span style={{ color: '#FFD700', fontWeight: 600, fontSize: 14 }}>总计</span>
+                                                        <select
+                                                            value={reportData.currency}
+                                                            onChange={e => setReportData((prev: ReportData) => ({ ...prev, currency: e.target.value }))}
+                                                            disabled={!canEdit}
+                                                            style={{ padding: '4px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 12 }}
+                                                        >
+                                                            <option value="CNY">CNY</option>
+                                                            <option value="USD">USD</option>
+                                                            <option value="EUR">EUR</option>
+                                                        </select>
+                                                    </div>
+                                                    <span style={{ color: '#FFD700', fontSize: 18, fontWeight: 700 }}>
                                                         {reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}
                                                         {Number(reportData.total_cost || 0).toFixed(2)}
                                                     </span>
                                                 </div>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                                                <span style={{ color: '#888' }}>支付状态</span>
-                                                <select
-                                                    value={reportData.payment_status}
-                                                    onChange={e => setReportData((prev: ReportData) => ({ ...prev, payment_status: e.target.value as 'pending' | 'paid' | 'waived' }))}
-                                                    disabled={!canEdit}
-                                                    style={{ padding: '6px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
-                                                >
-                                                    <option value="pending">待支付</option>
-                                                    <option value="paid">已支付</option>
-                                                    <option value="waived">已减免</option>
-                                                </select>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <span style={{ color: '#888', fontSize: 13 }}>支付状态</span>
+                                                    <select
+                                                        value={reportData.payment_status}
+                                                        onChange={e => setReportData((prev: ReportData) => ({ ...prev, payment_status: e.target.value as 'pending' | 'paid' | 'waived' }))}
+                                                        disabled={!canEdit}
+                                                        style={{ padding: '6px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                    >
+                                                        <option value="pending">待支付</option>
+                                                        <option value="paid">已支付</option>
+                                                        <option value="waived">已减免</option>
+                                                    </select>
+                                                </div>
                                             </div>
                                         </div>
                                     </Section>
@@ -1011,39 +1082,69 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                     )}
                 </div>
 
-                {/* Footer */}
+                {/* Footer - 左侧关闭，右侧操作按钮 */}
                 <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)' }}>
+                    <button onClick={onClose} style={{ padding: '8px 20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', borderRadius: 6 }}>关闭</button>
                     <div style={{ display: 'flex', gap: 8 }}>
-                        {canExport && (
+                        {canEdit && activeTab === 'edit' && (
                             <button
-                                onClick={exportPDF}
-                                style={{ padding: '8px 16px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 6, color: '#fff', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-                            >
-                                <Download size={16} /> 导出PDF
-                            </button>
-                        )}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={onClose} style={{ padding: '8px 20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', borderRadius: 6 }}>关闭</button>
-                        {canEdit && (
-                            <button
-                                onClick={saveDraft}
+                                onClick={() => saveDraft(false)}
                                 disabled={saving}
                                 style={{ padding: '8px 20px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 6, color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                             >
                                 <Save size={16} /> {saving ? '保存中...' : '保存草稿'}
                             </button>
                         )}
-                        {canSubmit && reportId && (
+                        {canSubmit && activeTab === 'edit' && (
                             <button
-                                onClick={submitForReview}
-                                disabled={submitting}
-                                style={{ padding: '8px 20px', background: '#3B82F6', border: 'none', borderRadius: 6, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                onClick={async () => {
+                                    // If no reportId, save first then submit
+                                    if (!localReportId) {
+                                        setSaving(true);
+                                        try {
+                                            const payload = {
+                                                ticket_id: ticketId,
+                                                content: reportData.content,
+                                                service_type: reportData.service_type,
+                                                currency: reportData.currency,
+                                                payment_status: reportData.payment_status,
+                                                parts_total: reportData.parts_total,
+                                                labor_total: reportData.labor_total,
+                                                shipping_total: reportData.content.logistics?.shipping_fee || 0,
+                                                total_cost: reportData.parts_total + reportData.labor_total + (reportData.content.logistics?.shipping_fee || 0),
+                                                warranty_status: reportData.warranty_status,
+                                                repair_warranty_days: reportData.content.warranty_terms?.repair_warranty_days || 90
+                                            };
+                                            const res = await axios.post('/api/v1/rma-documents/repair-reports', payload, {
+                                                headers: { Authorization: `Bearer ${token}` }
+                                            });
+                                            if (res.data.data?.id) {
+                                                await axios.post(`/api/v1/rma-documents/repair-reports/${res.data.data.id}/submit`, {}, {
+                                                    headers: { Authorization: `Bearer ${token}` }
+                                                });
+                                                onSuccess();
+                                            }
+                                        } catch (err: any) {
+                                            alert(err.response?.data?.error || '提交发布失败');
+                                        } finally {
+                                            setSaving(false);
+                                        }
+                                    } else {
+                                        submitForReview();
+                                    }
+                                }}
+                                disabled={submitting || saving}
+                                style={{
+                                    padding: '10px 24px', background: '#FFD200', border: 'none', borderRadius: 8,
+                                    color: '#000', fontSize: 14, fontWeight: 600, cursor: (submitting || saving) ? 'not-allowed' : 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: 10, opacity: (submitting || saving) ? 0.6 : 1
+                                }}
                             >
-                                <Send size={16} /> {submitting ? '提交中...' : '提交审核'}
+                                <Send size={16} /> {submitting ? '提交中...' : '提交发布'}
                             </button>
                         )}
-                        {canExport && (
+                        {/* Export PDF only shown in preview mode */}
+                        {canExport && activeTab === 'preview' && (
                             <button
                                 onClick={exportPDF}
                                 style={{
@@ -1057,23 +1158,9 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             </button>
                         )}
 
-                        {reportData.status === 'approved' && ['Lead', 'Admin'].includes(user?.role || '') && (
-                            <button
-                                onClick={publishReport}
-                                disabled={submitting}
-                                style={{
-                                    padding: '10px 24px', background: '#3B82F6', border: 'none', borderRadius: 8,
-                                    color: '#fff', fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: 10, opacity: submitting ? 0.6 : 1
-                                }}
-                            >
-                                <Send size={16} /> 发布报告
-                            </button>
-                        )}
-
                         {reportData.status === 'published' && ['Lead', 'Admin'].includes(user?.role || '') && (
                             <button
-                                onClick={recallReport}
+                                onClick={() => setConfirmAction({ type: 'recall', isOpen: true })}
                                 disabled={submitting}
                                 style={{
                                     padding: '10px 24px', background: 'rgba(239,68,68,0.1)',
@@ -1082,35 +1169,77 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     display: 'flex', alignItems: 'center', gap: 10, opacity: submitting ? 0.6 : 1
                                 }}
                             >
-                                <X size={16} /> 撤回修改
-                            </button>
-                        )}
-
-                        {canReview && reportData.status === 'pending_review' && (
-                            <button
-                                onClick={() => setShowReviewModal(true)}
-                                style={{
-                                    padding: '10px 24px', background: '#FFD200', border: 'none', borderRadius: 8,
-                                    color: '#000', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: 10
-                                }}
-                            >
-                                <Shield size={16} /> 审核
+                                <X size={16} /> 撤回发布
                             </button>
                         )}
                     </div>
                 </div>
 
-                {/* Review Modal */}
-                {showReviewModal && reportId && (
-                    <DocumentReviewModal
-                        isOpen={showReviewModal}
-                        onClose={() => setShowReviewModal(false)}
-                        documentType="repair_report"
-                        documentId={reportId}
-                        documentNumber={reportData.report_number || 'Report'}
-                        onSuccess={handleReviewSuccess}
+                {/* Confirm Recall Modal */}
+                {confirmAction.isOpen && confirmAction.type === 'recall' && (
+                    <ConfirmModal
+                        title="确认撤回"
+                        message="确认撤回维修报告为草稿状态？撤回后可重新编辑。"
+                        confirmText="确认撤回"
+                        cancelText="取消"
+                        isDanger={true}
+                        onConfirm={recallReport}
+                        onCancel={() => setConfirmAction({ type: null, isOpen: false })}
+                        loading={submitting}
                     />
+                )}
+
+                {/* PDF Settings Panel */}
+                {showPdfSettings && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 440, background: '#2c2c2e', borderRadius: 12, padding: 24, border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>PDF导出设置</h3>
+                                <button onClick={() => setShowPdfSettings(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}><X size={18} /></button>
+                            </div>
+                            
+                            <div style={{ marginBottom: 16 }}>
+                                <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>纸张尺寸</label>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    {[{ value: 'a4', label: 'A4' }, { value: 'letter', label: 'Letter' }].map(opt => (
+                                        <button key={opt.value} onClick={() => setPdfSettings(prev => ({ ...prev, format: opt.value as any }))} style={{ flex: 1, padding: '10px', borderRadius: 8, background: pdfSettings.format === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${pdfSettings.format === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`, color: pdfSettings.format === opt.value ? '#FFD200' : '#888', fontSize: 14, fontWeight: pdfSettings.format === opt.value ? 600 : 400, cursor: 'pointer' }}>{opt.label}</button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: 16 }}>
+                                <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>方向</label>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    {[{ value: 'portrait', label: '纵向' }, { value: 'landscape', label: '横向' }].map(opt => (
+                                        <button key={opt.value} onClick={() => setPdfSettings(prev => ({ ...prev, orientation: opt.value as any }))} style={{ flex: 1, padding: '10px', borderRadius: 8, background: pdfSettings.orientation === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${pdfSettings.orientation === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`, color: pdfSettings.orientation === opt.value ? '#FFD200' : '#888', fontSize: 14, fontWeight: pdfSettings.orientation === opt.value ? 600 : 400, cursor: 'pointer' }}>{opt.label}</button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: 16 }}>
+                                <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>语言</label>
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    {[{ value: 'original', label: '原文' }, { value: 'zh-CN', label: '中文' }, { value: 'en-US', label: 'English' }, { value: 'ja-JP', label: '日本語' }].map(opt => (
+                                        <button key={opt.value} onClick={() => setPdfSettings(prev => ({ ...prev, language: opt.value as any }))} style={{ padding: '8px 16px', borderRadius: 6, background: pdfSettings.language === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(255,255,255,0.05)', border: `1px solid ${pdfSettings.language === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`, color: pdfSettings.language === opt.value ? '#FFD200' : '#888', fontSize: 13, cursor: 'pointer' }}>{opt.label}</button>
+                                    ))}
+                                </div>
+                                <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>提示: AI翻译功能开发中...</div>
+                            </div>
+
+                            <div style={{ marginBottom: 16, display: 'flex', gap: 16 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#888', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={pdfSettings.showHeader} onChange={e => setPdfSettings(prev => ({ ...prev, showHeader: e.target.checked }))} />显示页眉
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#888', cursor: 'pointer' }}>
+                                    <input type="checkbox" checked={pdfSettings.showFooter} onChange={e => setPdfSettings(prev => ({ ...prev, showFooter: e.target.checked }))} />显示页脚
+                                </label>
+                            </div>
+
+                            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'flex-end' }}>
+                                <button onClick={() => setShowPdfSettings(false)} style={{ padding: '10px 24px', background: '#FFD200', border: 'none', borderRadius: 8, color: '#000', fontWeight: 600, cursor: 'pointer' }}>完成</button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>
@@ -1188,9 +1317,9 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     const configs: Record<string, { text: string; color: string; bg: string }> = {
         'draft': { text: '草稿', color: '#888', bg: 'rgba(255,255,255,0.1)' },
         'pending_review': { text: '审核中', color: '#FFD200', bg: 'rgba(245,158,11,0.15)' },
-        'approved': { text: '已批准', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
+        'approved': { text: '已发布', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
         'rejected': { text: '已驳回', color: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
-        'published': { text: '已发布', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)' }
+        'published': { text: '已发布', color: '#10B981', bg: 'rgba(16,185,129,0.15)' }
     };
     const config = configs[status] || configs['draft'];
     return (
@@ -1202,30 +1331,30 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 
 const ReportPreview: React.FC<{ reportData: ReportData }> = ({ reportData }) => (
     <div style={{ flex: 1, overflow: 'auto', padding: 40, background: '#f5f5f5' }}>
-        <div id="repair-report-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', color: '#333' }}>
+        <div id="repair-report-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', color: '#333', fontSize: 13 }}>
             {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: 40, borderBottom: '3px solid #1a365d', paddingBottom: 20 }}>
-                <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: '#1a365d' }}>{reportData.content.header.title}</h1>
-                <p style={{ margin: '8px 0 0 0', fontSize: 18, color: '#4a5568' }}>{reportData.content.header.subtitle}</p>
+                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1a365d' }}>{reportData.content.header.title}</h1>
+                <p style={{ margin: '8px 0 0 0', fontSize: 14, color: '#4a5568' }}>{reportData.content.header.subtitle}</p>
             </div>
 
             {/* Report Info */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 30, padding: 16, background: '#f7fafc', borderRadius: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 30, padding: 16, background: '#f7fafc', borderRadius: 8, fontSize: 13 }}>
                 <div>
-                    <div style={{ fontSize: 14, color: '#718096' }}>Report Number:</div>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: '#1a365d' }}>{reportData.report_number || 'DRAFT'}</div>
-                    <div style={{ fontSize: 14, color: '#718096', marginTop: 8 }}>Service Type:</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: reportData.service_type === 'warranty' ? '#38a169' : '#d69e2e' }}>
+                    <div style={{ fontSize: 12, color: '#718096' }}>Report Number:</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1a365d' }}>{reportData.report_number || 'DRAFT'}</div>
+                    <div style={{ fontSize: 12, color: '#718096', marginTop: 8 }}>Service Type:</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: reportData.service_type === 'warranty' ? '#38a169' : '#d69e2e' }}>
                         {reportData.service_type === 'warranty' ? 'Warranty Service (Free)' : 'Paid Service'}
                     </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 14, color: '#718096' }}>Date:</div>
-                    <div>{new Date().toLocaleDateString()}</div>
+                    <div style={{ fontSize: 12, color: '#718096' }}>Date:</div>
+                    <div style={{ fontSize: 13 }}>{new Date().toLocaleDateString()}</div>
                     {reportData.created_by && (
                         <>
-                            <div style={{ fontSize: 14, color: '#718096', marginTop: 8 }}>Service Engineer:</div>
-                            <div>{reportData.created_by.display_name}</div>
+                            <div style={{ fontSize: 12, color: '#718096', marginTop: 8 }}>Service Engineer:</div>
+                            <div style={{ fontSize: 13 }}>{reportData.created_by.display_name}</div>
                         </>
                     )}
                 </div>
@@ -1244,15 +1373,15 @@ const ReportPreview: React.FC<{ reportData: ReportData }> = ({ reportData }) => 
             {/* Issue Description */}
             <SectionPreview title="2. Issue Description">
                 <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 13, color: '#718096', marginBottom: 8 }}>Customer Reported:</div>
-                    <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontStyle: 'italic' }}>
+                    <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Customer Reported:</div>
+                    <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontStyle: 'italic', fontSize: 13 }}>
                         {reportData.content.issue_description.customer_reported || '[No description provided]'}
                     </div>
                 </div>
                 {reportData.content.issue_description.symptoms.length > 0 && (
                     <div>
-                        <div style={{ fontSize: 13, color: '#718096', marginBottom: 8 }}>Symptoms:</div>
-                        <ul style={{ margin: 0, paddingLeft: 20 }}>
+                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Symptoms:</div>
+                        <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
                             {reportData.content.issue_description.symptoms.map((s: string, i: number) => (
                                 <li key={i} style={{ marginBottom: 4 }}>{s}</li>
                             ))}
@@ -1267,8 +1396,8 @@ const ReportPreview: React.FC<{ reportData: ReportData }> = ({ reportData }) => 
                 <InfoBlock label="Root Cause" value={reportData.content.diagnosis.root_cause} />
                 {reportData.content.diagnosis.troubleshooting_steps.length > 0 && (
                     <div>
-                        <div style={{ fontSize: 13, color: '#718096', marginBottom: 8 }}>Troubleshooting Steps:</div>
-                        <ol style={{ margin: 0, paddingLeft: 20 }}>
+                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Troubleshooting Steps:</div>
+                        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
                             {reportData.content.diagnosis.troubleshooting_steps.map((s: string, i: number) => (
                                 <li key={i} style={{ marginBottom: 4 }}>{s}</li>
                             ))}
@@ -1277,59 +1406,106 @@ const ReportPreview: React.FC<{ reportData: ReportData }> = ({ reportData }) => 
                 )}
             </SectionPreview>
 
+            {/* Fee Details - NEW */}
+            <SectionPreview title="4. Fee Details">
+                {/* Parts */}
+                {reportData.content.repair_process.parts_replaced.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Parts:</div>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                                <tr style={{ background: '#edf2f7' }}>
+                                    <th style={{ padding: 8, textAlign: 'left', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Part Name</th>
+                                    <th style={{ padding: 8, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Part No.</th>
+                                    <th style={{ padding: 8, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Qty</th>
+                                    <th style={{ padding: 8, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Unit Price</th>
+                                    <th style={{ padding: 8, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => (
+                                    <tr key={i}>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>{part.name}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center', fontFamily: 'monospace', fontSize: 11 }}>{part.part_number || '-'}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{part.quantity}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(part.unit_price || 0).toFixed(2)}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <div style={{ textAlign: 'right', marginTop: 6, fontSize: 12, color: '#666' }}>Parts Subtotal: <span style={{ fontWeight: 600 }}>{reportData.currency} {Number(reportData.parts_total || 0).toFixed(2)}</span></div>
+                    </div>
+                )}
+                {/* Labor */}
+                {reportData.content.labor_charges.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Labor:</div>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                                <tr style={{ background: '#edf2f7' }}>
+                                    <th style={{ padding: 8, textAlign: 'left', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Description</th>
+                                    <th style={{ padding: 8, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Hours</th>
+                                    <th style={{ padding: 8, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Rate</th>
+                                    <th style={{ padding: 8, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reportData.content.labor_charges.map((charge: LaborCharge, i: number) => (
+                                    <tr key={i}>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>{charge.description}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{charge.hours}h</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(charge.rate || 0).toFixed(2)}/h</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(charge.total || 0).toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <div style={{ textAlign: 'right', marginTop: 6, fontSize: 12, color: '#666' }}>Labor Subtotal: <span style={{ fontWeight: 600 }}>{reportData.currency} {Number(reportData.labor_total || 0).toFixed(2)}</span></div>
+                    </div>
+                )}
+                {/* Shipping */}
+                {(reportData.content.logistics?.shipping_fee || 0) > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Shipping:</div>
+                        <div style={{ padding: 10, background: '#f7fafc', borderRadius: 6, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                            <span>{reportData.content.logistics?.shipping_method || 'Express'}</span>
+                            <span style={{ fontWeight: 600 }}>¥{Number(reportData.content.logistics?.shipping_fee || 0).toFixed(2)}</span>
+                        </div>
+                    </div>
+                )}
+                {/* No fee items */}
+                {reportData.content.repair_process.parts_replaced.length === 0 && 
+                 reportData.content.labor_charges.length === 0 && 
+                 !(reportData.content.logistics?.shipping_fee > 0) && (
+                    <div style={{ padding: 20, textAlign: 'center', color: '#a0aec0', fontSize: 13 }}>No fee items recorded</div>
+                )}
+            </SectionPreview>
+
             {/* Repair Process */}
-            <SectionPreview title="4. Repair Process">
+            <SectionPreview title="5. Repair Process">
                 {reportData.content.repair_process.actions_taken.length > 0 && (
                     <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 13, color: '#718096', marginBottom: 8 }}>Actions Taken:</div>
-                        <ul style={{ margin: 0, paddingLeft: 20 }}>
+                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Actions Taken:</div>
+                        <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
                             {reportData.content.repair_process.actions_taken.map((a: string, i: number) => (
                                 <li key={i} style={{ marginBottom: 4 }}>{a}</li>
                             ))}
                         </ul>
                     </div>
                 )}
-                {reportData.content.repair_process.parts_replaced.length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 13, color: '#718096', marginBottom: 8 }}>Parts Replaced:</div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                            <thead>
-                                <tr style={{ background: '#edf2f7' }}>
-                                    <th style={{ padding: 10, textAlign: 'left', borderBottom: '2px solid #cbd5e0' }}>Part Name</th>
-                                    <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #cbd5e0' }}>Part Number</th>
-                                    <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #cbd5e0' }}>Qty</th>
-                                    <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #cbd5e0' }}>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => (
-                                    <tr key={i}>
-                                        <td style={{ padding: 10, borderBottom: '1px solid #e2e8f0' }}>{part.name}</td>
-                                        <td style={{ padding: 10, borderBottom: '1px solid #e2e8f0', textAlign: 'center', fontFamily: 'monospace' }}>{part.part_number}</td>
-                                        <td style={{ padding: 10, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{part.quantity}</td>
-                                        <td style={{ padding: 10, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
-                                            <span style={{ padding: '2px 8px', borderRadius: 4, background: part.status === 'new' ? '#c6f6d5' : '#feebc8', color: part.status === 'new' ? '#22543d' : '#744210', fontSize: 12 }}>
-                                                {part.status === 'new' ? 'New' : 'Refurbished'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
                 <InfoBlock label="Testing Results" value={reportData.content.repair_process.testing_results} />
             </SectionPreview>
 
             {/* QA Result */}
-            <SectionPreview title="5. Quality Assurance">
+            <SectionPreview title="6. Quality Assurance">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                    <span style={{ fontSize: 14, color: '#718096' }}>QA Status:</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: reportData.content.qa_result.passed ? '#38a169' : '#e53e3e', fontWeight: 600 }}>
-                        {reportData.content.qa_result.passed ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+                    <span style={{ fontSize: 12, color: '#718096' }}>QA Status:</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: reportData.content.qa_result.passed ? '#38a169' : '#e53e3e', fontWeight: 600, fontSize: 13 }}>
+                        {reportData.content.qa_result.passed ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
                         {reportData.content.qa_result.passed ? 'PASSED' : 'FAILED'}
                     </span>
-                    <span style={{ fontSize: 14, color: '#718096' }}>Test Duration: {reportData.content.qa_result.test_duration}</span>
+                    <span style={{ fontSize: 12, color: '#718096' }}>Test Duration: {reportData.content.qa_result.test_duration}</span>
                 </div>
                 {reportData.content.qa_result.notes && (
                     <InfoBlock label="QA Notes" value={reportData.content.qa_result.notes} />
@@ -1337,15 +1513,15 @@ const ReportPreview: React.FC<{ reportData: ReportData }> = ({ reportData }) => 
             </SectionPreview>
 
             {/* Warranty Terms */}
-            <SectionPreview title="6. Warranty Terms">
-                <div style={{ padding: 16, background: '#ebf8ff', borderRadius: 8, border: '1px solid #90cdf4' }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#2b6cb0', marginBottom: 8 }}>
+            <SectionPreview title="7. Warranty Terms">
+                <div style={{ padding: 14, background: '#ebf8ff', borderRadius: 8, border: '1px solid #90cdf4' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#2b6cb0', marginBottom: 6 }}>
                         Repair Warranty: {reportData.content.warranty_terms.repair_warranty_days} Days
                     </div>
-                    <div style={{ fontSize: 13, color: '#4a5568' }}>
+                    <div style={{ fontSize: 12, color: '#4a5568' }}>
                         This warranty covers the parts replaced during this repair service. It does not cover:
                     </div>
-                    <ul style={{ margin: '8px 0 0 0', paddingLeft: 20, fontSize: 13, color: '#4a5568' }}>
+                    <ul style={{ margin: '6px 0 0 0', paddingLeft: 20, fontSize: 12, color: '#4a5568' }}>
                         {reportData.content.warranty_terms.exclusions.map((e: string, i: number) => (
                             <li key={i}>{e}</li>
                         ))}
@@ -1353,22 +1529,22 @@ const ReportPreview: React.FC<{ reportData: ReportData }> = ({ reportData }) => 
                 </div>
             </SectionPreview>
             {/* Fee Summary */}
-            <SectionPreview title="7. Fee Summary">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #edf2f7' }}>
+            <SectionPreview title="8. Fee Summary">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #edf2f7' }}>
                         <span style={{ color: '#718096' }}>Parts Total:</span>
                         <span style={{ fontWeight: 600 }}>{reportData.currency} {Number(reportData.parts_total || 0).toLocaleString()}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #edf2f7' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #edf2f7' }}>
                         <span style={{ color: '#718096' }}>Labor Total:</span>
                         <span style={{ fontWeight: 600 }}>{reportData.currency} {Number(reportData.labor_total || 0).toLocaleString()}</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', marginTop: 4 }}>
-                        <span style={{ fontSize: 18, fontWeight: 700, color: '#1a365d' }}>Total Amount:</span>
-                        <span style={{ fontSize: 18, fontWeight: 700, color: '#1a365d' }}>{reportData.currency} {Number(reportData.total_cost || 0).toLocaleString()}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', marginTop: 4 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#1a365d' }}>Total Amount:</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#1a365d' }}>{reportData.currency} {Number(reportData.total_cost || 0).toLocaleString()}</span>
                     </div>
                     {reportData.service_type === 'warranty' && (
-                        <div style={{ fontSize: 12, color: '#38a169', fontStyle: 'italic', textAlign: 'right' }}>
+                        <div style={{ fontSize: 11, color: '#38a169', fontStyle: 'italic', textAlign: 'right' }}>
                             * This is an In-Warranty service. The above total is for record only and is waived (0.00).
                         </div>
                     )}
@@ -1384,24 +1560,59 @@ const ReportPreview: React.FC<{ reportData: ReportData }> = ({ reportData }) => 
     </div>
 );
 
+// Fee Sub-section Component with collapsible functionality
+const FeeSubSection: React.FC<{ 
+    title: string; 
+    icon: React.ReactNode; 
+    subtotal: number; 
+    defaultOpen?: boolean; 
+    children: React.ReactNode 
+}> = ({ title, icon, subtotal, defaultOpen = true, children }) => {
+    const [isOpen, setIsOpen] = React.useState(defaultOpen);
+    
+    return (
+        <div style={{ marginBottom: 12, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, overflow: 'hidden' }}>
+            <div 
+                onClick={() => setIsOpen(!isOpen)}
+                style={{ 
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '10px 14px', background: 'rgba(255,255,255,0.03)', cursor: 'pointer'
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {isOpen ? <ChevronDown size={16} color="#888" /> : <ChevronUp size={16} color="#888" />}
+                    <span style={{ color: '#888' }}>{icon}</span>
+                    <span style={{ fontSize: 13, color: '#fff', fontWeight: 500 }}>{title}</span>
+                </div>
+                <span style={{ fontSize: 13, color: '#FFD700', fontWeight: 600 }}>小计 ¥{Number(subtotal || 0).toFixed(2)}</span>
+            </div>
+            {isOpen && (
+                <div style={{ padding: 12 }}>
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const SectionPreview: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-    <div style={{ marginBottom: 30 }}>
-        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1a365d', borderBottom: '2px solid #e2e8f0', paddingBottom: 8, marginBottom: 16 }}>{title}</h3>
+    <div style={{ marginBottom: 24 }}>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#1a365d', borderBottom: '2px solid #e2e8f0', paddingBottom: 6, marginBottom: 12 }}>{title}</h3>
         {children}
     </div>
 );
 
 const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
     <div>
-        <span style={{ fontSize: 13, color: '#718096' }}>{label}: </span>
-        <span style={{ fontSize: 14, fontWeight: 500 }}>{value || '-'}</span>
+        <span style={{ fontSize: 12, color: '#718096' }}>{label}: </span>
+        <span style={{ fontSize: 13, fontWeight: 500 }}>{value || '-'}</span>
     </div>
 );
 
 const InfoBlock: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-    <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 13, color: '#718096', marginBottom: 6 }}>{label}:</div>
-        <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, lineHeight: 1.6 }}>
+    <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: '#718096', marginBottom: 4 }}>{label}:</div>
+        <div style={{ padding: 10, background: '#f7fafc', borderRadius: 6, lineHeight: 1.5, fontSize: 13 }}>
             {value || <span style={{ color: '#a0aec0', fontStyle: 'italic' }}>[No information provided]</span>}
         </div>
     </div>

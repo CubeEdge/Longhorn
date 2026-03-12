@@ -392,6 +392,13 @@ const Sidebar: React.FC<{
   const { token } = useAuthStore();
   const [accessibleDepts, setAccessibleDepts] = React.useState<any[]>([]);
   const { t } = useLanguage();
+  const { triggerWorkspaceClear } = useUIStore();
+
+  // 处理工作区菜单点击：触发清除选中工单并返回列表视图
+  const handleWorkspaceMenuClick = () => {
+    triggerWorkspaceClear();
+    onClose();
+  };
 
   // Sidebar resize
   const [sidebarWidth, setSidebarWidth] = React.useState(() => {
@@ -562,7 +569,7 @@ const Sidebar: React.FC<{
                 <Link
                   to={getRoute('/service/workspace')}
                   className={`sidebar-item ${location.pathname === '/service/workspace' || (location.pathname.startsWith('/service/tickets/') && searchParams.get('ctx') === 'my_tasks') ? 'active' : ''}`}
-                  onClick={onClose}
+                  onClick={handleWorkspaceMenuClick}
                 >
                   <CheckSquare size={18} />
                   <span>{t('sidebar.my_tasks')}</span>
@@ -571,7 +578,7 @@ const Sidebar: React.FC<{
                 <Link
                   to={getRoute('/service/mentioned')}
                   className={`sidebar-item ${location.pathname === '/service/mentioned' || (location.pathname.startsWith('/service/tickets/') && searchParams.get('ctx') === 'mentioned') ? 'active' : ''}`}
-                  onClick={onClose}
+                  onClick={handleWorkspaceMenuClick}
                 >
                   <Bell size={18} />
                   <span>{t('sidebar.mentioned')}</span>
@@ -580,7 +587,7 @@ const Sidebar: React.FC<{
                 <Link
                   to={getRoute('/service/team-hub')}
                   className={`sidebar-item ${location.pathname === '/service/team-hub' || (location.pathname.startsWith('/service/tickets/') && searchParams.get('ctx') === 'team_queue') ? 'active' : ''}`}
-                  onClick={onClose}
+                  onClick={handleWorkspaceMenuClick}
                 >
                   <Users size={18} />
                   <span>{t('sidebar.team_hub', { defaultValue: '部门工单' })}</span>

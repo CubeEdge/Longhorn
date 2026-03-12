@@ -258,10 +258,12 @@ function calculateWarranty({ ticket, installedBase, technical_damage_status, war
         warrantyStart.setDate(warrantyStart.getDate() + 90);
         calculationBasis = 'dealer_fallback';
     }
-    // Fallback: Use ticket creation date (should not happen)
+    // No valid warranty basis found - warranty status is uncertain
+    // Per PRD §5.5: If none of the 5 priority options have dates, product warranty is undetermined
     else {
-        warrantyStart = new Date(ticket.created_at);
-        calculationBasis = 'ticket_created';
+        result.calculation_basis = 'unknown';
+        result.final_warranty_status = 'warranty_unknown';
+        return result;
     }
 
     // Step 3: Calculate warranty end date

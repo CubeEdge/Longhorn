@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreHorizontal, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight, Wrench, Calculator, CheckCircle, Shield, Search, BadgeDollarSign } from 'lucide-react';
+import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreHorizontal, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight, Wrench, Calculator, CheckCircle, Shield, Search, BadgeDollarSign, ChevronRight } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -29,6 +29,7 @@ import { RepairReportEditor } from './RepairReportEditor';
 import { OpRepairReportEditor } from './OpRepairReportEditor';
 import { PIEditor } from './PIEditor';
 import { ClosingHandoverModal } from './ClosingHandoverModal';
+import ProductWarrantyRegistrationModal from '../Service/ProductWarrantyRegistrationModal';
 // Types
 // ==============================
 
@@ -103,12 +104,22 @@ const NODE_ACTION_MAP: Record<string, Record<string, { label_zh: string; label_e
 // Priority & Status helpers
 // ==============================
 
-const statusLabels: Record<string, { zh: string; en: string; color: string }> = {
-    draft: { zh: '草稿', en: 'Draft', color: '#666' },
-    in_progress: { zh: '处理中', en: 'In Progress', color: '#3B82F6' },
-    waiting: { zh: '等待中', en: 'Waiting', color: '#FFD200' },
-    resolved: { zh: '已解决', en: 'Resolved', color: '#10B981' },
-    closed: { zh: '已关闭', en: 'Closed', color: '#666' },
+const nodeLabels: Record<string, { zh: string }> = {
+    draft: { zh: '草稿' },
+    submitted: { zh: '已提交' },
+    ms_review: { zh: '商务审核' },
+    op_receiving: { zh: '待收货' },
+    op_diagnosing: { zh: '诊断中' },
+    op_repairing: { zh: '维修中' },
+    op_qa: { zh: 'QA检测' },
+    op_shipping: { zh: '打包发货' },
+    op_shipping_transit: { zh: '待补外销单号' },
+    ms_closing: { zh: '最终结案' },
+    ge_review: { zh: '财务审核' },
+    ge_closing: { zh: '财务结案' },
+    resolved: { zh: '已解决' },
+    closed: { zh: '已关闭' },
+    waiting_customer: { zh: '待反馈' },
 };
 
 // Format date to minutes precision
@@ -181,10 +192,18 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [isOpRepairReportEditorOpen, setIsOpRepairReportEditorOpen] = useState(false);
     const [isPIEditorOpen, setIsPIEditorOpen] = useState(false);
     const [isClosingHandoverOpen, setIsClosingHandoverOpen] = useState(false);
+    const [docsRefreshTrigger, setDocsRefreshTrigger] = useState(0);
     const [activePIInfo, setActivePIInfo] = useState<{ id?: number; number?: string } | null>(null);
     const [activeReportInfo, setActiveReportInfo] = useState<{ id?: number, number?: string } | null>(null);
     const [hasPI, setHasPI] = useState(false);
     const [hasRepairReport, setHasRepairReport] = useState(false);
+    const [piStatus, setPIStatus] = useState<string | null>(null);
+    const [reportStatus, setReportStatus] = useState<string | null>(null);
+
+    // Collapsible card states
+    const [keyDeliverablesCollapsed, setKeyDeliverablesCollapsed] = useState(false);
+    const [customerContextCollapsed, setCustomerContextCollapsed] = useState(false);
+    const [isWarrantyRegistrationOpen, setIsWarrantyRegistrationOpen] = useState(false);
 
     // System settings for workflow control
     const [systemSettings, setSystemSettings] = useState<{ require_finance_confirmation?: boolean }>({});
@@ -251,18 +270,24 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 
     useEffect(() => {
         if (ticket?.id) {
-            // Fetch true warranty engine calculation
-            axios.post('/api/v1/warranty/calculate', {
-                ticket_id: ticket.id,
-                technical_damage_status: 'no_damage' // default assumption until MS Review changes it
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            }).then(res => {
-                if (res.data.success) {
-                    setWarrantyCalc(res.data.data);
-                }
-            }).catch(err => console.error('[WarrantyFetch] Failed', err));
+            refreshWarrantyCalc();
         }
+    }, [ticket?.id, token]);
+
+    // Function to refresh warranty calculation - can be called after warranty registration
+    const refreshWarrantyCalc = useCallback(() => {
+        if (!ticket?.id) return;
+        // Fetch true warranty engine calculation
+        axios.post('/api/v1/warranty/calculate', {
+            ticket_id: ticket.id,
+            technical_damage_status: 'no_damage' // default assumption until MS Review changes it
+        }, {
+            headers: { Authorization: `Bearer ${token}` }
+        }).then(res => {
+            if (res.data.success) {
+                setWarrantyCalc(res.data.data);
+            }
+        }).catch(err => console.error('[WarrantyFetch] Failed', err));
     }, [ticket?.id, token]);
 
     // Fetch products when editing starts
@@ -485,11 +510,21 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             const pRes = piRes.data.success && piRes.data.data ? piRes.data.data : [];
             const rRes = rrRes.data.success && rrRes.data.data ? rrRes.data.data : [];
 
-            if (pRes.length > 0) setActivePIInfo({ id: pRes[0].id, number: pRes[0].pi_number });
-            else setActivePIInfo(null);
+            if (pRes.length > 0) {
+                setActivePIInfo({ id: pRes[0].id, number: pRes[0].pi_number });
+                setPIStatus(pRes[0].status);
+            } else {
+                setActivePIInfo(null);
+                setPIStatus(null);
+            }
 
-            if (rRes.length > 0) setActiveReportInfo({ id: rRes[0].id, number: rRes[0].report_number });
-            else setActiveReportInfo(null);
+            if (rRes.length > 0) {
+                setActiveReportInfo({ id: rRes[0].id, number: rRes[0].report_number });
+                setReportStatus(rRes[0].status);
+            } else {
+                setActiveReportInfo(null);
+                setReportStatus(null);
+            }
 
             setHasPI(pRes.length > 0);
             setHasRepairReport(rRes.length > 0);
@@ -800,64 +835,65 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 </span>
 
                 {/* Context Status Badge: [ Node · Dept · Assignee / Claim ] */}
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '6px 14px', borderRadius: 10, fontSize: 14, fontWeight: 700,
-                    background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)',
-                    color: '#60A5FA',
-                }}>
-                    <span>
-                        {(() => {
-                            const node = ticket.current_node;
-                            if (node === 'draft') return '草稿';
-                            if (node === 'submitted') return '待收货';
-                            if (node === 'ms_review') return '商务审核';
-                            if (node === 'op_receiving') return '待收货';
-                            if (node === 'op_diagnosing') return '诊断中';
-                            if (node === 'op_repairing') return '维修中';
-                            if (node === 'op_qa') return 'QA检测';
-                            if (node === 'op_shipping') return '打包发货';
-                            if (node === 'op_shipping_transit') return '待补外销单号';
-                            if (node === 'ms_closing') return '最终结案';
-                            if (node === 'ge_review') return '财务审核';
-                            if (node === 'ge_closing') return '财务结案';
-                            if (node === 'resolved') return '已解决';
-                            if (node === 'closed') return '已关闭';
-                            if (node === 'waiting_customer') return '待反馈';
-                            return node;
-                        })()}
-                    </span>
-                    <span style={{ opacity: 0.4 }}>·</span>
-                    <span>{(() => {
-                        if (ticket.department_code) return ticket.department_code as string;
-                        if (ticket.assigned_dept) return ticket.assigned_dept as string;
-                        const n = String(ticket.current_node || '').toLowerCase();
-                        if (n.startsWith('ms_') || ['draft', 'open', 'waiting', 'resolved', 'closed', 'waiting_customer'].includes(n)) return 'MS';
-                        if (n.startsWith('op_') || ['submitted', 'shipped'].includes(n)) return 'OP';
-                        if (n.startsWith('ge_')) return 'GE';
-                        return '-';
-                    })()}</span>
-                    <span style={{ opacity: 0.4 }}>·</span>
-                    {canAssign ? (
-                        <div style={{ marginTop: '-1px' }}>
-                            <AssigneeSelector
-                                ticketId={ticket.id}
-                                currentAssigneeId={ticket.assigned_to as number | null}
-                                currentAssigneeName={ticket.assigned_name}
-                                currentAssigneeDept={ticket.assigned_dept}
-                                currentNode={ticket.current_node}
-                                ticketType={ticket.ticket_type}
-                                onUpdate={fetchDetail}
-                            />
-                        </div>
-                    ) : ticket.assigned_name ? (
-                        <span>{String(ticket.assigned_name)}</span>
-                    ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ color: '#888' }}>未认领</span>
-                        </div>
-                    )}
-                </div>
+                {/* Hide status badge when ticket is resolved/closed */}
+                {ticket.current_node !== 'resolved' && ticket.current_node !== 'closed' && ticket.current_node !== 'auto_closed' && (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '6px 14px', borderRadius: 10, fontSize: 14, fontWeight: 700,
+                        background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)',
+                        color: '#60A5FA',
+                    }}>
+                        <span>
+                            {(() => {
+                                const node = ticket.current_node;
+                                if (node === 'draft') return '草稿';
+                                if (node === 'submitted') return '待收货';
+                                if (node === 'ms_review') return '商务审核';
+                                if (node === 'op_receiving') return '待收货';
+                                if (node === 'op_diagnosing') return '诊断中';
+                                if (node === 'op_repairing') return '维修中';
+                                if (node === 'op_qa') return 'QA检测';
+                                if (node === 'op_shipping') return '打包发货';
+                                if (node === 'op_shipping_transit') return '待补外销单号';
+                                if (node === 'ms_closing') return '最终结案';
+                                if (node === 'ge_review') return '财务审核';
+                                if (node === 'ge_closing') return '财务结案';
+                                if (node === 'waiting_customer') return '待反馈';
+                                return node;
+                            })()}
+                        </span>
+                        <span style={{ opacity: 0.4 }}>·</span>
+                        <span>{(() => {
+                            if (ticket.department_code) return ticket.department_code as string;
+                            if (ticket.assigned_dept) return ticket.assigned_dept as string;
+                            const n = String(ticket.current_node || '').toLowerCase();
+                            if (n.startsWith('ms_') || ['draft', 'open', 'waiting', 'waiting_customer'].includes(n)) return 'MS';
+                            if (n.startsWith('op_') || ['submitted', 'shipped'].includes(n)) return 'OP';
+                            if (n.startsWith('ge_')) return 'GE';
+                            return '-';
+                        })()}</span>
+                        <span style={{ opacity: 0.4 }}>·</span>
+                        {canAssign ? (
+                            <div style={{ marginTop: '-1px' }}>
+                                <AssigneeSelector
+                                    ticketId={ticket.id}
+                                    currentAssigneeId={ticket.assigned_to as number | null}
+                                    currentAssigneeName={ticket.assigned_name}
+                                    currentAssigneeDept={ticket.assigned_dept}
+                                    currentNode={ticket.current_node}
+                                    ticketType={ticket.ticket_type}
+                                    onUpdate={fetchDetail}
+                                />
+                            </div>
+                        ) : ticket.assigned_name ? (
+                            <span>{String(ticket.assigned_name)}</span>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ color: '#888' }}>未认领</span>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* SLA indicator */}
                 {ticket.sla_status === 'breached' && (
@@ -949,103 +985,116 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     {ticket.priority}
                                 </span>
                             }
+                            headerRight={
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    {/* Warranty Status Display */}
+                                    {warrantyCalc?.final_warranty_status === 'warranty_unknown' ? (
+                                        // Unknown warranty - show warning and register button (not for OP)
+                                        <>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <AlertTriangle size={14} color="#F59E0B" />
+                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#F59E0B' }}>
+                                                    保修待确认
+                                                </span>
+                                            </div>
+                                            {/* One-click register button - hidden for OP department */}
+                                            {actingDeptNorm !== 'PRODUCTION' && actingDeptNorm !== 'OP' && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setIsWarrantyRegistrationOpen(true); }}
+                                                    style={{
+                                                        padding: '4px 10px', borderRadius: 6,
+                                                        background: 'rgba(255,210,0,0.15)', border: '1px solid rgba(255,210,0,0.4)',
+                                                        color: '#FFD200', fontSize: 11, fontWeight: 600,
+                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,210,0,0.25)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,210,0,0.15)'; }}
+                                                >
+                                                    <Shield size={12} />
+                                                    一键注册保修
+                                                </button>
+                                            )}
+                                        </>
+                                    ) : (
+                                        // Normal warranty display
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <Shield size={14} color={(warrantyCalc?.final_warranty_status === 'warranty_valid') ? '#10B981' : '#EF4444'} />
+                                            <span style={{ fontSize: 13, fontWeight: 600, color: (warrantyCalc?.final_warranty_status === 'warranty_valid') ? '#10B981' : '#EF4444' }}>
+                                                {(warrantyCalc?.final_warranty_status === 'warranty_valid') ? '在保' : '过保'}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            }
                             defaultOpen={true}
                         >
                             <div style={{ padding: '20px 24px 24px' }}>
-                                {/* New 3-Row Compact Layout */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                {/* New Layout per Fig2 */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-                                    {/* Row 1: Product & SN & Tags */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 200 }}>
-                                                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 60 }}>产品型号</span>
-                                                <span style={{ fontSize: 14, color: '#fff' }}>{String(ticket.product_name || '-')}</span>
+                                    {/* Row 1: Product Model (left) + Serial Number + History (right) */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 32px', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 60 }}>产品型号</span>
+                                            <span style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>{String(ticket.product_name || '-')}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <div
+                                                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                                                onClick={() => ticket.product_id && navigate(`/service/products/${ticket.product_id}`)}
+                                            >
+                                                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>序列号</span>
+                                                <span style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
+                                                    {String(ticket.serial_number || '-')}
+                                                </span>
                                             </div>
-
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <div
-                                                    style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-                                                    onClick={() => ticket.product_id && navigate(`/service/products/${ticket.product_id}`)}
-                                                >
-                                                    <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>序列号</span>
-                                                    <span style={{ fontSize: 14, color: '#fff', fontFamily: 'Monaco, monospace' }}>
-                                                        {String(ticket.serial_number || '-')}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                {/* Warranty Box - Unified Style */}
+                                            {assetData?.service_history && assetData.service_history.length > 0 && (
                                                 <div
                                                     style={{
-                                                        display: 'flex', alignItems: 'center', gap: 12, padding: '4px 12px', borderRadius: 8,
-                                                        background: (warrantyCalc?.final_warranty_status === 'warranty_valid') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                                        border: `1px solid ${(warrantyCalc?.final_warranty_status === 'warranty_valid') ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-                                                        cursor: 'pointer', transition: 'all 0.2s'
+                                                        display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 8,
+                                                        background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.15)',
+                                                        color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                                                        transition: 'all 0.2s'
                                                     }}
-                                                    onClick={() => setShowCalculationModal(true)}
-                                                    onMouseEnter={e => e.currentTarget.style.background = (warrantyCalc?.final_warranty_status === 'warranty_valid') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}
-                                                    onMouseLeave={e => e.currentTarget.style.background = (warrantyCalc?.final_warranty_status === 'warranty_valid') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                                                    onClick={() => ticket.product_id && window.open(`/service/products/${ticket.product_id}`, '_blank')}
                                                 >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        <Shield size={14} color={(warrantyCalc?.final_warranty_status === 'warranty_valid') ? '#10B981' : '#EF4444'} />
-                                                        <span style={{ fontSize: 13, fontWeight: 700, color: (warrantyCalc?.final_warranty_status === 'warranty_valid') ? '#10B981' : '#EF4444' }}>
-                                                            {(warrantyCalc?.final_warranty_status === 'warranty_valid') ? '在保' : '过保'}
-                                                        </span>
-                                                    </div>
-                                                    <Calculator size={12} color="rgba(255,255,255,0.4)" />
+                                                    <Clock size={13} style={{ opacity: 0.6 }} />
+                                                    <span>关联工单数: {assetData.service_history.length}</span>
                                                 </div>
-
-                                                {/* History Tag (Aligned visually as uniform badge) */}
-                                                {assetData?.service_history && assetData.service_history.length > 0 && (
-                                                    <div
-                                                        style={{
-                                                            display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 8,
-                                                            background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.15)',
-                                                            color: 'var(--text-secondary)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                                                            transition: 'all 0.2s', height: '100%'
-                                                        }}
-                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-                                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                                                        onClick={() => ticket.product_id && window.open(`/service/products/${ticket.product_id}`, '_blank')}
-                                                    >
-                                                        <Clock size={13} style={{ opacity: 0.6 }} />
-                                                        <span>关联工单数: {assetData.service_history.length}</span>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            )}
                                         </div>
-
-                                        {/* Mismatch Warning & Quick Fix - Left aligned and single line */}
-                                        {assetData?.device && !assetData.device.is_unregistered && ticket.product_name !== assetData.device.model_name && (
-                                            <div style={{ display: 'flex', marginTop: 4 }}>
-                                                <div style={{
-                                                    display: 'flex', alignItems: 'center', gap: 10, padding: '4px 12px',
-                                                    background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)',
-                                                    borderRadius: 8
-                                                }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#FFD200', fontWeight: 600 }}>
-                                                        <AlertTriangle size={14} />
-                                                        声明型号 ({ticket.product_name}) 与实物 ({assetData.device.model_name}) 不符
-                                                    </div>
-                                                    <button
-                                                        onClick={() => handleQuickFixProduct(assetData.device.model_name)}
-                                                        style={{
-                                                            padding: '2px 8px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
-                                                            borderRadius: 4, color: '#FFD200', fontSize: 11, fontWeight: 700, cursor: 'pointer'
-                                                        }}
-                                                    >
-                                                        一键修正
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
 
-                                    {/* Row 2: Customer & Channel */}
-                                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 200 }}>
+                                    {/* Row 2: Mismatch Warning (full width, only if mismatch exists) */}
+                                    {assetData?.device && !assetData.device.is_unregistered && ticket.product_name !== assetData.device.model_name && (
+                                        <div style={{
+                                            display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px',
+                                            background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)',
+                                            borderRadius: 8
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#FFD200', fontWeight: 600 }}>
+                                                <AlertTriangle size={14} />
+                                                声明型号 ({ticket.product_name}) 与实物 ({assetData.device.model_name}) 不符
+                                            </div>
+                                            <button
+                                                onClick={() => handleQuickFixProduct(assetData.device.model_name)}
+                                                style={{
+                                                    padding: '2px 10px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
+                                                    borderRadius: 4, color: '#FFD200', fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                                                }}
+                                            >
+                                                一键修正
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Row 3-4: 2-column grid */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 32px', alignItems: 'start' }}>
+                                        {/* Row 3 Col 1: Customer */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                             <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 60 }}>{t('ticket.customer') || '客户'}</span>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 600 }}>
                                                 {(() => {
@@ -1069,22 +1118,20 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                 )}
                                             </div>
                                         </div>
-
+                                        {/* Row 3 Col 2: Channel */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                             <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>销售渠道</span>
                                             <span style={{ fontSize: 14, color: '#ccc' }}>
                                                 {ticket.dealer_name ? `${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}` : '直销'}
                                             </span>
                                         </div>
-                                    </div>
 
-                                    {/* Row 3: Time & Submitter */}
-                                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '24px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 200 }}>
+                                        {/* Row 4 Col 1: Created Time */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                             <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 60 }}>{t('ticket.created_at') || '创建时间'}</span>
                                             <span style={{ fontSize: 14, color: '#ccc' }}>{formatDateMinute(ticket.created_at)}</span>
                                         </div>
-
+                                        {/* Row 4 Col 2: Submitter */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                             <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>{t('ticket.submitted_by') || '提交者'}</span>
                                             <span style={{ fontSize: 14, color: '#ccc' }}>
@@ -1280,6 +1327,222 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     />
 
 
+                    {/* Service Document Center - Consolidated Card (macOS26 Style) - Hidden for inquiry tickets */}
+                    {ticket.type !== 'inquiry' && (
+                    <div style={{
+                        background: 'var(--glass-border)',
+                        borderRadius: '12px',
+                        padding: keyDeliverablesCollapsed ? '16px' : '16px',
+                        border: '1px solid var(--glass-border)',
+                        marginBottom: '12px',
+                        marginTop: '4px'
+                    }}>
+                        <div
+                            onClick={() => setKeyDeliverablesCollapsed(!keyDeliverablesCollapsed)}
+                            style={{
+                                fontSize: '0.8rem',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.08em',
+                                color: '#fff',
+                                marginBottom: keyDeliverablesCollapsed ? 0 : '16px',
+                                fontWeight: 700,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '6px',
+                                cursor: 'pointer',
+                                userSelect: 'none'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Wrench size={12} color="#fff" /> {language === 'zh' ? '关键交付内容' : 'Key Deliverables'}
+                            </div>
+                            <ChevronRight
+                                size={16}
+                                color="#888"
+                                style={{
+                                    transform: keyDeliverablesCollapsed ? 'rotate(90deg)' : 'rotate(0deg)',
+                                    transition: 'transform 0.2s'
+                                }}
+                            />
+                        </div>
+
+                        {!keyDeliverablesCollapsed && (<>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {/* Row 1: Technical Details (Parallel) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                {(() => {
+                                    const diagActivity = activities.find(a => a.activity_type === 'diagnostic_report');
+                                    return (
+                                        <button
+                                            disabled={!diagActivity}
+                                            onClick={() => diagActivity && setSelectedActivity(diagActivity)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px',
+                                                background: 'rgba(255,255,255,0.02)',
+                                                border: '1px solid rgba(255,255,255,0.05)',
+                                                borderRadius: '10px', transition: 'all 0.2s',
+                                                cursor: diagActivity ? 'pointer' : 'not-allowed',
+                                                opacity: diagActivity ? 1 : 0.6
+                                            }}
+                                        >
+                                            <Search size={14} color={diagActivity ? '#888' : '#666'} />
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: diagActivity ? '#ddd' : '#666' }}>
+                                                {language === 'zh' ? '诊断结果' : 'Diagnostics'}
+                                            </span>
+                                        </button>
+                                    );
+                                })()}
+
+                                {(() => {
+                                    // OP维修记录：需要工单已过op_repairing节点才可查看
+                                    const repairNodes = ['op_repairing', 'op_qa', 'op_shipping', 'op_shipping_transit', 'ms_closing', 'ge_review', 'ge_closing', 'resolved', 'closed', 'auto_closed', 'converted', 'cancelled'];
+                                    const hasPassedRepair = repairNodes.includes(ticket.current_node) || activities.some(a => {
+                                        if (a.activity_type === 'op_repair_completed') return true;
+                                        if (a.activity_type === 'status_change' && a.metadata) {
+                                            const meta = typeof a.metadata === 'string' ? JSON.parse(a.metadata) : a.metadata;
+                                            return meta.from_node === 'op_repairing' || meta.to_node === 'op_qa';
+                                        }
+                                        return false;
+                                    });
+                                    return (
+                                        <button
+                                            disabled={!hasPassedRepair}
+                                            onClick={() => hasPassedRepair && setIsOpRepairReportEditorOpen(true)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px',
+                                                background: 'rgba(255,255,255,0.02)',
+                                                border: '1px solid rgba(255,255,255,0.05)',
+                                                borderRadius: '10px', transition: 'all 0.2s',
+                                                cursor: hasPassedRepair ? 'pointer' : 'not-allowed',
+                                                opacity: hasPassedRepair ? 1 : 0.6
+                                            }}
+                                        >
+                                            <Wrench size={14} color={hasPassedRepair ? '#888' : '#666'} />
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: hasPassedRepair ? '#ddd' : '#666' }}>
+                                                {language === 'zh' ? '维修记录' : 'Repair Record'}
+                                            </span>
+                                        </button>
+                                    );
+                                })()}
+                            </div>
+
+                            {/* Row 2: Repair Report Action (MS/Admin/Exec only) */}
+                            {hasPrivilege && (() => {
+                                // 维修报告和PI需要到达 ms_closing 节点才能操作
+                                const closingNodes = ['ms_closing', 'ge_review', 'ge_closing', 'resolved', 'closed', 'auto_closed', 'converted', 'cancelled'];
+                                const canGenerateDocuments = closingNodes.includes(ticket.current_node);
+                                const isEnabled = canGenerateDocuments || hasRepairReport;
+                                const isPublished = reportStatus === 'published' || reportStatus === 'approved';
+                                // 禁用时显示灰色，启用时显示黄色/绿色
+                                const btnBg = !isEnabled ? 'rgba(255,255,255,0.02)' : (isPublished ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 215, 0, 0.08)');
+                                const btnBorder = !isEnabled ? 'rgba(255,255,255,0.1)' : (isPublished ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 215, 0, 0.25)');
+                                const iconColor = !isEnabled ? '#666' : (isPublished ? '#10B981' : '#FFD700');
+                                const textColor = !isEnabled ? '#666' : (isPublished ? '#10B981' : '#FFD700');
+                                return (
+                                    <button
+                                        disabled={!isEnabled}
+                                        onClick={() => {
+                                            if (isEnabled) setIsRepairReportEditorOpen(true);
+                                        }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px',
+                                            background: btnBg,
+                                            border: `1px solid ${btnBorder}`,
+                                            borderRadius: '8px',
+                                            cursor: isEnabled ? 'pointer' : 'not-allowed',
+                                            opacity: isEnabled ? 1 : 0.6,
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <FileText size={14} color={iconColor} />
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 500, color: textColor }}>
+                                                {hasRepairReport ? (language === 'zh' ? '维修报告' : 'Repair Report') : (language === 'zh' ? '生成维修报告' : 'Create Report')}
+                                            </span>
+                                        </div>
+                                        {hasRepairReport ? (
+                                            <span style={{
+                                                fontSize: '0.65rem', fontWeight: 600,
+                                                padding: '2px 6px', borderRadius: 4,
+                                                background: isPublished ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.1)',
+                                                color: isPublished ? '#10B981' : '#888'
+                                            }}>
+                                                {isPublished ? '已发布' : '草稿'}
+                                            </span>
+                                        ) : (
+                                            <span style={{ fontSize: '0.7rem', color: isEnabled ? '#FFD700' : '#666', opacity: 0.5 }}>{language === 'zh' ? '待处理' : 'Pending'}</span>
+                                        )}
+                                    </button>
+                                );
+                            })()}
+
+                            {/* Row 3: PI Action (MS/Admin/Exec only) */}
+                            {hasPrivilege && (() => {
+                                const closingNodes = ['ms_closing', 'ge_review', 'ge_closing', 'resolved', 'closed', 'auto_closed', 'converted', 'cancelled'];
+                                const canGenerateDocuments = closingNodes.includes(ticket.current_node);
+                                const isEnabled = canGenerateDocuments || hasPI;
+                                const isPublished = piStatus === 'published' || piStatus === 'approved';
+                                // 禁用时显示灰色，启用时显示黄色/绿色
+                                const btnBg = !isEnabled ? 'rgba(255,255,255,0.02)' : (isPublished ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 215, 0, 0.08)');
+                                const btnBorder = !isEnabled ? 'rgba(255,255,255,0.1)' : (isPublished ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 215, 0, 0.25)');
+                                const iconColor = !isEnabled ? '#666' : (isPublished ? '#10B981' : '#FFD700');
+                                const textColor = !isEnabled ? '#666' : (isPublished ? '#10B981' : '#FFD700');
+                                return (
+                                    <button
+                                        disabled={!isEnabled}
+                                        onClick={async () => {
+                                            if (!isEnabled) return;
+                                            if (!hasPI) {
+                                                setIsPIEditorOpen(true);
+                                                return;
+                                            }
+                                            try {
+                                                const res = await axios.get(`/api/v1/rma-documents/pi?ticket_id=${ticket.id}`, { headers: { Authorization: `Bearer ${token}` } });
+                                                if (res.data.success && res.data.data.length > 0) {
+                                                    const pi = res.data.data[0];
+                                                    setActivePIInfo({ id: pi.id });
+                                                    setIsPIEditorOpen(true);
+                                                }
+                                            } catch (err) { console.error('Failed to fetch PI', err); }
+                                        }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px',
+                                            background: btnBg,
+                                            border: `1px solid ${btnBorder}`,
+                                            borderRadius: '8px',
+                                            cursor: isEnabled ? 'pointer' : 'not-allowed',
+                                            opacity: isEnabled ? 1 : 0.6,
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <BadgeDollarSign size={14} color={iconColor} />
+                                            <span style={{ fontSize: '0.8rem', fontWeight: 500, color: textColor }}>
+                                                {hasPI ? 'PI' : (language === 'zh' ? '生成 PI' : 'Create PI')}
+                                            </span>
+                                        </div>
+                                        {hasPI ? (
+                                            <span style={{
+                                                fontSize: '0.65rem', fontWeight: 600,
+                                                padding: '2px 6px', borderRadius: 4,
+                                                background: isPublished ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.1)',
+                                                color: isPublished ? '#10B981' : '#888'
+                                            }}>
+                                                {isPublished ? '已发布' : '草稿'}
+                                            </span>
+                                        ) : (
+                                            <span style={{ fontSize: '0.7rem', color: isEnabled ? '#FFD700' : '#666', opacity: 0.5 }}>{language === 'zh' ? '待处理' : 'Pending'}</span>
+                                        )}
+                                    </button>
+                                );
+                            })()}
+                        </div>
+                        </>)}
+                    </div>
+                    )}
+
                     {/* CustomerContextSidebar (Linked Asset Card) */}
                     <CustomerContextSidebar
                         ticketId={ticket.id}
@@ -1298,132 +1561,9 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         ticketProductName={ticket.product_name}
                         onRequestEdit={handleQuickFixProduct}
                         hideDeviceCard={true}
+                        collapsed={customerContextCollapsed}
+                        onToggleCollapse={() => setCustomerContextCollapsed(!customerContextCollapsed)}
                     />
-
-                    {/* Service Document Center - Consolidated Card (macOS26 Style) */}
-                    <div style={{
-                        background: 'var(--glass-border)',
-                        borderRadius: '12px',
-                        padding: '16px',
-                        border: '1px solid var(--glass-border)',
-                        marginBottom: '12px',
-                        marginTop: '4px'
-                    }}>
-                        <div style={{
-                            fontSize: '0.8rem',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.08em',
-                            color: 'var(--text-tertiary)',
-                            marginBottom: '16px',
-                            fontWeight: 700,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                        }}>
-                            <Wrench size={12} /> {language === 'zh' ? '服务成果' : 'Service Center'}
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {/* Row 1: Technical Details (Parallel) */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                {(() => {
-                                    const diagActivity = activities.find(a => a.activity_type === 'diagnostic_report');
-                                    return (
-                                        <button
-                                            disabled={!diagActivity}
-                                            onClick={() => diagActivity && setSelectedActivity(diagActivity)}
-                                            style={{
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px',
-                                                background: diagActivity ? 'rgba(59, 130, 246, 0.08)' : 'rgba(255,255,255,0.02)',
-                                                border: `1px solid ${diagActivity ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)'}`,
-                                                borderRadius: '10px', transition: 'all 0.2s',
-                                                cursor: diagActivity ? 'pointer' : 'not-allowed',
-                                                opacity: diagActivity ? 1 : 0.6
-                                            }}
-                                        >
-                                            <Search size={14} color={diagActivity ? '#3B82F6' : '#666'} />
-                                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: diagActivity ? '#3B82F6' : '#666' }}>
-                                                {language === 'zh' ? '诊断成果' : 'Diagnostics'}
-                                            </span>
-                                        </button>
-                                    );
-                                })()}
-
-                                <button
-                                    onClick={() => setIsOpRepairReportEditorOpen(true)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px',
-                                        background: 'rgba(255, 210, 0, 0.08)',
-                                        border: '1px solid rgba(255, 210, 0, 0.2)',
-                                        borderRadius: '10px', transition: 'all 0.2s',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <Wrench size={14} color="#FFD200" />
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#FFD200' }}>
-                                        {language === 'zh' ? '维修内容' : 'Repair Info'}
-                                    </span>
-                                </button>
-                            </div>
-
-                            {/* Row 2: Repair Report Action */}
-                            <button
-                                onClick={() => {
-                                    setIsRepairReportEditorOpen(true);
-                                }}
-                                style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px',
-                                    background: hasRepairReport ? 'rgba(59, 130, 246, 0.05)' : 'rgba(255,255,255,0.02)',
-                                    border: `1px solid ${hasRepairReport ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.05)'}`,
-                                    borderRadius: '8px', cursor: 'pointer',
-                                    transition: 'all 0.2s', color: hasRepairReport ? '#3B82F6' : '#666'
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <FileText size={14} />
-                                    <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>
-                                        {hasRepairReport ? (language === 'zh' ? '查看/修改维修报告' : 'View/Edit Report') : (language === 'zh' ? '生成维修报告' : 'Create Report')}
-                                    </span>
-                                </div>
-                                {!hasRepairReport && <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>{language === 'zh' ? '待处理' : 'Pending'}</span>}
-                            </button>
-
-                            {/* Row 3: PI Action (Privileged) */}
-                            {hasPrivilege && (
-                                <button
-                                    onClick={async () => {
-                                        if (!hasPI) {
-                                            setIsPIEditorOpen(true);
-                                            return;
-                                        }
-                                        try {
-                                            const res = await axios.get(`/api/v1/rma-documents/pi?ticket_id=${ticket.id}`, { headers: { Authorization: `Bearer ${token}` } });
-                                            if (res.data.success && res.data.data.length > 0) {
-                                                const pi = res.data.data[0];
-                                                setActivePIInfo({ id: pi.id });
-                                                setIsPIEditorOpen(true);
-                                            }
-                                        } catch (err) { console.error('Failed to fetch PI', err); }
-                                    }}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px',
-                                        background: hasPI ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255,255,255,0.02)',
-                                        border: `1px solid ${hasPI ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)'}`,
-                                        borderRadius: '8px', cursor: 'pointer',
-                                        transition: 'all 0.2s', color: hasPI ? '#10B981' : '#666'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <BadgeDollarSign size={14} />
-                                        <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>
-                                            {hasPI ? (language === 'zh' ? '查看/修改 PI' : 'View/Edit PI') : (language === 'zh' ? '生成 PI' : 'Create PI')}
-                                        </span>
-                                    </div>
-                                    {!hasPI && <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>{language === 'zh' ? '待处理' : 'Pending'}</span>}
-                                </button>
-                            )}
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -1460,60 +1600,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             </div>
                             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-                                {/* ---- 分组 1: 时效与状态 ---- */}
-                                <div>
-                                    <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>时效与状态</div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>优先级</label>
-                                            <select
-                                                value={editForm.priority as string || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, priority: e.target.value }))}
-                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                            >
-                                                <option value="P0">P0</option><option value="P1">P1</option><option value="P2">P2</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>状态</label>
-                                            <select
-                                                value={editForm.status as string || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, status: e.target.value }))}
-                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                            >
-                                                {Object.keys(statusLabels).map(k => <option key={k} value={k}>{statusLabels[k].zh}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* ---- 分组 2: 内容与诊断 ---- */}
-                                <div>
-                                    <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>内容与诊断</div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>问题简述</label>
-                                            <input
-                                                value={editForm.problem_summary as string || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, problem_summary: e.target.value }))}
-                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>详细描述</label>
-                                            <textarea
-                                                value={editForm.problem_description as string || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, problem_description: e.target.value }))}
-                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical' }}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* ---- 分组 3: 设备标识 (RMA/SVC 特有) ---- */}
+                                {/* ---- 分组 1: 设备信息 (RMA/SVC 特有) ---- */}
                                 {(ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
                                     <div>
-                                        <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>核心资产标识</div>
+                                        <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>设备信息</div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                                             <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 8 }}>
                                                 <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#FFD200', marginBottom: 6 }}>
@@ -1545,44 +1635,53 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     </div>
                                 )}
 
-                                {/* ---- 分组 4: 核心判定 (RMA/SVC 特有) ---- */}
-                                {(ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
+                                {/* ---- 分组 2: 问题描述 ---- */}
+                                <div>
+                                    <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>问题描述</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>问题简述</label>
+                                            <input
+                                                value={editForm.problem_summary as string || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, problem_summary: e.target.value }))}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>详细描述</label>
+                                            <textarea
+                                                value={editForm.problem_description as string || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, problem_description: e.target.value }))}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical' }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ---- 分组 3: 流程控制 (仅管理员可见) ---- */}
+                                {(user?.role === 'Admin' || user?.role === 'Lead') && (ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
                                     <div style={{ paddingBottom: 20 }}>
-                                        <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>服务判定</div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>保修判定</label>
-                                                    <select
-                                                        value={editForm.is_warranty !== undefined ? String(editForm.is_warranty) : (ticket.is_warranty !== undefined ? String(ticket.is_warranty) : '')}
-                                                        onChange={e => setEditForm(prev => ({ ...prev, is_warranty: e.target.value === 'true' ? true : e.target.value === 'false' ? false : undefined }))}
-                                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                                    >
-                                                        <option value="">未判定</option>
-                                                        <option value="true">在保</option>
-                                                        <option value="false">过保</option>
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>金额 (¥)</label>
-                                                    <input
-                                                        type="number"
-                                                        value={editForm.payment_amount as number || ''}
-                                                        onChange={e => setEditForm(prev => ({ ...prev, payment_amount: e.target.value ? Number(e.target.value) : undefined }))}
-                                                        placeholder="0.00"
-                                                        style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>维修内容</label>
-                                                <textarea
-                                                    value={editForm.repair_content as string || ''}
-                                                    onChange={e => setEditForm(prev => ({ ...prev, repair_content: e.target.value }))}
-                                                    placeholder="更换零件、固件升级、压力测试等细节..."
-                                                    style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical' }}
-                                                />
-                                            </div>
+                                        <div style={{ fontSize: 11, color: '#EF4444', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(239,68,68,0.2)', paddingBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <AlertTriangle size={12} /> 流程控制 (管理员)
+                                        </div>
+                                        <div style={{ padding: '12px', background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 8 }}>
+                                            <label style={{ display: 'block', fontSize: 12, color: '#EF4444', marginBottom: 8, fontWeight: 500 }}>强制节点回退</label>
+                                            <select
+                                                value={editForm.current_node as string || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, current_node: e.target.value || undefined }))}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(239,68,68,0.3)', color: '#fff', borderRadius: 6, fontSize: 13, marginBottom: 10 }}
+                                            >
+                                                <option value="">保持当前节点: {nodeLabels[ticket.current_node]?.zh || ticket.current_node}</option>
+                                                <option value="op_receiving">待收货 (OP)</option>
+                                                <option value="op_diagnosing">诊断中 (OP)</option>
+                                                <option value="op_repairing">维修中 (OP)</option>
+                                                <option value="ms_review">商务审核 (MS)</option>
+                                                <option value="ms_closing">最终结案 (MS)</option>
+                                                <option value="op_shipping">打包发货 (OP)</option>
+                                            </select>
+                                            <p style={{ margin: 0, fontSize: 10, color: '#EF4444', opacity: 0.8 }}>
+                                                警告：强制回退将触发自动分发规则，可能变更对接人。此操作将记录在活动日志中。
+                                            </p>
                                         </div>
                                     </div>
                                 )}
@@ -1961,10 +2060,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     ticketId={ticketId}
                     ticketNumber={ticket?.ticket_number || ''}
                     onSuccess={() => {
-                        setIsOpRepairReportEditorOpen(false);
                         fetchDetail();
                     }}
                     warrantyCalc={warrantyCalc}
+                    currentNode={ticket?.current_node}
                 />
             )}
 
@@ -1979,6 +2078,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     onSuccess={() => {
                         setIsRepairReportEditorOpen(false);
                         fetchDetail();
+                        // Trigger docs refresh in closing handover modal
+                        setDocsRefreshTrigger(prev => prev + 1);
                     }}
                 />
             )}
@@ -1993,6 +2094,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     onSuccess={() => {
                         setIsPIEditorOpen(false);
                         fetchDetail();
+                        // Trigger docs refresh in closing handover modal
+                        setDocsRefreshTrigger(prev => prev + 1);
                     }}
                 />
             )}
@@ -2007,13 +2110,14 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         fetchDetail();
                     }}
                     onOpenRepairReport={() => {
-                        setIsClosingHandoverOpen(false);
+                        // Don't close handover modal, just open editor on top
                         setIsRepairReportEditorOpen(true);
                     }}
                     onOpenPI={() => {
-                        setIsClosingHandoverOpen(false);
+                        // Don't close handover modal, just open editor on top
                         setIsPIEditorOpen(true);
                     }}
+                    refreshTrigger={docsRefreshTrigger}
                 />
             )}
             <ActionBufferModal
@@ -2118,7 +2222,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                     'direct_ship': '直销发货日期+7天',
                                                     'dealer_fallback': '经销商发货日期+90天',
                                                     'damage_void': '人为损坏（保修失效）',
-                                                    'ticket_created': '工单创建日期（兜底）'
+                                                    'unknown': '保修依据缺失'
                                                 } as any
                                             )[warrantyCalc.calculation_basis] || warrantyCalc.calculation_basis || '-', fullWidth: true
                                         }
@@ -2149,6 +2253,21 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Warranty Registration Modal */}
+            {isWarrantyRegistrationOpen && ticket && (
+                <ProductWarrantyRegistrationModal
+                    isOpen={isWarrantyRegistrationOpen}
+                    onClose={() => setIsWarrantyRegistrationOpen(false)}
+                    serialNumber={ticket.serial_number || ''}
+                    productName={ticket.product_name || ''}
+                    onRegistered={() => {
+                        setIsWarrantyRegistrationOpen(false);
+                        fetchDetail(); // Refresh to get updated warranty info
+                        refreshWarrantyCalc(); // Also refresh warranty calculation immediately
+                    }}
+                />
             )}
 
         </div >

@@ -604,20 +604,22 @@ module.exports = function (db, authenticate) {
 
             const offset = (parseInt(page) - 1) * parseInt(page_size);
 
-            // Get all related tickets
+            // Get all related tickets with full details for card display
             const tickets = db.prepare(`
                 SELECT 
-                    CASE 
-                        WHEN ticket_type = 'inquiry' THEN 'Inquiry'
-                        WHEN ticket_type = 'rma' THEN 'RMA'
-                        WHEN ticket_type = 'svc' THEN 'DealerRepair'
-                        ELSE ticket_type
-                    END as ticket_type,
-                    id, ticket_number, status, created_at,
-                    contact_name,
-                    COALESCE(problem_summary, problem_description, title) as summary
-                FROM tickets WHERE product_id = ?
-                ORDER BY created_at DESC
+                    t.id, 
+                    t.ticket_number, 
+                    t.ticket_type,
+                    t.status, 
+                    t.created_at,
+                    t.problem_summary,
+                    t.problem_description,
+                    t.contact_name,
+                    a.name as account_name
+                FROM tickets t
+                LEFT JOIN accounts a ON t.account_id = a.id
+                WHERE t.product_id = ?
+                ORDER BY t.created_at DESC
                 LIMIT ? OFFSET ?
             `).all(productId, parseInt(page_size), offset);
 

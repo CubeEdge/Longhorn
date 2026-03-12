@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
-import { X, Save, FileText, Plus, Trash2, Stethoscope, Wrench } from 'lucide-react';
+import { FileText, Plus, Trash2, Stethoscope, Wrench, X, Save, CheckCircle, Loader2 } from 'lucide-react';
 
 interface OpRepairReportEditorProps {
     isOpen: boolean;
@@ -10,6 +10,7 @@ interface OpRepairReportEditorProps {
     ticketNumber: string;
     onSuccess: () => void;
     warrantyCalc?: any;
+    currentNode?: string; // Current workflow node - determines if "complete" button should show
 }
 
 const DEFAULT_CONTENT = {
@@ -51,11 +52,12 @@ const DEFAULT_CONTENT = {
 };
 
 export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
-    isOpen, onClose, ticketId, ticketNumber, onSuccess, warrantyCalc
+    isOpen, onClose, ticketId, ticketNumber, onSuccess, warrantyCalc, currentNode
 }) => {
     const { token, user } = useAuthStore();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [ticketInfo, setTicketInfo] = useState<any>(null);
     const [activityId, setActivityId] = useState<number | null>(null);
 
@@ -75,11 +77,18 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
     });
 
     const isAdmin = user?.role === 'Admin' || user?.role === 'Exec' || user?.department_code === 'management';
-    const isOp = user?.department_code === 'production';
-    const isOpRepairingNode = ticketInfo?.current_node === 'op_repairing';
+    const isOp = user?.department_code === 'production' || user?.department_code === 'OP';
+    // OP can edit during repair and QA phases
+    const opEditableNodes = ['op_repairing', 'op_qa'];
+    const isOpEditableNode = opEditableNodes.includes(ticketInfo?.current_node || '');
 
-    // Only Admin/Lead can edit anytime. OP can only edit if ticket is currently at 'op_repairing'. Everyone else is read-only.
-    const isReadOnly = !isAdmin && !(isOp && isOpRepairingNode);
+    // Admin/Lead can edit anytime. OP can edit during repair/QA phases. Everyone else is read-only.
+    // 维修记录编辑权限：
+    // - Admin/Exec/management: 随时可编辑
+    // - OP人员: 只在 op_repairing 和 op_qa 节点可编辑
+    // - 其他角色: 只读
+    // Note: ticketInfo may be null initially, so we default to editable for OP until info loads
+    const isReadOnly = ticketInfo ? (!isAdmin && !(isOp && isOpEditableNode)) : !isAdmin;
 
     // Auto-save logic
     useEffect(() => {
@@ -120,13 +129,15 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
             });
             const opReportActivity = activitiesRes.data.data?.[0];
 
-            if (opReportActivity?.metadata) {
+            if (opReportActivity) {
                 // If it exists, populate our form
                 setActivityId(opReportActivity.id);
-                setReportData((prev: any) => ({
-                    ...prev,
-                    content: opReportActivity.metadata
-                }));
+                if (opReportActivity.metadata) {
+                    setReportData((prev: any) => ({
+                        ...prev,
+                        content: opReportActivity.metadata
+                    }));
+                }
             } else {
                 // If not, fetch diagnostic info to initialize from scratch
                 const res = await axios.get(`/api/v1/tickets/${ticketId}`, {
@@ -263,36 +274,67 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                     setActivityId(res.data.data.id);
                 }
             }
+            setLastSaved(new Date());
             onSuccess();
         } catch (err: any) {
             console.error("Save Report Error:", err);
-            if (!silent) alert(err.response?.data?.error?.message || '保存失败');
+            const errMsg = err.response?.data?.error?.message || err.response?.data?.error || err.message || '保存失败';
+            if (!silent) alert(errMsg);
         } finally {
             if (!silent) setSaving(false);
         }
     };
 
-    const handleSubmit = async () => {
+    const handleComplete = async () => {
+        // Save first, then push to next node directly
         setSaving(true);
         try {
-            // 1. Save the report first (not silent now)
-            await handleSave(false);
+            // Save the report
+            const payload = {
+                activity_type: 'op_repair_report',
+                content: `记录了完整的维修执行过程。`,
+                metadata: reportData.content,
+                visibility: 'all'
+            };
 
-            // 2. Transition to next node (ms_closing)
+            if (activityId) {
+                await axios.patch(`/api/v1/tickets/${ticketId}/activities/${activityId}`, {
+                    content: payload.content,
+                    metadata: payload.metadata
+                }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+            } else {
+                const res = await axios.post(`/api/v1/tickets/${ticketId}/activities`, payload, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.data.data?.id) {
+                    setActivityId(res.data.data.id);
+                }
+            }
+
+            // Push to next node (ms_closing)
             await axios.patch(`/api/v1/tickets/${ticketId}`, {
                 current_node: 'ms_closing',
-                change_reason: 'OP 提交维修报告，自动流转至待结案'
-            }, { headers: { Authorization: `Bearer ${token}` } });
+                change_reason: '维修完成，提交到MS结案审核'
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
+            setLastSaved(new Date());
             onSuccess();
             onClose();
         } catch (err: any) {
-            console.error("Submit Repair Report Error:", err);
-            alert(err.response?.data?.error?.message || '提交失败');
+            console.error("Complete Repair Error:", err);
+            const errMsg = err.response?.data?.error?.message || err.response?.data?.error || err.message || '提交失败';
+            alert(errMsg);
         } finally {
             setSaving(false);
         }
     };
+
+    // Determine if we're in "editing" mode (op_repairing node) or "viewing" mode
+    const isEditingMode = currentNode === 'op_repairing' || ticketInfo?.current_node === 'op_repairing';
 
     if (!isOpen) return null;
 
@@ -323,7 +365,7 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                         </div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>
-                                填写维修报告
+                                维修记录
                             </h3>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
                                 <span style={{ fontSize: 12, color: '#888' }}>工单 {ticketNumber}</span>
@@ -335,11 +377,20 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                             </div>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: 8 }}>
-                            <X size={20} />
-                        </button>
-                    </div>
+                    {/* Close button */}
+                    <button
+                        onClick={onClose}
+                        style={{
+                            width: 32, height: 32, borderRadius: 8,
+                            background: 'rgba(255,255,255,0.05)', border: 'none',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', color: '#888', transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#888'; }}
+                    >
+                        <X size={18} />
+                    </button>
                 </div>
 
                 {/* Body */}
@@ -366,6 +417,8 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                                         {warrantyCalc ? (
                                             warrantyCalc.final_warranty_status === 'warranty_valid' ? (
                                                 <span style={{ fontSize: 11, color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(16,185,129,0.3)' }}>保修内</span>
+                                            ) : warrantyCalc.final_warranty_status === 'warranty_unknown' ? (
+                                                <span style={{ fontSize: 11, color: '#F59E0B', background: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(245,158,11,0.3)' }}>保修待确认</span>
                                             ) : (
                                                 <span style={{ fontSize: 11, color: '#EF4444', background: 'rgba(239,68,68,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.3)' }}>已过保</span>
                                             )
@@ -406,12 +459,12 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
 
 
                             {/* Diagnosis */}
-                            <div style={{ marginBottom: 24 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                                    <Stethoscope size={20} color="#FFD200" />
-                                    <h4 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>检测发现与故障确认</h4>
+                            <div style={{ marginBottom: 16 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                    <Stethoscope size={18} color="#FFD200" />
+                                    <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#fff' }}>检测发现与故障确认</h4>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                     <TextArea
                                         label="检测确认"
                                         value={reportData.content.diagnosis.findings}
@@ -441,12 +494,12 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                             <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
 
                             {/* Repair Process */}
-                            <div style={{ marginBottom: 24 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                                    <Wrench size={20} color="#FFD200" />
-                                    <h4 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>维修记录与执行</h4>
+                            <div style={{ marginBottom: 16 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                    <Wrench size={18} color="#FFD200" />
+                                    <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#fff' }}>维修记录与执行</h4>
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                     <ArrayField
                                         label="执行操作"
                                         items={reportData.content.repair_process.actions_taken}
@@ -459,29 +512,29 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
 
                                     {/* Parts Used */}
                                     <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                                             <label style={{ fontSize: 13, color: '#888' }}>更换零件</label>
                                             {!isReadOnly && (
                                                 <button
                                                     onClick={() => addArrayItem('repair_process.parts_replaced', { id: Date.now().toString(), name: '', part_number: '', quantity: 1, status: 'new' })}
                                                     style={{
-                                                        padding: '6px 16px', background: 'rgba(255, 210, 0, 0.15)', border: '1px solid rgba(255, 210, 0, 0.4)',
-                                                        borderRadius: 6, color: '#FFD200', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600
+                                                        padding: '4px 12px', background: 'rgba(255, 210, 0, 0.15)', border: '1px solid rgba(255, 210, 0, 0.4)',
+                                                        borderRadius: 6, color: '#FFD200', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600
                                                     }}
                                                 >
-                                                    <Plus size={16} /> 添加待更换备件
+                                                    <Plus size={14} /> 添加备件
                                                 </button>
                                             )}
                                         </div>
                                         {reportData.content.repair_process.parts_replaced.map((part: any, index: number) => (
-                                            <div key={part.id || index} style={{ display: 'flex', gap: 8, marginBottom: 8, padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <div key={part.id || index} style={{ display: 'flex', gap: 8, marginBottom: 6, padding: 8, background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
                                                 <input
                                                     type="text"
                                                     value={part.name}
                                                     onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, name: e.target.value })}
                                                     placeholder="零件名称"
                                                     disabled={isReadOnly}
-                                                    style={{ flex: 1, padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                                                    style={{ flex: 1, padding: '8px 10px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13 }}
                                                 />
                                                 <input
                                                     type="text"
@@ -489,7 +542,7 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                                                     onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, part_number: e.target.value })}
                                                     placeholder="零件号"
                                                     disabled={isReadOnly}
-                                                    style={{ width: 140, padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                                                    style={{ width: 120, padding: '8px 10px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13 }}
                                                 />
                                                 <input
                                                     type="number"
@@ -497,20 +550,20 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                                                     onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, quantity: parseInt(e.target.value) || 1 })}
                                                     placeholder="数量"
                                                     disabled={isReadOnly}
-                                                    style={{ width: 70, padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13, textAlign: 'center' }}
+                                                    style={{ width: 60, padding: '8px 10px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13, textAlign: 'center' }}
                                                 />
                                                 <select
                                                     value={part.status}
                                                     onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, status: e.target.value as 'new' | 'refurbished' })}
                                                     disabled={isReadOnly}
-                                                    style={{ width: 100, padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13, outline: 'none' }}
+                                                    style={{ width: 80, padding: '8px 10px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13, outline: 'none' }}
                                                 >
                                                     <option value="new">新件</option>
                                                     <option value="refurbished">翻新件</option>
                                                 </select>
                                                 {!isReadOnly && (
-                                                    <button onClick={() => removeArrayItem('repair_process.parts_replaced', index)} style={{ padding: '0 12px', background: 'rgba(239,68,68,0.15)', border: 'none', borderRadius: 6, color: '#EF4444', cursor: 'pointer' }}>
-                                                        <Trash2 size={16} />
+                                                    <button onClick={() => removeArrayItem('repair_process.parts_replaced', index)} style={{ padding: '0 10px', background: 'rgba(239,68,68,0.15)', border: 'none', borderRadius: 6, color: '#EF4444', cursor: 'pointer' }}>
+                                                        <Trash2 size={14} />
                                                     </button>
                                                 )}
                                             </div>
@@ -531,34 +584,55 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                     )}
                 </div>
 
-                {/* Footer Controls */}
-                <div style={{
-                    padding: '16px 24px',
-                    borderTop: '1px solid rgba(255,255,255,0.08)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    gap: 12,
-                    background: 'rgba(255,255,255,0.02)'
-                }}>
-                    <button onClick={onClose} style={{
-                        padding: '8px 20px', background: 'transparent', border: 'none',
-                        color: '#aaa', borderRadius: 6, cursor: 'pointer', fontSize: 13
+                {/* Footer with Action Buttons */}
+                {!isReadOnly && (
+                    <div style={{
+                        padding: '12px 24px',
+                        borderTop: '1px solid rgba(255,255,255,0.08)',
+                        background: 'rgba(0,0,0,0.2)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                     }}>
-                        关闭
-                    </button>
-                    {!isReadOnly && (
-                        <button onClick={handleSubmit} disabled={saving} style={{
-                            padding: '10px 32px', background: '#FFD200', border: 'none',
-                            color: '#000', fontWeight: 600, borderRadius: 6, cursor: saving ? 'not-allowed' : 'pointer', fontSize: 14,
-                            display: 'flex', alignItems: 'center', gap: 8, opacity: saving ? 0.7 : 1,
-                            boxShadow: '0 4px 12px rgba(255, 210, 0, 0.2)'
-                        }}>
-                            <Save size={18} />
-                            {saving ? '提交中...' : '提交进入下一步'}
-                        </button>
-                    )}
-                </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#666' }}>
+                            {saving ? (
+                                <><Loader2 size={14} className="animate-spin" /> 保存中...</>
+                            ) : lastSaved ? (
+                                <><CheckCircle size={14} color="#10B981" /> 已自动保存 {lastSaved.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</>
+                            ) : (
+                                <span>自动保存已启用</span>
+                            )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <button
+                                onClick={() => handleSave(false)}
+                                disabled={saving}
+                                style={{
+                                    padding: '8px 20px', borderRadius: 8,
+                                    background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                                    color: '#ccc', fontSize: 13, fontWeight: 500,
+                                    cursor: saving ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                                }}
+                            >
+                                <Save size={14} /> {isEditingMode ? '保存草稿' : '保存'}
+                            </button>
+                            {/* Only show "Complete" button in op_repairing node */}
+                            {isEditingMode && (
+                                <button
+                                    onClick={handleComplete}
+                                    disabled={saving}
+                                    style={{
+                                        padding: '8px 24px', borderRadius: 8,
+                                        background: '#FFD200', border: 'none',
+                                        color: '#000', fontSize: 13, fontWeight: 600,
+                                        cursor: saving ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                                    }}
+                                >
+                                    <CheckCircle size={14} /> 完成维修并提交
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
+
             </div>
         </div>
     );
@@ -569,16 +643,16 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
 
 const TextArea: React.FC<{ label: string; value: string; onChange: (v: string) => void; disabled?: boolean; placeholder?: string }> = ({ label, value, onChange, disabled, placeholder }) => (
     <div>
-        <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>{label}</label>
+        <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 6 }}>{label}</label>
         <textarea
             value={value}
             onChange={e => onChange(e.target.value)}
             disabled={disabled}
             placeholder={placeholder}
             style={{
-                width: '100%', minHeight: 200, padding: 16, background: 'rgba(255,255,255,0.05)',
+                width: '100%', minHeight: 80, padding: 12, background: 'rgba(255,255,255,0.05)',
                 border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff',
-                fontSize: 14, resize: 'vertical', lineHeight: 1.6, fontFamily: 'inherit'
+                fontSize: 13, resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit'
             }}
         />
     </div>
@@ -586,38 +660,38 @@ const TextArea: React.FC<{ label: string; value: string; onChange: (v: string) =
 
 const ArrayField: React.FC<{ label: string; items: string[]; onAdd: () => void; onRemove: (i: number) => void; onChange: (i: number, v: string) => void; disabled?: boolean; placeholder?: string }> = ({ label, items, onAdd, onRemove, onChange, disabled, placeholder }) => (
     <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
             <label style={{ fontSize: 13, color: '#888' }}>{label}</label>
             {!disabled && (
                 <button
                     onClick={onAdd}
                     style={{
-                        padding: '8px 16px', background: 'rgba(255, 210, 0, 0.1)', border: '1px solid rgba(255, 210, 0, 0.3)',
-                        borderRadius: 6, color: '#FFD200', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500
+                        padding: '4px 12px', background: 'rgba(255, 210, 0, 0.1)', border: '1px solid rgba(255, 210, 0, 0.3)',
+                        borderRadius: 6, color: '#FFD200', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500
                     }}
                 >
-                    <Plus size={16} /> 添加
+                    <Plus size={14} /> 添加
                 </button>
             )}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {items.map((item, index) => (
-                <div key={index} style={{ display: 'flex', gap: 12 }}>
+                <div key={index} style={{ display: 'flex', gap: 8 }}>
                     <textarea
                         value={item}
                         onChange={e => onChange(index, e.target.value)}
                         disabled={disabled}
                         placeholder={placeholder}
                         style={{
-                            flex: 1, padding: 12, background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8,
-                            color: '#fff', fontSize: 14, minHeight: 100, resize: 'vertical',
-                            fontFamily: 'inherit', lineHeight: 1.5
+                            flex: 1, padding: 10, background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6,
+                            color: '#fff', fontSize: 13, minHeight: 60, resize: 'vertical',
+                            fontFamily: 'inherit', lineHeight: 1.4
                         }}
                     />
                     {!disabled && (
-                        <button onClick={() => onRemove(index)} style={{ padding: '0 12px', background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 8, color: '#EF4444', cursor: 'pointer', height: 44 }}>
-                            <Trash2 size={16} />
+                        <button onClick={() => onRemove(index)} style={{ padding: '0 10px', background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 6, color: '#EF4444', cursor: 'pointer', height: 36 }}>
+                            <Trash2 size={14} />
                         </button>
                     )}
                 </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Truck, Calendar, FileText, AlertTriangle, Save, ArrowRight, BadgeDollarSign, Edit3 } from 'lucide-react';
+import { X, CheckCircle, Truck, Calendar, FileText, AlertTriangle, Save, ArrowRight, BadgeDollarSign, Edit3, ChevronRight, Package, Clock, Eye } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -10,21 +10,45 @@ interface ClosingHandoverModalProps {
     onSuccess: () => void;
     onOpenRepairReport?: () => void;
     onOpenPI?: () => void;
+    refreshTrigger?: number; // Trigger to refresh doc status
 }
 
-export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOpen, onClose, ticket, onSuccess, onOpenRepairReport, onOpenPI }) => {
+export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOpen, onClose, ticket, onSuccess, onOpenRepairReport, onOpenPI, refreshTrigger }) => {
     const { token } = useAuthStore();
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'docs' | 'payment' | 'logistics'>('docs');
+    // 默认发货日期为明天
+    const getDefaultShippingDate = () => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow.toISOString().split('T')[0];
+    };
+
     const [formData, setFormData] = useState({
         payment_confirmed: false,
         payment_memo: '',
+        actual_payment: '',
         shipping_address_override: '',
-        target_shipping_date: '',
+        target_shipping_date: getDefaultShippingDate(),
+        shipping_payment: 'prepaid' as 'prepaid' | 'collect', // 寄付(默认) / 到付
+        shipping_urgency: 'standard' as 'fastest' | 'standard' | 'other', // 最快 / 标准(默认) / 其他
+        shipping_combine: 'standalone' as 'standalone' | 'with_order' | 'with_rma', // 独立发货(默认) / 随其他订单 / 随其他RMA
+        shipping_combine_ref: '', // 合单参考号
         handover_notes: ''
     });
 
-    const [docsStatus, setDocsStatus] = useState({ reportPublished: false, piPublished: false });
+    const [docsStatus, setDocsStatus] = useState<{
+        reportPublished: boolean;
+        piPublished: boolean;
+        reportNumber?: string;
+        reportPublishedAt?: string;
+        reportTotalCost?: number; // 维修报告的总费用
+        piNumber?: string;
+        piPublishedAt?: string;
+        piTotal?: number;
+        hasDraftPI?: boolean; // 是否有草稿PI
+        hasDraftReport?: boolean; // 是否有草稿报告
+    }>({ reportPublished: false, piPublished: false });
     const [loadingDocs, setLoadingDocs] = useState(true);
 
     // Initialize from existing final_settlement if available
@@ -35,8 +59,13 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                 setFormData({
                     payment_confirmed: !!data.payment_confirmed,
                     payment_memo: data.payment_memo || '',
+                    actual_payment: data.actual_payment || '',
                     shipping_address_override: data.shipping_address_override || '',
-                    target_shipping_date: data.target_shipping_date || '',
+                    target_shipping_date: data.target_shipping_date || getDefaultShippingDate(),
+                    shipping_payment: data.shipping_payment || 'prepaid',
+                    shipping_urgency: data.shipping_urgency || 'standard',
+                    shipping_combine: data.shipping_combine || 'standalone',
+                    shipping_combine_ref: data.shipping_combine_ref || '',
                     handover_notes: data.handover_notes || ''
                 });
             } catch (e) {
@@ -49,6 +78,7 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
     useEffect(() => {
         if (!isOpen) return;
         const fetchDocs = async () => {
+            setLoadingDocs(true);
             try {
                 const [piRes, rrRes] = await Promise.all([
                     axios.get(`/api/v1/rma-documents/pi?ticket_id=${ticket.id}`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -58,9 +88,24 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                 const pis = piRes.data.success ? piRes.data.data : [];
                 const rrs = rrRes.data.success ? rrRes.data.data : [];
 
+                const publishedReport = rrs.find((r: any) => r.status === 'published');
+                const publishedPI = pis.find((p: any) => p.status === 'published');
+                const draftReport = rrs.find((r: any) => r.status === 'draft');
+                const draftPI = pis.find((p: any) => p.status === 'draft');
+                // 获取维修报告的总费用（优先已发布，其次草稿）
+                const reportForCost = publishedReport || draftReport;
+
                 setDocsStatus({
-                    reportPublished: rrs.some((r: any) => r.status === 'published'),
-                    piPublished: pis.some((p: any) => p.status === 'published')
+                    reportPublished: !!publishedReport,
+                    piPublished: !!publishedPI,
+                    reportNumber: publishedReport?.report_number,
+                    reportPublishedAt: publishedReport?.published_at,
+                    reportTotalCost: reportForCost?.total_cost || 0,
+                    piNumber: publishedPI?.pi_number,
+                    piPublishedAt: publishedPI?.published_at,
+                    piTotal: publishedPI?.total_amount,
+                    hasDraftPI: !!draftPI,
+                    hasDraftReport: !!draftReport
                 });
             } catch (err) {
                 console.error('Failed to fetch doc status', err);
@@ -69,7 +114,7 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
             }
         };
         fetchDocs();
-    }, [isOpen, ticket.id, token]);
+    }, [isOpen, ticket.id, token, refreshTrigger]);
 
     if (!isOpen) return null;
 
@@ -96,11 +141,19 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
     };
 
     const getServiceTypeInfo = () => {
-        const isWarranty = ticket.is_warranty === true || ticket.is_warranty === 1;
-        if (isWarranty) {
+        // 使用工单的 warranty_status 来判断保内/保外，而不是 is_warranty
+        const isWarranty = ticket.warranty_status === 'in_warranty';
+        // 判断是否需要收款：维修报告费用 > 0 或 PI金额 > 0 则需收款
+        const reportCost = docsStatus.reportTotalCost || 0;
+        const piAmount = docsStatus.piTotal || 0;
+        const needsPayment = reportCost > 0 || piAmount > 0;
+        
+        if (!needsPayment && isWarranty) {
             return { text: '(保内免费)', color: '#10B981', isPaid: false };
+        } else if (!needsPayment && !isWarranty) {
+            return { text: '(无收费项目)', color: '#888', isPaid: false };
         }
-        return { text: '(保外收费)', color: '#FFD200', isPaid: true };
+        return { text: isWarranty ? '(保内收费)' : '(保外收费)', color: '#FFD200', isPaid: true };
     };
 
     const serviceType = getServiceTypeInfo();
@@ -158,8 +211,8 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                     ))}
                 </div>
 
-                {/* Body */}
-                <div style={{ padding: 24, minHeight: 460, display: 'flex', flexDirection: 'column' }}>
+                {/* Body - 固定高度保持窗口尺寸一致 */}
+                <div style={{ padding: 24, height: 460, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
 
                     {activeTab === 'docs' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, animation: 'fadeIn 0.2s ease-out' }}>
@@ -170,26 +223,59 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                             ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: docsStatus.reportPublished ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)', borderRadius: 12, border: `1px solid ${docsStatus.reportPublished ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, color: docsStatus.reportPublished ? '#10B981' : '#EF4444' }}>
-                                            {docsStatus.reportPublished ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
-                                            <span style={{ fontWeight: 500 }}>{docsStatus.reportPublished ? '已发布《维修结案报告》' : '《维修结案报告》未发布！'}</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, color: docsStatus.reportPublished ? '#10B981' : '#EF4444' }}>
+                                                {docsStatus.reportPublished ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+                                                <span style={{ fontWeight: 500 }}>{docsStatus.reportPublished ? `已发布《维修结案报告》` : '《维修结案报告》未发布！'}</span>
+                                            </div>
+                                            {docsStatus.reportPublished && docsStatus.reportNumber && (
+                                                <div style={{ fontSize: 12, color: '#888', marginLeft: 30 }}>
+                                                    {docsStatus.reportNumber}
+                                                    {docsStatus.reportPublishedAt && ` · ${new Date(docsStatus.reportPublishedAt).toLocaleString('zh-CN')}`}
+                                                </div>
+                                            )}
                                         </div>
                                         {!docsStatus.reportPublished && onOpenRepairReport && (
                                             <button onClick={onOpenRepairReport} style={{ padding: '6px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: '#EF4444', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                                                 <Edit3 size={12} /> 去编辑/发布
                                             </button>
                                         )}
+                                        {docsStatus.reportPublished && onOpenRepairReport && (
+                                            <button onClick={onOpenRepairReport} style={{ padding: '6px 12px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, color: '#10B981', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <Eye size={12} /> 查看
+                                            </button>
+                                        )}
                                     </div>
 
+                                    {/* PI检查 - 有收费项目时始终显示 */}
                                     {isPaidTicket && (
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: docsStatus.piPublished ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)', borderRadius: 12, border: `1px solid ${docsStatus.piPublished ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, color: docsStatus.piPublished ? '#10B981' : '#EF4444' }}>
-                                                {docsStatus.piPublished ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
-                                                <span style={{ fontWeight: 500 }}>{docsStatus.piPublished ? '已发布《Proforma Invoice》' : '《Proforma Invoice》未发布！'}</span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, color: docsStatus.piPublished ? '#10B981' : '#EF4444' }}>
+                                                    {docsStatus.piPublished ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+                                                    <span style={{ fontWeight: 500 }}>{docsStatus.piPublished ? `已发布《Proforma Invoice》` : '《Proforma Invoice》未发布！'}</span>
+                                                </div>
+                                                {docsStatus.piPublished && docsStatus.piNumber && (
+                                                    <div style={{ fontSize: 12, color: '#888', marginLeft: 30 }}>
+                                                        {docsStatus.piNumber}
+                                                        {docsStatus.piTotal !== undefined && ` · ¥${docsStatus.piTotal.toLocaleString()}`}
+                                                        {docsStatus.piPublishedAt && ` · ${new Date(docsStatus.piPublishedAt).toLocaleString('zh-CN')}`}
+                                                    </div>
+                                                )}
+                                                {!docsStatus.piPublished && (
+                                                    <div style={{ fontSize: 12, color: '#888', marginLeft: 30 }}>
+                                                        维修报告有收费项目（¥{(docsStatus.reportTotalCost || 0).toLocaleString()}），请先制作并发布PI
+                                                    </div>
+                                                )}
                                             </div>
                                             {!docsStatus.piPublished && onOpenPI && (
                                                 <button onClick={onOpenPI} style={{ padding: '6px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 6, color: '#EF4444', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                                                     <Edit3 size={12} /> 去编辑/发布
+                                                </button>
+                                            )}
+                                            {docsStatus.piPublished && onOpenPI && (
+                                                <button onClick={onOpenPI} style={{ padding: '6px 12px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, color: '#10B981', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <Eye size={12} /> 查看
                                                 </button>
                                             )}
                                         </div>
@@ -201,18 +287,37 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
 
                     {activeTab === 'payment' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeIn 0.2s ease-out' }}>
-                            <div style={{ padding: '16px 20px', background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>待收金额</div>
-                                <div style={{ fontSize: 32, fontWeight: 700, color: serviceType.color }}>
-                                    ¥ {ticket.payment_amount?.toLocaleString() || '0.00'}
-                                    <span style={{ fontSize: 13, fontWeight: 500, marginLeft: 12, color: '#666' }}>
-                                        {serviceType.text}
-                                    </span>
-                                </div>
-                            </div>
-
                             {isPaidTicket ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    {/* PI vs 实收核对 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ padding: 16, background: 'rgba(255,210,0,0.05)', borderRadius: 12, border: '1px solid rgba(255,210,0,0.1)' }}>
+                                            <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>PI应收金额 · <span style={{ color: serviceType.color }}>{serviceType.text}</span></div>
+                                            <div style={{ fontSize: 28, fontWeight: 600, color: '#FFD200' }}>¥ {(docsStatus.piTotal || 0).toLocaleString()}</div>
+                                        </div>
+                                        <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)' }}>
+                                            <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>实收金额</div>
+                                            <input
+                                                type="number"
+                                                className="payment-input"
+                                                value={formData.actual_payment}
+                                                onChange={e => setFormData(prev => ({ ...prev, actual_payment: e.target.value }))}
+                                                placeholder="请输入金额"
+                                                style={{ width: '100%', padding: '8px 0', background: 'transparent', border: 'none', color: '#fff', fontSize: 28, fontWeight: 600, outline: 'none' }}
+                                            />
+                                        </div>
+                                    </div>
+                            
+                                    {/* 金额差异警告 */}
+                                    {formData.actual_payment && parseFloat(formData.actual_payment) !== (docsStatus.piTotal || 0) && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'rgba(239,68,68,0.1)', borderRadius: 8, border: '1px solid rgba(239,68,68,0.2)' }}>
+                                            <AlertTriangle size={16} color="#EF4444" />
+                                            <span style={{ fontSize: 13, color: '#EF4444' }}>
+                                                实收金额与PI金额不一致，差额：¥ {(parseFloat(formData.actual_payment) - (docsStatus.piTotal || 0)).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    )}
+                            
                                     <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', padding: 16, background: formData.payment_confirmed ? 'rgba(255,210,0,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${formData.payment_confirmed ? 'rgba(255,210,0,0.3)' : 'rgba(255,255,255,0.1)'}`, borderRadius: 12, transition: 'all 0.2s' }}>
                                         <input
                                             type="checkbox"
@@ -222,7 +327,7 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                                         />
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                             <span style={{ fontSize: 15, color: '#fff', fontWeight: 500 }}>确认已收到客户款项</span>
-                                            <span style={{ fontSize: 12, color: '#888' }}>打钩即代表财务已认账，且款项金额符合要求</span>
+                                            <span style={{ fontSize: 12, color: '#888' }}>打勾即代表财务已认账，且款项金额符合要求</span>
                                         </div>
                                     </label>
                                     <div>
@@ -244,18 +349,9 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                     )}
 
                     {activeTab === 'logistics' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeIn 0.2s ease-out' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>变更收货地址 (留空则使用工单默认地址)</label>
-                                <textarea
-                                    value={formData.shipping_address_override}
-                                    onChange={e => setFormData(prev => ({ ...prev, shipping_address_override: e.target.value }))}
-                                    placeholder="请输入新的详细地址、收件人、联系电话 (若客户改了地址)..."
-                                    style={{ width: '100%', padding: 16, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#fff', fontSize: 14, minHeight: 80, resize: 'none' }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, animation: 'fadeIn 0.2s ease-out' }}>
+                            {/* 发货日期和运费方式 */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>期望发货日期</label>
                                     <div style={{ position: 'relative' }}>
@@ -264,19 +360,117 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                                             type="date"
                                             value={formData.target_shipping_date}
                                             onChange={e => setFormData(prev => ({ ...prev, target_shipping_date: e.target.value }))}
-                                            style={{ width: '100%', padding: '14px 16px 14px 44px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#fff', fontSize: 14, outline: 'none' }}
+                                            style={{ width: '100%', padding: '12px 16px 12px 44px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#fff', fontSize: 14, outline: 'none' }}
                                         />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>运费方式</label>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        {[{ value: 'prepaid', label: '寄付' }, { value: 'collect', label: '到付' }].map(opt => (
+                                            <button
+                                                key={opt.value}
+                                                onClick={() => setFormData(prev => ({ ...prev, shipping_payment: opt.value as any }))}
+                                                style={{
+                                                    flex: 1, padding: '12px 16px', borderRadius: 10,
+                                                    background: formData.shipping_payment === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(0,0,0,0.2)',
+                                                    border: `1px solid ${formData.shipping_payment === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                                    color: formData.shipping_payment === opt.value ? '#FFD200' : '#888',
+                                                    fontSize: 14, fontWeight: formData.shipping_payment === opt.value ? 600 : 400,
+                                                    cursor: 'pointer', transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
 
+                            {/* 发货时效 */}
+                            <div>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#888', marginBottom: 8 }}>
+                                    <Clock size={14} /> 发货时效
+                                </label>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    {[{ value: 'fastest', label: '最快', desc: '优先处理' }, { value: 'standard', label: '标准', desc: '按序处理' }, { value: 'other', label: '其他', desc: '特殊安排' }].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => setFormData(prev => ({ ...prev, shipping_urgency: opt.value as any }))}
+                                            style={{
+                                                flex: 1, padding: '10px 12px', borderRadius: 10,
+                                                background: formData.shipping_urgency === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(0,0,0,0.2)',
+                                                border: `1px solid ${formData.shipping_urgency === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                                color: formData.shipping_urgency === opt.value ? '#FFD200' : '#888',
+                                                fontSize: 13, fontWeight: formData.shipping_urgency === opt.value ? 600 : 400,
+                                                cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
+                                            }}
+                                        >
+                                            <div>{opt.label}</div>
+                                            <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>{opt.desc}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 合单指令 */}
+                            <div>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#888', marginBottom: 8 }}>
+                                    <Package size={14} /> 合单指令
+                                </label>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    {[
+                                        { value: 'standalone', label: '独立发货', desc: '单独包裹' },
+                                        { value: 'with_order', label: '随订单发货', desc: '合并到经销商订单' },
+                                        { value: 'with_rma', label: '随其他RMA', desc: '合并到其他维修单' }
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => setFormData(prev => ({ ...prev, shipping_combine: opt.value as any, shipping_combine_ref: opt.value === 'standalone' ? '' : prev.shipping_combine_ref }))}
+                                            style={{
+                                                flex: 1, padding: '10px 12px', borderRadius: 10,
+                                                background: formData.shipping_combine === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(0,0,0,0.2)',
+                                                border: `1px solid ${formData.shipping_combine === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                                color: formData.shipping_combine === opt.value ? '#FFD200' : '#888',
+                                                fontSize: 13, fontWeight: formData.shipping_combine === opt.value ? 600 : 400,
+                                                cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
+                                            }}
+                                        >
+                                            <div>{opt.label}</div>
+                                            <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>{opt.desc}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                                {formData.shipping_combine !== 'standalone' && (
+                                    <input
+                                        type="text"
+                                        value={formData.shipping_combine_ref}
+                                        onChange={e => setFormData(prev => ({ ...prev, shipping_combine_ref: e.target.value }))}
+                                        placeholder={formData.shipping_combine === 'with_order' ? '输入订单号或经销商名称...' : '输入要合并的RMA单号...'}
+                                        style={{ width: '100%', marginTop: 8, padding: '10px 14px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none' }}
+                                    />
+                                )}
+                            </div>
+
+                            {/* 变更收货地址 */}
+                            <div>
+                                <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>变更收货地址（留空使用工单默认地址）</label>
+                                <textarea
+                                    value={formData.shipping_address_override}
+                                    onChange={e => setFormData(prev => ({ ...prev, shipping_address_override: e.target.value }))}
+                                    placeholder="若客户更改了地址，请输入新的详细地址、收件人、联系电话..."
+                                    style={{ width: '100%', padding: 12, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#fff', fontSize: 13, minHeight: 60, resize: 'none' }}
+                                />
+                            </div>
+
+                            {/* 给OP的留言 */}
                             <div>
                                 <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>给 OP 发货同事的留言</label>
                                 <textarea
                                     value={formData.handover_notes}
                                     onChange={e => setFormData(prev => ({ ...prev, handover_notes: e.target.value }))}
                                     placeholder="例如：请务必加固包装、随箱带一个备用电池盖等..."
-                                    style={{ width: '100%', padding: 16, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, color: '#fff', fontSize: 14, minHeight: 80, resize: 'none' }}
+                                    style={{ width: '100%', padding: 12, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#fff', fontSize: 13, minHeight: 60, resize: 'none' }}
                                 />
                             </div>
                         </div>
@@ -292,7 +486,7 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                     </div>
                 )}
 
-                {/* Footer Controls */}
+                {/* Footer Controls - Tab1/Tab2显示下一步，Tab3显示提交 */}
                 <div style={{ padding: '20px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.2)', display: 'flex', gap: 16 }}>
                     <button
                         onClick={() => handleSave(false)}
@@ -301,24 +495,43 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                     >
                         <Save size={18} /> 仅保存草稿
                     </button>
-                    <button
-                        onClick={() => handleSave(true)}
-                        disabled={loading || !canConfirm}
-                        style={{
-                            flex: 1.5, padding: '14px', background: canConfirm ? '#FFD200' : 'rgba(255,210,0,0.1)',
-                            border: 'none', borderRadius: 12, color: canConfirm ? '#000' : '#666',
-                            fontSize: 15, fontWeight: 700, cursor: canConfirm ? 'pointer' : 'not-allowed',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                            boxShadow: canConfirm ? '0 8px 20px rgba(255,210,0,0.25)' : 'none',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        {loading ? '处理中...' : (
-                            <>
-                                <ArrowRight size={20} /> 确认并移交至展示发货 (OP)
-                            </>
-                        )}
-                    </button>
+                    {activeTab !== 'logistics' ? (
+                        <button
+                            onClick={() => {
+                                if (activeTab === 'docs') setActiveTab('payment');
+                                else if (activeTab === 'payment') setActiveTab('logistics');
+                            }}
+                            style={{
+                                flex: 1.5, padding: '14px', background: '#FFD200',
+                                border: 'none', borderRadius: 12, color: '#000',
+                                fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                boxShadow: '0 8px 20px rgba(255,210,0,0.25)',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <ChevronRight size={20} /> 下一步
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => handleSave(true)}
+                            disabled={loading || !canConfirm}
+                            style={{
+                                flex: 1.5, padding: '14px', background: canConfirm ? '#FFD200' : 'rgba(255,210,0,0.1)',
+                                border: 'none', borderRadius: 12, color: canConfirm ? '#000' : '#666',
+                                fontSize: 15, fontWeight: 700, cursor: canConfirm ? 'pointer' : 'not-allowed',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                boxShadow: canConfirm ? '0 8px 20px rgba(255,210,0,0.25)' : 'none',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            {loading ? '处理中...' : (
+                                <>
+                                    <ArrowRight size={20} /> 确认并移交至展示发货 (OP)
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
             <style>{`

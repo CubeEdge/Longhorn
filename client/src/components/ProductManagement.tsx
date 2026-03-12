@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLanguage } from '../i18n/useLanguage';
-import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle, X, Trash2, Info, Power, PowerOff } from 'lucide-react';
+import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle, X, Trash2, Power, PowerOff } from 'lucide-react';
 import ProductModal from './Workspace/ProductModal';
 
 // macOS 26 Modal Style - Device Ledger uses centered modal instead of drawer
@@ -247,10 +247,6 @@ const ProductManagement: React.FC = () => {
     // Check if user has admin access
     const canManage = user?.role === 'Admin' || user?.role === 'Lead';
 
-    // Check if user can manage product models (MS Lead, Exec, Admin)
-    const canManageModels = user?.role === 'Admin' || user?.role === 'Exec' ||
-        (user?.role === 'Lead' && user?.department_code === 'MS');
-
     // Family tabs configuration
     const familyTabs: { key: ProductFamily; label: string }[] = [
         { key: 'ALL', label: '全部' },
@@ -474,22 +470,6 @@ const ProductManagement: React.FC = () => {
                     </div>
                 </div>
             </div>
-
-            {/* Permission Notice */}
-            {canManageModels && (
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '10px 16px', marginBottom: 16,
-                    background: 'rgba(255, 215, 0, 0.08)',
-                    border: '1px solid rgba(255, 215, 0, 0.2)',
-                    borderRadius: 8, fontSize: 13, color: 'var(--text-secondary)'
-                }}>
-                    <Info size={16} color="#FFD200" />
-                    <span>
-                        设备台账权限：<strong style={{ color: '#FFD200' }}>仅 MS Lead、Exec 或 Admin 可添加/编辑设备</strong>
-                    </span>
-                </div>
-            )}
 
             {/* Family Filter Tabs - macOS26 Segmented Control Style */}
             <div style={{ marginBottom: 20 }}>

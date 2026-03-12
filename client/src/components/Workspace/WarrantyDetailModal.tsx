@@ -94,7 +94,8 @@ export const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({
             'direct_ship': '直销发货日期+7天',
             'dealer_fallback': '经销商发货日期+90天',
             'damage_void': '人为损坏（保修失效）',
-            'ticket_created': '工单创建日期（兜底）'
+            'ticket_created': '保修依据缺失',
+            'unknown': '保修依据缺失'
         };
         return map[basis] || basis;
     };

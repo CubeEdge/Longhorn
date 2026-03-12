@@ -2012,3 +2012,10 @@ select.form-control option {
      color: var(--accent-blue) !important;
   }
 }
+
+/* Payment input placeholder - smaller font */
+.payment-input::placeholder {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  color: #666 !important;
+}

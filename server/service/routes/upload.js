@@ -154,14 +154,14 @@ module.exports = function (db, authenticate, multerModule, attachmentsDir) {
     });
 
     /**
-     * GET /api/v1/upload/file/:path(*)
+     * GET /api/v1/upload/file/*
      * Serve uploaded files from fileserver (with authentication)
      * Path format: /api/v1/upload/file/Products/WarrantyInvoices/filename.pdf
      */
-    router.get('/file/:path(*)', authenticate, (req, res) => {
+    router.get(/^\/file\/(.+)$/, authenticate, (req, res) => {
         try {
-            // Get the file path from parameter
-            const filePathParam = req.params.path;
+            // Get the file path from regex capture group
+            const filePathParam = req.params[0];
 
             // Security: prevent directory traversal
             if (filePathParam.includes('..') || filePathParam.includes('//')) {
