@@ -893,7 +893,10 @@ app.post('/api/ai/chat', authenticate, async (req, res) => {
 // Service Routes - Core (non-duplicated)
 // NOTE: inquiry-tickets, rma-tickets, dealer-repairs, knowledge, context 
 //       are registered in service/index.js via initService()
-const attachmentsDir = path.join(__dirname, 'data', 'issue_attachments');
+// Use fileserver for attachments per OPS.md spec
+const attachmentsDir = process.platform === 'darwin' && !__dirname.includes('KineCore')
+    ? '/Volumes/fileserver/Service/Tickets/Attachments'
+    : path.join(__dirname, 'data', 'issue_attachments');
 app.use('/api/admin', settings(db, authenticate, backupService));
 app.use('/api/v1/products', products(db, authenticate));
 app.use('/api/v1/admin/products', productsAdmin(db, authenticate));
@@ -4192,7 +4195,10 @@ app.delete('/api/share-collection/:id', authenticate, (req, res) => {
 
 // ==================== Product Issue Tracking API ====================
 
-const ISSUE_ATTACHMENTS_DIR = path.join(__dirname, 'data/issue_attachments');
+// Use fileserver for issue attachments per OPS.md spec
+const ISSUE_ATTACHMENTS_DIR = process.platform === 'darwin' && !__dirname.includes('KineCore')
+    ? '/Volumes/fileserver/Service/Tickets/Issues'
+    : path.join(__dirname, 'data/issue_attachments');
 fs.ensureDirSync(ISSUE_ATTACHMENTS_DIR);
 const issueUpload = multer({ dest: ISSUE_ATTACHMENTS_DIR });
 

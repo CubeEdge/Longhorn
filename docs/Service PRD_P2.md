@@ -1,6 +1,7 @@
 # Longhorn Service OS - 核心业务架构设计 (v1.7)  
 **版本**: 1.9 (macOS 26 Modal UI & Device Ledger)  
 **更新**: 设备台账添加/编辑改为macOS 26居中弹窗(560px)、清除双语标签、极简时间轴布局、核心字段高亮。  
+**更新**: 2026-03-13 - 调整产品/配件菜单权限策略：产品目录、产品SKU、设备台账、配件目录对所有内部人员可见；客户/经销商/配件运营保持MS部门专属，非MS部门通过工单JIT穿透访问。  
 **目标**: 构建一个以“责任明确、数据安全、面向未来”为核心的售后服务体系。  
   
 # 1. 角色与职责 (Roles & Responsibilities)  
@@ -494,10 +495,13 @@ AI 无法匹配 "小王" -> 填入 reporter_snapshot。
 |  | 📦 RMA返厂 (RMA) | ClipboardList | All | OP 核心业务入口。乒乓协作模型主战场，支持 Team Queue 领取。 |
 |  | 🔧 经销商维修 (SVC) | Wrench | MS, Mgr, Exec | (OP/RD 隐藏) OP/RD 通过 Mentioned 列表进入。全量 SVC 工单检索入口。 |
 | KNOWLEDGE | 📖 Tech Hub | Book | All | 知识库。支持侧滑调用。 |
-| ARCHIVES(静态档案) | 🏢 渠道 (Dealers) | Building | MS, Mgr, Exec | (OP/RD 隐藏) 静态档案查询。 |
-|  | 👥 客户 (Customers) | Users | MS, Mgr, Exec | (OP/RD 隐藏) 静态档案查询。 |
-|  | 📦 资产 (Assets) | Box | MS, Mgr, Exec | (OP/RD 隐藏) 静态档案查询及产品物料管理。 |
-|  | 🛠️ 配件 (Parts) | Tool | MS, Mgr, Exec | (OP/RD 隐藏) 库存与BOM查询。经销商管理，OP/RD 无需直接访问。 |
+| ARCHIVES(静态档案) | 🏢 渠道 (Dealers) | Building | MS, Mgr, Exec | (OP/RD 隐藏) 静态档案查询。非MS部门通过工单JIT穿透访问。 |
+|  | 👥 客户 (Customers) | Users | MS, Mgr, Exec | (OP/RD 隐藏) 静态档案查询。非MS部门通过工单JIT穿透访问。 |
+|  | 📦 配件运营 (Dealer Operations) | Package | MS, Mgr, Exec | (OP/RD 隐藏) 经销商配件结算管理。非MS部门通过工单JIT穿透访问。 |
+| PRODUCTS(产品管理) | 📋 产品目录 (Product Models) | Layers | All | 产品型号管理，所有内部人员可查看。 |
+|  | 📦 产品SKU (Product SKUs) | Package | All | 商品规格管理，所有内部人员可查看。 |
+|  | 📦 设备台账 (Assets) | Box | All | 设备实例管理，所有内部人员可查看。 |
+|  | 🛠️ 配件目录 (Parts) | Tool | All | 配件SKU目录，所有内部人员可查看。 |
 
 
 

@@ -247,8 +247,8 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                                         )}
                                     </div>
 
-                                    {/* PI检查 - 有收费项目时始终显示 */}
-                                    {isPaidTicket && (
+                                    {/* PI检查 - 有收费项目或有草稿PI时显示 */}
+                                    {(isPaidTicket || docsStatus.hasDraftPI) && (
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, background: docsStatus.piPublished ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.05)', borderRadius: 12, border: `1px solid ${docsStatus.piPublished ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, color: docsStatus.piPublished ? '#10B981' : '#EF4444' }}>
@@ -264,7 +264,10 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                                                 )}
                                                 {!docsStatus.piPublished && (
                                                     <div style={{ fontSize: 12, color: '#888', marginLeft: 30 }}>
-                                                        维修报告有收费项目（¥{(docsStatus.reportTotalCost || 0).toLocaleString()}），请先制作并发布PI
+                                                        {isPaidTicket 
+                                                            ? `维修报告有收费项目（¥${(docsStatus.reportTotalCost || 0).toLocaleString()}），请先制作并发布PI`
+                                                            : '检测到草稿PI，请确认是否需要发布'
+                                                        }
                                                     </div>
                                                 )}
                                             </div>

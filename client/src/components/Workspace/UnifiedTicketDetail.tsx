@@ -1658,11 +1658,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     </div>
                                 </div>
 
-                                {/* ---- 分组 3: 流程控制 (仅管理员可见) ---- */}
-                                {(user?.role === 'Admin' || user?.role === 'Lead') && (ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
+                                {/* ---- 分组 3: 流程控制 (仅Admin/Exec可见) ---- */}
+                                {(user?.role === 'Admin' || user?.role === 'Exec') && (ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
                                     <div style={{ paddingBottom: 20 }}>
                                         <div style={{ fontSize: 11, color: '#EF4444', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(239,68,68,0.2)', paddingBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <AlertTriangle size={12} /> 流程控制 (管理员)
+                                            <AlertTriangle size={12} /> 流程控制 (Admin/Exec)
                                         </div>
                                         <div style={{ padding: '12px', background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 8 }}>
                                             <label style={{ display: 'block', fontSize: 12, color: '#EF4444', marginBottom: 8, fontWeight: 500 }}>强制节点回退</label>
@@ -1889,7 +1889,12 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                     onClick={(e) => {
                                                         if (att.file_type.startsWith('image/')) {
                                                             e.preventDefault();
-                                                            setLightboxMedia({ url: att.file_url + '?inline=true' + (token ? `&token=${token}` : ''), type: att.file_type?.startsWith('video/') ? 'video' : 'image' });
+                                                            const isHeic = att.file_name?.toLowerCase().endsWith('.heic') || att.file_name?.toLowerCase().endsWith('.heif');
+                                                            // For HEIC images, use thumbnail API preview mode (converts to WebP for Chrome compatibility)
+                                                            const mediaUrl = isHeic 
+                                                                ? `/api/v1/system/attachments/${att.id}/thumbnail?size=preview` + (token ? `&token=${token}` : '')
+                                                                : att.file_url + '?inline=true' + (token ? `&token=${token}` : '');
+                                                            setLightboxMedia({ url: mediaUrl, type: att.file_type?.startsWith('video/') ? 'video' : 'image' });
                                                         }
                                                     }}
                                                 >
@@ -2131,7 +2136,12 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 }}
             />
             <MediaLightbox url={lightboxMedia?.url || null} type={lightboxMedia?.type || null} onClose={() => setLightboxMedia(null)} />
-            <ActivityDetailDrawer activity={selectedActivity} onClose={() => setSelectedActivity(null)} />
+            <ActivityDetailDrawer 
+                            activity={selectedActivity} 
+                            onClose={() => setSelectedActivity(null)} 
+                            ticketId={ticket?.id}
+                            onRefresh={fetchDetail}
+                        />
 
             {showCalculationModal && warrantyCalc && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

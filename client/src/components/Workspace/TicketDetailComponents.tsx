@@ -9,10 +9,11 @@ import {
   Clock, User, MessageSquare,
   ArrowRight, Plus as PlusIcon, AlertTriangle,
   AtSign, Paperclip, ChevronDown, ChevronRight, UserCheck,
-  Edit3, Trash2, X, Wrench
+  Edit3, Trash2, X, Wrench, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../../store/useAuthStore';
+import axios from 'axios';
 
 // ==============================
 // Types
@@ -203,6 +204,8 @@ interface ActivityTimelineProps {
   activities: Activity[];
   loading?: boolean;
   onActivityClick?: (activity: Activity) => void;
+  ticketId?: number;  // 用于更正API调用
+  onRefresh?: () => void;  // 更正后刷新活动列表
 }
 
 // ==============================
@@ -293,10 +296,13 @@ export const MediaLightbox: React.FC<MediaLightboxProps> = ({ url, type = 'image
 export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   activities,
   loading,
-  onActivityClick
+  onActivityClick,
+  // ticketId and onRefresh are used by ActivityDetailDrawer, kept in props for consistency
 }) => {
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string, type: 'image' | 'video' } | null>(null);
   const [showSystemEvents, setShowSystemEvents] = useState(false);
+  const { token } = useAuthStore();
+  void token; // suppress unused warning, used for thumbnail URLs
 
   // Define activity type categories
   // Key outputs: user-driven important outputs that should appear in "讨论与诊断"
@@ -754,14 +760,63 @@ function formatFullDateTime(dateStr: string): string {
 export interface ActivityDetailDrawerProps {
   activity: Activity | null;
   onClose: () => void;
+  ticketId?: number;  // 用于更正API调用
+  onRefresh?: () => void;  // 更正后刷新活动列表
 }
 
 export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   activity,
-  onClose
+  onClose,
+  ticketId,
+  onRefresh
 }) => {
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string, type: 'image' | 'video' } | null>(null);
+  
+  // 更正功能状态
+  const [correctionModal, setCorrectionModal] = useState(false);
+  const [correctionReason, setCorrectionReason] = useState('');
+  const [correcting, setCorrecting] = useState(false);
+
+  // 检查是否可以更正活动（权限检查）
+  const canCorrectActivity = (act: Activity): boolean => {
+    if (!user || !ticketId) return false;
+    const correctableTypes = ['op_repair_report', 'diagnostic_report', 'shipping_info', 'comment', 'internal_note'];
+    if (!correctableTypes.includes(act.activity_type)) return false;
+    
+    // 权限：原操作人、Lead、Admin、Exec
+    const isOriginalActor = act.actor?.id === user.id;
+    const isAdmin = user.role === 'Admin' || user.role === 'Exec';
+    const isLead = user.role === 'Lead';
+    
+    return isOriginalActor || isAdmin || isLead;
+  };
+
+  // 处理更正提交
+  const handleCorrection = async () => {
+    if (!activity || !ticketId || !correctionReason.trim()) return;
+    
+    setCorrecting(true);
+    try {
+      await axios.post(
+        `/api/v1/tickets/${ticketId}/activities/${activity.id}/correct`,
+        {
+          corrections: [{ field_path: '_marked_for_correction', old_value: false, new_value: true }],
+          correction_reason: correctionReason.trim()
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      setCorrectionModal(false);
+      setCorrectionReason('');
+      if (onRefresh) onRefresh();
+      onClose();
+    } catch (err: any) {
+      alert(err.response?.data?.error || '更正失败');
+    } finally {
+      setCorrecting(false);
+    }
+  };
 
   if (!activity) return null;
 
@@ -825,6 +880,30 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             );
           })()}
 
+          {/* 通用更正入口 - 针对可更正但没有专门渲染区域的活动类型（如comment、internal_note） */}
+          {['comment', 'internal_note'].includes(activity.activity_type) && canCorrectActivity(activity) && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,165,0,0.03)', borderRadius: 6, border: '1px solid rgba(255,165,0,0.1)' }}>
+              <div style={{ fontSize: 12, color: '#888' }}>
+                {(activity.metadata as any)?._correction_count > 0 && (
+                  <span style={{ color: '#FFA500' }}>已更正 {(activity.metadata as any)._correction_count}次 · </span>
+                )}
+                发现数据错误？可申请更正
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setCorrectionModal(true); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 11,
+                  background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)',
+                  borderRadius: 4, color: '#FFA500', cursor: 'pointer', transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,165,0,0.2)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,165,0,0.1)'}
+              >
+                <RefreshCw size={12} /> 更正
+              </button>
+            </div>
+          )}
+
           {/* Text Content */}
           {activity.content && !(activity.activity_type === 'comment' && activity.metadata?.action === 'repair_complete') && !(activity.activity_type === 'diagnostic_report') && !(activity.activity_type === 'op_repair_report') && (
             <div style={{
@@ -836,10 +915,33 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
           {/* Diagnostic Report Content */}
           {activity.activity_type === 'diagnostic_report' && activity.metadata && (() => {
             const meta = activity.metadata as any;
+            const correctionCount = meta?._correction_count || 0;
             return (
               <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10B981', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>
-                  <Wrench size={14} /> {meta.submission_type === 'technical_diagnosis' ? '详细诊断报告' : '诊断记录'}
+                {/* Header with Correction Button */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10B981', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>
+                    <Wrench size={14} /> {meta.submission_type === 'technical_diagnosis' ? '详细诊断报告' : '诊断记录'}
+                    {correctionCount > 0 && (
+                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,165,0,0.2)', color: '#FFA500', textTransform: 'none' }}>
+                        已更正 {correctionCount}次
+                      </span>
+                    )}
+                  </div>
+                  {canCorrectActivity(activity) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setCorrectionModal(true); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', fontSize: 11,
+                        background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)',
+                        borderRadius: 4, color: '#FFA500', cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,165,0,0.2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,165,0,0.1)'}
+                    >
+                      <RefreshCw size={12} /> 更正
+                    </button>
+                  )}
                 </div>
 
                 <div style={{ fontSize: 13 }}>
@@ -930,13 +1032,41 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             const repairProcess = meta?.repair_process || {};
             const conclusion = meta?.conclusion || {};
             const laborCharges = meta?.labor_charges || [];
+            const correctionCount = meta?._correction_count || 0;
 
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {/* Header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#FFD200', fontWeight: 600, fontSize: 14 }}>
-                  <Wrench size={18} />
-                  <span>OP维修记录</span>
+                {/* Header with Correction Button */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#FFD200', fontWeight: 600, fontSize: 14 }}>
+                    <Wrench size={18} />
+                    <span>OP维修记录</span>
+                    {correctionCount > 0 && (
+                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,165,0,0.2)', color: '#FFA500' }}>
+                        已更正 {correctionCount}次
+                      </span>
+                    )}
+                  </div>
+                  {canCorrectActivity(activity) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCorrectionModal(true);
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        padding: '4px 8px', fontSize: 11,
+                        background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)',
+                        borderRadius: 4, color: '#FFA500', cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,165,0,0.2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,165,0,0.1)'}
+                    >
+                      <RefreshCw size={12} />
+                      更正
+                    </button>
+                  )}
                 </div>
 
                 {/* Repair Actions */}
@@ -1026,94 +1156,190 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
           {activity.attachments && activity.attachments.length > 0 && (
             <div>
               <h4 style={{ margin: '0 0 12px 0', fontSize: 13, color: '#888', fontWeight: 600 }}>附件 ({activity.attachments.length})</h4>
-              <div style={{
-                display: 'grid',
-                // If 1 attachment, full width. If 2, 2 columns. If more, auto-fill.
-                gridTemplateColumns: activity.attachments.length === 1 ? '1fr' : (activity.attachments.length === 2 ? '1fr 1fr' : 'repeat(auto-fill, minmax(100px, 1fr))'),
-                gap: 8,
-                alignItems: 'start'
-              }}>
-                {activity.attachments.map((att) => {
-                  const isImage = att.file_type?.startsWith('image/');
-                  const isVideo = att.file_type?.startsWith('video/');
-                  const mediaUrl = att.file_url + '?inline=true' + (token ? `&token=${token}` : '');
-                  const thumbUrl = (att.thumbnail_url || att.file_url) + (token ? `?token=${token}` : '');
+              {(() => {
+                const count = activity.attachments!.length;
+                // Dynamic layout based on attachment count
+                // 1: full width, auto aspect ratio
+                // 2: two columns, 4:3 ratio
+                // 3: first large + two small below
+                // 4: 2x2 grid
+                // 5+: small grid tiles
+                
+                const getGridStyle = () => {
+                  if (count === 1) return { gridTemplateColumns: '1fr' };
+                  if (count === 2) return { gridTemplateColumns: '1fr 1fr' };
+                  if (count === 3) return { gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto auto' };
+                  if (count === 4) return { gridTemplateColumns: '1fr 1fr' };
+                  return { gridTemplateColumns: 'repeat(3, 1fr)' }; // 5+ items
+                };
 
-                  return (
-                    <div key={att.id}
-                      onClick={() => (isImage || isVideo) ? setLightboxMedia({ url: mediaUrl, type: isVideo ? 'video' : 'image' }) : window.open(mediaUrl)}
-                      style={{
-                        aspectRatio: activity.attachments!.length === 1 ? 'auto' : '1',
-                        width: '100%',
-                        background: '#111',
-                        borderRadius: 8,
-                        overflow: 'hidden',
-                        cursor: 'pointer',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      {isImage ? (
-                        <div style={{ width: '100%', height: '100%', position: 'relative', background: '#222' }}>
-                          {/* Loading spinner */}
-                          <div style={{
-                            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#555', transition: 'opacity 0.3s'
-                          }} className="thumb-loading">
-                            <div style={{ width: 20, height: 20, border: '2px solid #333', borderTopColor: '#FFD700', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                          </div>
-                          <img
-                            src={thumbUrl}
-                            alt={att.file_name}
-                            key={`${att.id}-${activity.id}`}
-                            onLoad={(e) => {
-                              e.currentTarget.style.opacity = '1';
-                              const loader = e.currentTarget.parentElement?.querySelector('.thumb-loading') as HTMLElement;
-                              if (loader) loader.style.opacity = '0';
-                            }}
-                            style={{
-                              width: '100%', height: '100%', objectFit: activity.attachments!.length === 1 ? 'contain' : 'cover',
-                              opacity: 0, transition: 'opacity 0.3s'
-                            }}
-                          />
-                          {/* Inner soft glow if it's the only image */}
-                          {activity.attachments!.length === 1 && (
-                            <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 40px rgba(0,0,0,0.5)', pointerEvents: 'none' }} />
-                          )}
-                        </div>
-                      ) : isVideo ? (
-                        <div style={{ width: '100%', height: '100%', position: 'relative', background: '#222' }}>
-                          {att.thumbnail_url ? (
-                            <img src={thumbUrl} alt={att.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
+                return (
+                  <div style={{
+                    display: 'grid',
+                    ...getGridStyle(),
+                    gap: 8,
+                    alignItems: 'start'
+                  }}>
+                    {activity.attachments!.map((att, idx) => {
+                      const isImage = att.file_type?.startsWith('image/');
+                      const isVideo = att.file_type?.startsWith('video/');
+                      const isHeic = att.file_name?.toLowerCase().endsWith('.heic') || att.file_name?.toLowerCase().endsWith('.heif');
+                      // For HEIC images, use thumbnail API preview mode (converts to WebP for Chrome compatibility)
+                      const mediaUrl = (isImage && isHeic) 
+                        ? `/api/v1/system/attachments/${att.id}/thumbnail?size=preview` + (token ? `&token=${token}` : '')
+                        : att.file_url + '?inline=true' + (token ? `&token=${token}` : '');
+                      const thumbUrl = (att.thumbnail_url || att.file_url) + (token ? `?token=${token}` : '');
+
+                      // Determine size/style based on position and count
+                      const isLargeItem = count === 1 || (count === 3 && idx === 0);
+                      const isSmallItem = count >= 5;
+
+                      // Aspect ratio: auto for single/large, 4:3 for medium, 1:1 for small grid
+                      const aspectRatio = isLargeItem ? 'auto' : (isSmallItem ? '1' : '4/3');
+                      // For count=3, first item spans full width
+                      const gridColumn = (count === 3 && idx === 0) ? '1 / -1' : undefined;
+                      // Object fit: contain for large/medium to show full image, cover for small grid
+                      const objectFit = isSmallItem ? 'cover' : 'contain';
+                      // Max height for large items to prevent excessive height
+                      const maxHeight = isLargeItem ? 400 : undefined;
+
+                      return (
+                        <div key={att.id}
+                          onClick={() => (isImage || isVideo) ? setLightboxMedia({ url: mediaUrl, type: isVideo ? 'video' : 'image' }) : window.open(mediaUrl)}
+                          style={{
+                            aspectRatio,
+                            gridColumn,
+                            maxHeight,
+                            width: '100%',
+                            background: '#111',
+                            borderRadius: 8,
+                            overflow: 'hidden',
+                            cursor: 'pointer',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          {isImage ? (
+                            <div style={{ width: '100%', height: '100%', position: 'relative', background: '#222' }}>
+                              {/* Loading spinner */}
+                              <div style={{
+                                position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#555', transition: 'opacity 0.3s'
+                              }} className="thumb-loading">
+                                <div style={{ width: 20, height: 20, border: '2px solid #333', borderTopColor: '#FFD700', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                              </div>
+                              <img
+                                src={thumbUrl}
+                                alt={att.file_name}
+                                key={`${att.id}-${activity.id}`}
+                                onLoad={(e) => {
+                                  e.currentTarget.style.opacity = '1';
+                                  const loader = e.currentTarget.parentElement?.querySelector('.thumb-loading') as HTMLElement;
+                                  if (loader) loader.style.opacity = '0';
+                                }}
+                                style={{
+                                  width: '100%', height: '100%', objectFit,
+                                  opacity: 0, transition: 'opacity 0.3s'
+                                }}
+                              />
+                            </div>
+                          ) : isVideo ? (
+                            <div style={{ width: '100%', height: '100%', position: 'relative', background: '#222' }}>
+                              {att.thumbnail_url ? (
+                                <img src={thumbUrl} alt={att.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
+                              ) : (
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444' }}>
+                                  <Clock size={24} style={{ animation: 'spin 2s linear infinite' }} />
+                                </div>
+                              )}
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: '50%', padding: 12, color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                </div>
+                              </div>
+                            </div>
                           ) : (
-                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444' }}>
-                              <Clock size={24} style={{ animation: 'spin 2s linear infinite' }} />
+                            <div style={{ padding: 12, textAlign: 'center' }}>
+                              <div style={{ fontSize: 24, marginBottom: 4 }}>📄</div>
+                              <div style={{ fontSize: 10, color: '#888', wordBreak: 'break-all', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{att.file_name}</div>
                             </div>
                           )}
-                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: '50%', padding: 12, color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
-                              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                            </div>
-                          </div>
                         </div>
-                      ) : (
-                        <div style={{ padding: 12, textAlign: 'center' }}>
-                          <div style={{ fontSize: 24, marginBottom: 4 }}>📄</div>
-                          <div style={{ fontSize: 10, color: '#888', wordBreak: 'break-all', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{att.file_name}</div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
       </div>
       <MediaLightbox url={lightboxMedia?.url || null} type={lightboxMedia?.type || null} onClose={() => setLightboxMedia(null)} />
+      
+      {/* 更正弹窗 */}
+      {correctionModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }} onClick={() => setCorrectionModal(false)}>
+          <div style={{
+            background: '#1a1a1a', borderRadius: 12, width: 400, maxWidth: '90vw',
+            border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>更正活动记录</h3>
+              <button onClick={() => setCorrectionModal(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: 20 }}>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>活动类型</div>
+                <div style={{ fontSize: 14, color: '#FFD200' }}>
+                  {activity?.activity_type === 'op_repair_report' ? 'OP维修记录' : activity?.activity_type}
+                </div>
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 8 }}>更正原因 *</label>
+                <textarea
+                  value={correctionReason}
+                  onChange={e => setCorrectionReason(e.target.value)}
+                  placeholder="请说明更正原因，例如：快递单号填写错误、图片贴错等..."
+                  style={{
+                    width: '100%', padding: 12, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 8, color: '#fff', fontSize: 13, resize: 'vertical', minHeight: 80
+                  }}
+                />
+              </div>
+              <div style={{ fontSize: 11, color: '#666', marginBottom: 16, padding: 12, background: 'rgba(255,165,0,0.05)', borderRadius: 6, border: '1px solid rgba(255,165,0,0.1)' }}>
+                <strong style={{ color: '#FFA500' }}>提示：</strong> 此操作将记录更正历史，原操作人将收到通知。
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => setCorrectionModal(false)}
+                  style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleCorrection}
+                  disabled={correcting || !correctionReason.trim()}
+                  style={{
+                    flex: 1.5, padding: '10px', background: correcting || !correctionReason.trim() ? '#444' : '#FFA500',
+                    border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: correcting || !correctionReason.trim() ? 'not-allowed' : 'pointer', fontSize: 14,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+                  }}
+                >
+                  {correcting ? '处理中...' : '确认更正'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

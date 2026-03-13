@@ -705,6 +705,62 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 </div>
                             )}
 
+                            {/* RMA基本信息Header Panel */}
+                            {!isOpMode && ticketInfo && (
+                                <div style={{
+                                    background: 'rgba(255,210,0,0.03)', padding: '16px 20px',
+                                    borderRadius: 12, border: '1px solid rgba(255,210,0,0.1)',
+                                    display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap',
+                                    marginBottom: 20
+                                }}>
+                                    <div>
+                                        <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>机器型号 / 序列号</div>
+                                        <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
+                                            {reportData.content.device_info.product_name || '-'} / {reportData.content.device_info.serial_number || '-'}
+                                        </div>
+                                        <div style={{ marginTop: 4 }}>
+                                            {ticketInfo.warranty_status === 'in_warranty' || ticketInfo.is_warranty ? (
+                                                <span style={{ fontSize: 11, color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(16,185,129,0.3)' }}>保修内</span>
+                                            ) : ticketInfo.warranty_status === 'warranty_unknown' ? (
+                                                <span style={{ fontSize: 11, color: '#F59E0B', background: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(245,158,11,0.3)' }}>保修待确认</span>
+                                            ) : (
+                                                <span style={{ fontSize: 11, color: '#EF4444', background: 'rgba(239,68,68,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.3)' }}>已过保</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.1)' }} />
+                                    <div>
+                                        <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>RMA建单日期</div>
+                                        <div style={{ fontSize: 14, color: '#fff' }}>
+                                            {ticketInfo.created_at ? new Date(ticketInfo.created_at).toLocaleDateString('zh-CN') : '-'}
+                                        </div>
+                                    </div>
+                                    <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.1)' }} />
+                                    <div>
+                                        <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>收到日期</div>
+                                        <div style={{ fontSize: 14, color: '#fff' }}>
+                                            {ticketInfo.received_date ? new Date(ticketInfo.received_date).toLocaleDateString('zh-CN') : 
+                                             ticketInfo.returned_date ? new Date(ticketInfo.returned_date).toLocaleDateString('zh-CN') : '-'}
+                                        </div>
+                                    </div>
+                                    <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.1)' }} />
+                                    <div>
+                                        <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>检测日期</div>
+                                        <div style={{ fontSize: 14, color: '#fff' }}>
+                                            {ticketInfo.repair_started_at ? new Date(ticketInfo.repair_started_at).toLocaleDateString('zh-CN') : '-'}
+                                        </div>
+                                    </div>
+                                    <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.1)' }} />
+                                    <div>
+                                        <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>维修日期</div>
+                                        <div style={{ fontSize: 14, color: '#fff' }}>
+                                            {ticketInfo.repair_completed_at ? new Date(ticketInfo.repair_completed_at).toLocaleDateString('zh-CN') : 
+                                             new Date().toLocaleDateString('zh-CN')}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Device Info */}
                             {!isOpMode && (
                                 <Section title="设备信息" icon={<Wrench size={16} />}>
@@ -784,6 +840,23 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     disabled={!canEdit}
                                     placeholder="老化测试及功能验证结果..."
                                 />
+                                {/* 更换零件只读展示 - 在维修过程中展示零件信息 */}
+                                {reportData.content.repair_process.parts_replaced.length > 0 && (
+                                    <div style={{ marginTop: 12 }}>
+                                        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 8 }}>更换零件</label>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => (
+                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                    <span style={{ flex: 1, color: '#fff', fontSize: 13 }}>{part.name}</span>
+                                                    {part.part_number && <span style={{ color: '#666', fontSize: 12, fontFamily: 'monospace' }}>{part.part_number}</span>}
+                                                    <span style={{ color: '#FFD200', fontSize: 12, fontWeight: 500 }}>x{part.quantity}</span>
+                                                    <span style={{ color: '#888', fontSize: 11, padding: '2px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: 4 }}>{part.status === 'new' ? '新件' : '翻新'}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: '#666', marginTop: 8 }}>* 零件费用详情请查看下方"费用明细"</div>
+                                    </div>
+                                )}
                             </Section>
 
                             {/* MS only sections */}
@@ -1078,7 +1151,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             )}
                         </div>
                     ) : (
-                        <ReportPreview reportData={reportData} />
+                        <ReportPreview reportData={reportData} ticketInfo={ticketInfo} />
                     )}
                 </div>
 
@@ -1329,7 +1402,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     );
 };
 
-const ReportPreview: React.FC<{ reportData: ReportData }> = ({ reportData }) => (
+const ReportPreview: React.FC<{ reportData: ReportData; ticketInfo?: any }> = ({ reportData, ticketInfo }) => (
     <div style={{ flex: 1, overflow: 'auto', padding: 40, background: '#f5f5f5' }}>
         <div id="repair-report-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', color: '#333', fontSize: 13 }}>
             {/* Header */}
@@ -1337,6 +1410,31 @@ const ReportPreview: React.FC<{ reportData: ReportData }> = ({ reportData }) => 
                 <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1a365d' }}>{reportData.content.header.title}</h1>
                 <p style={{ margin: '8px 0 0 0', fontSize: 14, color: '#4a5568' }}>{reportData.content.header.subtitle}</p>
             </div>
+
+            {/* Key Dates Row - RMA关键日期 */}
+            {ticketInfo && (
+                <div style={{ display: 'flex', gap: 24, marginBottom: 24, padding: 16, background: '#f7fafc', borderRadius: 8, border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+                    <div>
+                        <div style={{ fontSize: 11, color: '#718096' }}>RMA Date</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{ticketInfo.created_at ? new Date(ticketInfo.created_at).toLocaleDateString('zh-CN') : '-'}</div>
+                    </div>
+                    <div style={{ width: 1, background: '#e2e8f0' }} />
+                    <div>
+                        <div style={{ fontSize: 11, color: '#718096' }}>Received</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{ticketInfo.received_date ? new Date(ticketInfo.received_date).toLocaleDateString('zh-CN') : ticketInfo.returned_date ? new Date(ticketInfo.returned_date).toLocaleDateString('zh-CN') : '-'}</div>
+                    </div>
+                    <div style={{ width: 1, background: '#e2e8f0' }} />
+                    <div>
+                        <div style={{ fontSize: 11, color: '#718096' }}>Diagnosis</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{ticketInfo.repair_started_at ? new Date(ticketInfo.repair_started_at).toLocaleDateString('zh-CN') : '-'}</div>
+                    </div>
+                    <div style={{ width: 1, background: '#e2e8f0' }} />
+                    <div>
+                        <div style={{ fontSize: 11, color: '#718096' }}>Repair</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{ticketInfo.repair_completed_at ? new Date(ticketInfo.repair_completed_at).toLocaleDateString('zh-CN') : new Date().toLocaleDateString('zh-CN')}</div>
+                    </div>
+                </div>
+            )}
 
             {/* Report Info */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 30, padding: 16, background: '#f7fafc', borderRadius: 8, fontSize: 13 }}>

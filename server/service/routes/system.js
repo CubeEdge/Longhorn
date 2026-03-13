@@ -511,31 +511,71 @@ module.exports = function (db, authenticate) {
             // Check if thumbnail exists, generate if not
             const thumbDir = path.resolve(__dirname, '../../data/.thumbnails');
             fs.ensureDirSync(thumbDir);
-            const thumbFilename = String(attachment.file_path).replace(/[^a-zA-Z0-9.-]/g, '_') + '_thumb.jpg';
-            const thumbPath = path.join(thumbDir, thumbFilename);
+            
+            // Support preview mode for larger, higher quality images (Chrome HEIC workaround)
+            const isPreview = req.query.size === 'preview';
+            const THUMB_SIZE = isPreview ? 1200 : 400;
+            const sizeSuffix = isPreview ? '_preview' : '_thumb';
+            
+            const thumbBaseName = String(attachment.file_path).replace(/[^a-zA-Z0-9.-]/g, '_') + sizeSuffix;
+            const thumbPathWebp = path.join(thumbDir, thumbBaseName + '.webp');
+            const thumbPathJpg = path.join(thumbDir, thumbBaseName + '.jpg'); // Legacy fallback
 
-            console.log(`[System] Thumbnail request: ${req.params.id}, Path: ${thumbPath}`);
+            console.log(`[System] Thumbnail request: ${req.params.id}, preview=${isPreview}`);
 
-            if (!fs.existsSync(thumbPath)) {
+            // Check for existing thumbnails (prefer WebP, fallback to JPG)
+            if (fs.existsSync(thumbPathWebp)) {
+                return res.sendFile(thumbPathWebp, { dotfiles: 'allow' });
+            }
+            if (fs.existsSync(thumbPathJpg)) {
+                return res.sendFile(thumbPathJpg, { dotfiles: 'allow' });
+            }
+
+            // Generate new thumbnail
+            const ext = path.extname(fullPath).toLowerCase();
+            const isHeic = ext === '.heic' || ext === '.heif';
+            
+            if (isHeic && process.platform === 'darwin') {
+                // Use macOS native sips for HEIC/HEIF, then convert to WebP
+                const tempJpeg = path.join(thumbDir, thumbBaseName + '_temp.jpg');
+                try {
+                    const { execSync } = require('child_process');
+                    // sips: -Z limits max dimension while preserving aspect ratio
+                    // sips preserves EXIF orientation but doesn't rotate pixels
+                    execSync(`sips -s format jpeg -s formatOptions 80 -Z ${THUMB_SIZE} "${fullPath}" --out "${tempJpeg}"`, {
+                        timeout: 15000,
+                        stdio: 'pipe'
+                    });
+                    // Convert to WebP - .rotate() applies EXIF orientation
+                    const sharp = require('sharp');
+                    await sharp(tempJpeg)
+                        .rotate() // Auto-rotate based on EXIF orientation
+                        .webp({ quality: 80 })
+                        .toFile(thumbPathWebp);
+                    fs.unlinkSync(tempJpeg);
+                    console.log(`[System] HEIC thumbnail generated via sips: ${thumbPathWebp}`);
+                    return res.sendFile(thumbPathWebp, { dotfiles: 'allow' });
+                } catch (sipsErr) {
+                    console.error('[System] sips error:', sipsErr.message);
+                    if (fs.existsSync(tempJpeg)) fs.unlinkSync(tempJpeg);
+                    return res.sendFile(fullPath, { dotfiles: 'allow' });
+                }
+            } else {
+                // Use sharp for other formats
                 try {
                     const sharp = require('sharp');
                     await sharp(fullPath)
-                        .resize(200, 200, { fit: 'inside', withoutEnlargement: true })
-                        .jpeg({ quality: 75 })
-                        .toFile(thumbPath);
+                        .rotate() // Respect EXIF orientation
+                        .resize(THUMB_SIZE, THUMB_SIZE, { fit: 'inside', withoutEnlargement: true })
+                        .webp({ quality: 80 })
+                        .toFile(thumbPathWebp);
+                    return res.sendFile(thumbPathWebp, { dotfiles: 'allow' });
                 } catch (sharpErr) {
                     console.error('[System] Sharp error:', sharpErr);
                     // If sharp fails, serve original
                     return res.sendFile(fullPath, { dotfiles: 'allow' });
                 }
             }
-
-            if (!fs.existsSync(thumbPath)) {
-                console.error(`[System] Thumbnail still missing after generation: ${thumbPath}`);
-                return res.status(404).json({ error: 'Thumbnail generation failed' });
-            }
-
-            res.sendFile(thumbPath, { dotfiles: 'allow' });
         } catch (err) {
             console.error('[System] Thumbnail error:', err);
             res.status(500).json({

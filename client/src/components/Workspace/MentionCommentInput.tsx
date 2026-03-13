@@ -212,7 +212,9 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
 
         const newAttachments: AttachmentFile[] = validFiles.map(file => {
             const attachment: AttachmentFile = { file };
-            if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+            // HEIC/HEIF files cannot be previewed in Chrome via ObjectURL
+            const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+            if ((file.type.startsWith('image/') || file.type.startsWith('video/')) && !isHeic) {
                 attachment.preview = URL.createObjectURL(file);
             }
             return attachment;
@@ -252,7 +254,9 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
 
             const newAttachments: AttachmentFile[] = validFiles.map(file => {
                 const attachment: AttachmentFile = { file };
-                if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+                // HEIC/HEIF files cannot be previewed in Chrome via ObjectURL
+                const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+                if ((file.type.startsWith('image/') || file.type.startsWith('video/')) && !isHeic) {
                     attachment.preview = URL.createObjectURL(file);
                 }
                 return attachment;
@@ -358,13 +362,19 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                                     width: 80, height: 80, display: 'flex',
                                     flexDirection: 'column', alignItems: 'center',
                                     justifyContent: 'center', gap: 4,
+                                    background: att.file.type.startsWith('image/') ? 'rgba(255,215,0,0.1)' : undefined,
                                 }}>
-                                    <Paperclip size={16} color="var(--text-tertiary)" />
+                                    {att.file.type.startsWith('image/') ? (
+                                        // HEIC or other unsupported image format
+                                        <Image size={20} color="#FFD700" />
+                                    ) : (
+                                        <Paperclip size={16} color="var(--text-tertiary)" />
+                                    )}
                                     <span style={{
-                                        fontSize: 10, color: 'var(--text-tertiary)', maxWidth: 70,
-                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                        fontSize: 10, color: att.file.type.startsWith('image/') ? '#FFD700' : 'var(--text-tertiary)', 
+                                        maxWidth: 70, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                         textAlign: 'center',
-                                    }}>{att.file.name}</span>
+                                    }}>{att.file.name.length > 10 ? att.file.name.slice(-10) : att.file.name}</span>
                                 </div>
                             )}
                             <button

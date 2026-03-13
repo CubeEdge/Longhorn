@@ -9,6 +9,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs-extra');
 const sharp = require('sharp');
+const { execSync } = require('child_process');
 
 module.exports = function (db, authenticate, serviceUpload) {
     const router = express.Router();
@@ -378,13 +379,46 @@ module.exports = function (db, authenticate, serviceUpload) {
                         if (file.mimetype.startsWith('image/')) {
                             const thumbDir = path.resolve(__dirname, '../../data/.thumbnails');
                             fs.ensureDirSync(thumbDir);
-                            const thumbFilename = String(dbPath).replace(/[^a-zA-Z0-9.-]/g, '_') + '_thumb.jpg';
+                            const thumbFilename = String(dbPath).replace(/[^a-zA-Z0-9.-]/g, '_') + '_thumb.webp';
                             const thumbPath = path.join(thumbDir, thumbFilename);
-                            sharp(finalPath)
-                                .resize(200, 200, { fit: 'inside', withoutEnlargement: true })
-                                .jpeg({ quality: 75 })
-                                .toFile(thumbPath)
-                                .catch(err => console.error('[Activities] Background Thumbnail Error:', err));
+                            const THUMB_SIZE = 400; // Larger size for better clarity
+                            
+                            const ext = path.extname(finalPath).toLowerCase();
+                            const isHeic = ext === '.heic' || ext === '.heif';
+                            
+                            if (isHeic && process.platform === 'darwin') {
+                                // Use macOS native sips for HEIC/HEIF, then convert to WebP
+                                const tempJpeg = thumbPath.replace('.webp', '_temp.jpg');
+                                try {
+                                    execSync(`sips -s format jpeg -s formatOptions 80 -Z ${THUMB_SIZE} "${finalPath}" --out "${tempJpeg}"`, {
+                                        timeout: 15000,
+                                        stdio: 'pipe'
+                                    });
+                                    sharp(tempJpeg)
+                                        .rotate() // Auto-rotate based on EXIF orientation
+                                        .webp({ quality: 80 })
+                                        .toFile(thumbPath)
+                                        .then(() => {
+                                            fs.unlinkSync(tempJpeg);
+                                            console.log(`[Activities] HEIC thumbnail generated: ${thumbFilename}`);
+                                        })
+                                        .catch(err => {
+                                            console.error('[Activities] WebP conversion error:', err.message);
+                                            if (fs.existsSync(tempJpeg)) fs.unlinkSync(tempJpeg);
+                                        });
+                                } catch (sipsErr) {
+                                    console.error('[Activities] sips thumbnail error:', sipsErr.message);
+                                    if (fs.existsSync(tempJpeg)) fs.unlinkSync(tempJpeg);
+                                }
+                            } else {
+                                // Use sharp for other formats
+                                sharp(finalPath)
+                                    .rotate() // Respect EXIF orientation
+                                    .resize(THUMB_SIZE, THUMB_SIZE, { fit: 'inside', withoutEnlargement: true })
+                                    .webp({ quality: 80 })
+                                    .toFile(thumbPath)
+                                    .catch(err => console.error('[Activities] Background Thumbnail Error:', err));
+                            }
                         }
 
                         attachments.push({
@@ -578,6 +612,200 @@ module.exports = function (db, authenticate, serviceUpload) {
             res.json({ success: true, message: '删除成功' });
         } catch (err) {
             console.error('[Activities] Delete error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * POST /api/v1/tickets/:ticketId/activities/:activityId/correct
+     * 活动更正 - 用于修正已提交活动中的数据错误
+     * 权限: 原操作人、部门主管(Lead)、Admin、Exec
+     * 支持的活动类型: op_repair_report, diagnostic_report, shipping_info等metadata活动
+     */
+    router.post('/:ticketId/activities/:activityId/correct', authenticate, (req, res) => {
+        try {
+            const { ticketId, activityId } = req.params;
+            const { corrections, correction_reason } = req.body;
+            // corrections: [{ field_path: 'repair_process.parts_replaced[0].name', old_value: '主板', new_value: '子板' }, ...]
+            const user = req.user;
+
+            if (!correction_reason || correction_reason.trim().length === 0) {
+                return res.status(400).json({ success: false, error: '更正原因为必填项' });
+            }
+
+            if (!corrections || !Array.isArray(corrections) || corrections.length === 0) {
+                return res.status(400).json({ success: false, error: '请提供需要更正的字段' });
+            }
+
+            // 获取活动
+            const activity = db.prepare(`
+                SELECT a.*, t.ticket_number, t.ticket_type
+                FROM ticket_activities a
+                JOIN tickets t ON t.id = a.ticket_id
+                WHERE a.id = ? AND a.ticket_id = ?
+            `).get(activityId, ticketId);
+
+            if (!activity) {
+                return res.status(404).json({ success: false, error: '活动不存在' });
+            }
+
+            // 可更正的活动类型
+            const correctableTypes = ['op_repair_report', 'diagnostic_report', 'shipping_info', 'comment', 'internal_note'];
+            if (!correctableTypes.includes(activity.activity_type)) {
+                return res.status(400).json({ success: false, error: `${activity.activity_type} 类型活动不支持更正` });
+            }
+
+            // 权限检查：原操作人、部门主管、Admin、Exec
+            const isOriginalActor = activity.actor_id === user.id;
+            const isAdmin = user.role === 'Admin' || user.role === 'Exec';
+            const isLead = user.role === 'Lead';
+            
+            // 如果是Lead，检查是否是同部门
+            let isSameDeptLead = false;
+            if (isLead && activity.actor_id) {
+                const actorUser = db.prepare('SELECT department_name FROM users WHERE id = ?').get(activity.actor_id);
+                // 规范化部门代码比较
+                const normalizeDept = (deptName) => {
+                    if (!deptName) return '';
+                    const codeMatch = deptName.match(/\(([A-Za-z]+)\)$/);
+                    if (codeMatch) return codeMatch[1].toUpperCase();
+                    const chineseMap = { '市场部': 'MS', '生产运营部': 'OP', '运营部': 'OP', '研发部': 'RD', '财务部': 'GE' };
+                    return chineseMap[deptName] || deptName.toUpperCase();
+                };
+                const actorDept = actorUser ? normalizeDept(actorUser.department_name) : '';
+                const userDept = user.department_code || normalizeDept(user.department_name);
+                isSameDeptLead = actorDept && actorDept === userDept;
+            }
+
+            if (!isOriginalActor && !isAdmin && !isSameDeptLead) {
+                return res.status(403).json({ success: false, error: '只有原操作人、部门主管或管理员可以更正此活动' });
+            }
+
+            const now = new Date().toISOString();
+
+            // 解析现有metadata
+            let metadata = {};
+            try {
+                metadata = activity.metadata ? JSON.parse(activity.metadata) : {};
+            } catch (e) {
+                metadata = {};
+            }
+
+            // 应用更正并记录历史
+            const correctionHistory = metadata._correction_history || [];
+            const newCorrectionEntry = {
+                corrected_at: now,
+                corrected_by: user.id,
+                corrected_by_name: user.display_name || user.username,
+                correction_reason: correction_reason.trim(),
+                changes: []
+            };
+
+            // 处理每个更正项
+            for (const correction of corrections) {
+                const { field_path, old_value, new_value } = correction;
+                if (!field_path) continue;
+
+                // 记录更正历史
+                newCorrectionEntry.changes.push({
+                    field_path,
+                    old_value,
+                    new_value
+                });
+
+                // 应用更正到metadata (简单路径支持, 如 "repair_process.parts_replaced")
+                const pathParts = field_path.split('.');
+                let target = metadata;
+                for (let i = 0; i < pathParts.length - 1; i++) {
+                    const part = pathParts[i];
+                    // 处理数组索引 如 parts_replaced[0]
+                    const arrayMatch = part.match(/^(.+)\[(\d+)\]$/);
+                    if (arrayMatch) {
+                        target = target[arrayMatch[1]][parseInt(arrayMatch[2])];
+                    } else {
+                        if (!target[part]) target[part] = {};
+                        target = target[part];
+                    }
+                }
+                const lastPart = pathParts[pathParts.length - 1];
+                const lastArrayMatch = lastPart.match(/^(.+)\[(\d+)\]$/);
+                if (lastArrayMatch) {
+                    target[lastArrayMatch[1]][parseInt(lastArrayMatch[2])] = new_value;
+                } else {
+                    target[lastPart] = new_value;
+                }
+            }
+
+            // 更新历史记录
+            correctionHistory.push(newCorrectionEntry);
+            metadata._correction_history = correctionHistory;
+            metadata._last_corrected_at = now;
+            metadata._correction_count = correctionHistory.length;
+
+            // 更新活动
+            db.prepare(`
+                UPDATE ticket_activities SET
+                    metadata = ?,
+                    is_edited = 1,
+                    edited_at = ?
+                WHERE id = ?
+            `).run(JSON.stringify(metadata), now, activityId);
+
+            // 创建更正活动记录到时间轴 (使用 system_event 类型)
+            const activityTypeLabel = {
+                'op_repair_report': 'OP维修记录',
+                'diagnostic_report': '诊断报告',
+                'comment': '评论',
+                'internal_note': '内部备注'
+            }[activity.activity_type] || activity.activity_type;
+            
+            db.prepare(`
+                INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, visibility, actor_id, actor_name, actor_role, created_at)
+                VALUES (?, 'system_event', ?, ?, 'internal', ?, ?, ?, ?)
+            `).run(
+                ticketId,
+                `【数据更正】${user.display_name || user.username} 更正了 ${activityTypeLabel}`,
+                JSON.stringify({
+                    event_type: 'activity_correction',
+                    corrected_activity_id: parseInt(activityId),
+                    corrected_activity_type: activity.activity_type,
+                    correction_reason: correction_reason.trim(),
+                    changes: newCorrectionEntry.changes
+                }),
+                user.id,
+                user.display_name || user.username,
+                user.department_code || 'MS',
+                now
+            );
+
+            // 如果不是原操作人进行的更正，通知原操作人
+            if (!isOriginalActor && activity.actor_id) {
+                db.prepare(`
+                    INSERT INTO notifications (user_id, type, ticket_id, content, metadata, created_at)
+                    VALUES (?, 'activity_corrected', ?, ?, ?, ?)
+                `).run(
+                    activity.actor_id,
+                    ticketId,
+                    `${user.display_name || user.username} 更正了你在工单 ${activity.ticket_number} 中提交的 ${activity.activity_type === 'op_repair_report' ? '维修记录' : '活动'}`,
+                    JSON.stringify({
+                        corrected_by: user.id,
+                        corrected_by_name: user.display_name || user.username,
+                        correction_reason: correction_reason.trim()
+                    }),
+                    now
+                );
+            }
+
+            res.json({ 
+                success: true, 
+                message: '更正成功',
+                data: {
+                    correction_count: correctionHistory.length,
+                    corrected_at: now
+                }
+            });
+        } catch (err) {
+            console.error('[Activities] Correction error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });

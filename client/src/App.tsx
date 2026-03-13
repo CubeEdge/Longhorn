@@ -682,33 +682,29 @@ const Sidebar: React.FC<{
               </>
             )}
 
-            {/* 产品和配件分组 - collapsible, Role-based visibility (OP/RD 隐藏) */}
-            {hasCrmAccess && (
+            {/* 产品和配件分组 - collapsible, 所有内部人员可见 */}
+            <div className="sidebar-section-title" onClick={() => toggleSection('products_parts')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{t('sidebar.section_products_parts')}</span>
+              {expandedSections.products_parts !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </div>
+            {expandedSections.products_parts !== false && (
               <>
-                <div className="sidebar-section-title" onClick={() => toggleSection('products_parts')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>{t('sidebar.section_products_parts')}</span>
-                  {expandedSections.products_parts !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                </div>
-                {expandedSections.products_parts !== false && (
-                  <>
-                    <Link to={getRoute('/service/product-models')} className={`sidebar-item ${location.pathname.startsWith('/service/product-models') ? 'active' : ''}`} onClick={onClose}>
-                      <Layers size={18} />
-                      <span>{t('sidebar.product_catalog')}</span>
-                    </Link>
-                    <Link to={getRoute('/service/product-skus')} className={`sidebar-item ${location.pathname.startsWith('/service/product-skus') ? 'active' : ''}`} onClick={onClose}>
-                      <Package size={18} />
-                      <span>{t('sidebar.product_skus')}</span>
-                    </Link>
-                    <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''}`} onClick={onClose}>
-                      <Box size={18} />
-                      <span>{t('sidebar.archives_assets')}</span>
-                    </Link>
-                    <Link to={getRoute('/service/parts')} className={`sidebar-item ${location.pathname.startsWith('/service/parts') ? 'active' : ''}`} onClick={onClose}>
-                      <Package size={18} />
-                      <span>{t('sidebar.parts')}</span>
-                    </Link>
-                  </>
-                )}
+                <Link to={getRoute('/service/product-models')} className={`sidebar-item ${location.pathname.startsWith('/service/product-models') ? 'active' : ''}`} onClick={onClose}>
+                  <Layers size={18} />
+                  <span>{t('sidebar.product_catalog')}</span>
+                </Link>
+                <Link to={getRoute('/service/product-skus')} className={`sidebar-item ${location.pathname.startsWith('/service/product-skus') ? 'active' : ''}`} onClick={onClose}>
+                  <Package size={18} />
+                  <span>{t('sidebar.product_skus')}</span>
+                </Link>
+                <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''}`} onClick={onClose}>
+                  <Box size={18} />
+                  <span>{t('sidebar.archives_assets')}</span>
+                </Link>
+                <Link to={getRoute('/service/parts')} className={`sidebar-item ${location.pathname.startsWith('/service/parts') ? 'active' : ''}`} onClick={onClose}>
+                  <Package size={18} />
+                  <span>{t('sidebar.parts')}</span>
+                </Link>
               </>
             )}
 
