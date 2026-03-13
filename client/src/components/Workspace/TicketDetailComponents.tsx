@@ -776,7 +776,15 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   // 更正功能状态
   const [correctionModal, setCorrectionModal] = useState(false);
   const [correctionReason, setCorrectionReason] = useState('');
+  const [correctedContent, setCorrectedContent] = useState('');  // 编辑后的内容
   const [correcting, setCorrecting] = useState(false);
+
+  // 打开更正弹窗时初始化内容
+  const openCorrectionModal = () => {
+    setCorrectionModal(true);
+    setCorrectedContent(activity?.content || '');
+    setCorrectionReason('');
+  };
 
   // 检查是否可以更正活动（权限检查）
   const canCorrectActivity = (act: Activity): boolean => {
@@ -784,12 +792,25 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
     const correctableTypes = ['op_repair_report', 'diagnostic_report', 'shipping_info', 'comment', 'internal_note'];
     if (!correctableTypes.includes(act.activity_type)) return false;
     
-    // 权限：原操作人、Lead、Admin、Exec
+    // 权限检查：
+    // 1. 原操作人始终可以更正自己的内容
     const isOriginalActor = act.actor?.id === user.id;
-    const isAdmin = user.role === 'Admin' || user.role === 'Exec';
-    const isLead = user.role === 'Lead';
+    if (isOriginalActor) return true;
     
-    return isOriginalActor || isAdmin || isLead;
+    // 2. Admin/Exec 可以更正所有内容
+    const isAdmin = user.role === 'Admin' || user.role === 'Exec';
+    if (isAdmin) return true;
+    
+    // 3. Lead 只能更正本部门的内容
+    if (user.role === 'Lead') {
+      const actorRole = act.actor?.role || '';
+      // OP Lead 只能改 OP 内容，MS Lead 只能改 MS 内容
+      const userDept = user.department_code || '';
+      if (userDept === 'OP' && actorRole === 'OP') return true;
+      if (userDept === 'MS' && actorRole === 'MS') return true;
+    }
+    
+    return false;
   };
 
   // 处理更正提交
@@ -801,14 +822,20 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
       await axios.post(
         `/api/v1/tickets/${ticketId}/activities/${activity.id}/correct`,
         {
-          corrections: [{ field_path: '_marked_for_correction', old_value: false, new_value: true }],
-          correction_reason: correctionReason.trim()
+          corrections: [{ 
+            field_path: 'content', 
+            old_value: activity.content, 
+            new_value: correctedContent.trim() 
+          }],
+          correction_reason: correctionReason.trim(),
+          new_content: correctedContent.trim()  // 直接传递新内容
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
       setCorrectionModal(false);
       setCorrectionReason('');
+      setCorrectedContent('');
       if (onRefresh) onRefresh();
       onClose();
     } catch (err: any) {
@@ -890,7 +917,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 发现数据错误？可申请更正
               </div>
               <button
-                onClick={(e) => { e.stopPropagation(); setCorrectionModal(true); }}
+                onClick={(e) => { e.stopPropagation(); openCorrectionModal(); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 11,
                   background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)',
@@ -930,7 +957,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   </div>
                   {canCorrectActivity(activity) && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); setCorrectionModal(true); }}
+                      onClick={(e) => { e.stopPropagation(); openCorrectionModal(); }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', fontSize: 11,
                         background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)',
@@ -1051,7 +1078,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setCorrectionModal(true);
+                        openCorrectionModal();
                       }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 4,
@@ -1286,8 +1313,9 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
           zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center'
         }} onClick={() => setCorrectionModal(false)}>
           <div style={{
-            background: '#1a1a1a', borderRadius: 12, width: 400, maxWidth: '90vw',
-            border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
+            background: '#1a1a1a', borderRadius: 12, width: 500, maxWidth: '90vw',
+            border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            maxHeight: '80vh', display: 'flex', flexDirection: 'column'
           }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>更正活动记录</h3>
@@ -1295,13 +1323,39 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 <X size={18} />
               </button>
             </div>
-            <div style={{ padding: 20 }}>
+            <div style={{ padding: 20, overflow: 'auto', flex: 1 }}>
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>活动类型</div>
                 <div style={{ fontSize: 14, color: '#FFD200' }}>
-                  {activity?.activity_type === 'op_repair_report' ? 'OP维修记录' : activity?.activity_type}
+                  {{
+                    'op_repair_report': 'OP维修记录',
+                    'diagnostic_report': '诊断报告',
+                    'shipping_info': '发货信息',
+                    'comment': '评论',
+                    'internal_note': '内部备注'
+                  }[activity?.activity_type || ''] || activity?.activity_type}
                 </div>
               </div>
+              
+              {/* 内容编辑区 */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 8 }}>内容（可编辑）</label>
+                <textarea
+                  value={correctedContent}
+                  onChange={e => setCorrectedContent(e.target.value)}
+                  placeholder="编辑内容..."
+                  style={{
+                    width: '100%', padding: 12, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)',
+                    borderRadius: 8, color: '#fff', fontSize: 13, resize: 'vertical', minHeight: 100, fontFamily: 'inherit'
+                  }}
+                />
+                {correctedContent !== (activity?.content || '') && (
+                  <div style={{ fontSize: 11, color: '#FFA500', marginTop: 6 }}>
+                    内容已修改
+                  </div>
+                )}
+              </div>
+              
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 8 }}>更正原因 *</label>
                 <textarea
@@ -1315,7 +1369,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 />
               </div>
               <div style={{ fontSize: 11, color: '#666', marginBottom: 16, padding: 12, background: 'rgba(255,165,0,0.05)', borderRadius: 6, border: '1px solid rgba(255,165,0,0.1)' }}>
-                <strong style={{ color: '#FFA500' }}>提示：</strong> 此操作将记录更正历史，原操作人将收到通知。
+                <strong style={{ color: '#FFA500' }}>提示：</strong> 此操作将记录更正历史并在时间线上公示，原操作人将收到通知。
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
                 <button

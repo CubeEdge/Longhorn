@@ -8,7 +8,15 @@ interface ProductWarrantyRegistrationModalProps {
     onClose: () => void;
     serialNumber: string;
     productName?: string;
-    onRegistered: () => void;
+    isNewProduct?: boolean;  // true = 产品入库, false = 仅注册保修
+    onRegistered: (productId?: number) => void;  // 传递新创建/更新的 product_id
+    // 从ProductModal传入的预填字段
+    prefillData?: {
+        productLine?: 'Camera' | 'EVF' | 'Accessory';
+        productFamily?: 'A' | 'B' | 'C' | 'D';
+        skuId?: number;
+        salesChannel?: 'DIRECT' | 'DEALER';
+    };
 }
 
 interface ProductInfo {
@@ -57,7 +65,9 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
     onClose,
     serialNumber,
     productName,
-    onRegistered
+    isNewProduct = false,  // 默认为仅注册保修
+    onRegistered,
+    prefillData
 }) => {
     const { token } = useAuthStore();
     const [loading, setLoading] = useState(false);
@@ -217,6 +227,19 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
             if (skusRes.data.success) {
                 setSkus(skusRes.data.data || []);
             }
+
+            // 应用从ProductModal传入的预填数据
+            if (prefillData) {
+                if (prefillData.productLine) {
+                    setSelectedProductLine(prefillData.productLine);
+                }
+                if (prefillData.productFamily) {
+                    setSelectedProductFamily(prefillData.productFamily);
+                }
+                if (prefillData.skuId) {
+                    setSelectedSkuId(prefillData.skuId);
+                }
+            }
         } catch (err) {
             console.error('Failed to fetch product models/skus:', err);
         }
@@ -346,10 +369,11 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
             });
 
             if (res.data.success) {
+                const productId = res.data.data?.product_id;
                 setIsSuccess(true);
                 setTimeout(() => {
                     setIsSuccess(false);
-                    onRegistered();
+                    onRegistered(productId);  // 传递 product_id 给调用方
                 }, 1500);
             } else {
                 const errData = res.data.error;
@@ -404,10 +428,10 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                         </div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
-                                产品保修注册
+                                {isNewProduct ? '产品入库并注册保修' : '产品保修注册'}
                             </h3>
                             <p style={{ margin: 0, fontSize: 16, color: 'rgba(255,255,255,0.5)', marginTop: 6, letterSpacing: '-0.01em' }}>
-                                该产品尚未注册保修信息
+                                {isNewProduct ? '该产品尚未入库，请补充产品信息' : '该产品尚未注册保修信息'}
                             </p>
                         </div>
                     </div>

@@ -344,8 +344,9 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
 
     const updateContent = (path: string, value: any) => {
         setReportData((prev: ReportData) => {
-            const newContent = { ...prev.content };
             const keys = path.split('.');
+            // 深拷贝 content 以确保不可变更新
+            const newContent = JSON.parse(JSON.stringify(prev.content));
             let target: any = newContent;
             for (let i = 0; i < keys.length - 1; i++) {
                 target = target[keys[i]];
@@ -678,25 +679,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                         </div>
                                     </div>
                                 </div>
-                            ) : (
-                                <div style={{ padding: '12px 16px' }}>
-                                    {/* 简化的设备信息条 */}
-                                    <div style={{
-                                        display: 'flex', alignItems: 'center', gap: 12,
-                                        padding: '10px 14px', background: 'rgba(255,255,255,0.03)',
-                                        borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)'
-                                    }}>
-                                        <Package size={18} color="#FFD200" />
-                                        <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
-                                            {reportData.content.device_info.product_name || '-'}
-                                        </div>
-                                        <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.15)' }} />
-                                        <div style={{ fontSize: 13, color: '#888' }}>
-                                            {reportData.content.device_info.serial_number || '-'}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            ) : null}
 
                             {saving && (
                                 <div style={{ position: 'absolute', top: 120, right: 40, fontSize: 12, color: '#FFD200', display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,210,0,0.1)', padding: '4px 12px', borderRadius: 20, zIndex: 10 }}>
@@ -764,11 +747,10 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             {/* Device Info */}
                             {!isOpMode && (
                                 <Section title="设备信息" icon={<Wrench size={16} />}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                                         <Input label="产品型号" value={reportData.content.device_info.product_name} onChange={v => updateContent('device_info.product_name', v)} disabled={!canEdit} />
                                         <Input label="序列号" value={reportData.content.device_info.serial_number} onChange={v => updateContent('device_info.serial_number', v)} disabled={!canEdit} />
                                         <Input label="固件版本" value={reportData.content.device_info.firmware_version} onChange={v => updateContent('device_info.firmware_version', v)} disabled={!canEdit} />
-                                        <Input label="硬件版本" value={reportData.content.device_info.hardware_version} onChange={v => updateContent('device_info.hardware_version', v)} disabled={!canEdit} />
                                     </div>
                                 </Section>
                             )}
@@ -1411,60 +1393,64 @@ const ReportPreview: React.FC<{ reportData: ReportData; ticketInfo?: any }> = ({
                 <p style={{ margin: '8px 0 0 0', fontSize: 14, color: '#4a5568' }}>{reportData.content.header.subtitle}</p>
             </div>
 
-            {/* Key Dates Row - RMA关键日期 */}
-            {ticketInfo && (
-                <div style={{ display: 'flex', gap: 24, marginBottom: 24, padding: 16, background: '#f7fafc', borderRadius: 8, border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
-                    <div>
-                        <div style={{ fontSize: 11, color: '#718096' }}>RMA Date</div>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{ticketInfo.created_at ? new Date(ticketInfo.created_at).toLocaleDateString('zh-CN') : '-'}</div>
+            {/* Report Info - 合并报告信息和关键日期 */}
+            <div style={{ marginBottom: 30, padding: 16, background: '#f7fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                {/* 第一行：报告基本信息 */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', gap: 32 }}>
+                        <div>
+                            <div style={{ fontSize: 11, color: '#718096' }}>Report Number</div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: '#1a365d' }}>{reportData.report_number || 'DRAFT'}</div>
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 11, color: '#718096' }}>Service Type</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: reportData.service_type === 'warranty' ? '#38a169' : '#d69e2e' }}>
+                                {reportData.service_type === 'warranty' ? 'Warranty Service' : 'Paid Service'}
+                            </div>
+                        </div>
                     </div>
-                    <div style={{ width: 1, background: '#e2e8f0' }} />
-                    <div>
-                        <div style={{ fontSize: 11, color: '#718096' }}>Received</div>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{ticketInfo.received_date ? new Date(ticketInfo.received_date).toLocaleDateString('zh-CN') : ticketInfo.returned_date ? new Date(ticketInfo.returned_date).toLocaleDateString('zh-CN') : '-'}</div>
-                    </div>
-                    <div style={{ width: 1, background: '#e2e8f0' }} />
-                    <div>
-                        <div style={{ fontSize: 11, color: '#718096' }}>Diagnosis</div>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{ticketInfo.repair_started_at ? new Date(ticketInfo.repair_started_at).toLocaleDateString('zh-CN') : '-'}</div>
-                    </div>
-                    <div style={{ width: 1, background: '#e2e8f0' }} />
-                    <div>
-                        <div style={{ fontSize: 11, color: '#718096' }}>Repair</div>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{ticketInfo.repair_completed_at ? new Date(ticketInfo.repair_completed_at).toLocaleDateString('zh-CN') : new Date().toLocaleDateString('zh-CN')}</div>
-                    </div>
-                </div>
-            )}
-
-            {/* Report Info */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 30, padding: 16, background: '#f7fafc', borderRadius: 8, fontSize: 13 }}>
-                <div>
-                    <div style={{ fontSize: 12, color: '#718096' }}>Report Number:</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1a365d' }}>{reportData.report_number || 'DRAFT'}</div>
-                    <div style={{ fontSize: 12, color: '#718096', marginTop: 8 }}>Service Type:</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: reportData.service_type === 'warranty' ? '#38a169' : '#d69e2e' }}>
-                        {reportData.service_type === 'warranty' ? 'Warranty Service (Free)' : 'Paid Service'}
+                    <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 11, color: '#718096' }}>Report Date</div>
+                        <div style={{ fontSize: 13 }}>{new Date().toLocaleDateString()}</div>
+                        {reportData.created_by && (
+                            <div style={{ fontSize: 11, color: '#718096', marginTop: 4 }}>
+                                by {reportData.created_by.display_name}
+                            </div>
+                        )}
                     </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, color: '#718096' }}>Date:</div>
-                    <div style={{ fontSize: 13 }}>{new Date().toLocaleDateString()}</div>
-                    {reportData.created_by && (
-                        <>
-                            <div style={{ fontSize: 12, color: '#718096', marginTop: 8 }}>Service Engineer:</div>
-                            <div style={{ fontSize: 13 }}>{reportData.created_by.display_name}</div>
-                        </>
-                    )}
-                </div>
+                {/* 第二行：关键日期时间轴 */}
+                {ticketInfo && (
+                    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                        <div>
+                            <div style={{ fontSize: 10, color: '#718096' }}>RMA Date</div>
+                            <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.created_at ? new Date(ticketInfo.created_at).toLocaleDateString('zh-CN') : '-'}</div>
+                        </div>
+                        <div style={{ width: 1, background: '#e2e8f0' }} />
+                        <div>
+                            <div style={{ fontSize: 10, color: '#718096' }}>Received</div>
+                            <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.received_date ? new Date(ticketInfo.received_date).toLocaleDateString('zh-CN') : ticketInfo.returned_date ? new Date(ticketInfo.returned_date).toLocaleDateString('zh-CN') : '-'}</div>
+                        </div>
+                        <div style={{ width: 1, background: '#e2e8f0' }} />
+                        <div>
+                            <div style={{ fontSize: 10, color: '#718096' }}>Diagnosis</div>
+                            <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.repair_started_at ? new Date(ticketInfo.repair_started_at).toLocaleDateString('zh-CN') : '-'}</div>
+                        </div>
+                        <div style={{ width: 1, background: '#e2e8f0' }} />
+                        <div>
+                            <div style={{ fontSize: 10, color: '#718096' }}>Repair</div>
+                            <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.repair_completed_at ? new Date(ticketInfo.repair_completed_at).toLocaleDateString('zh-CN') : new Date().toLocaleDateString('zh-CN')}</div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Device Info */}
             <SectionPreview title="1. Device Information">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                     <InfoRow label="Product Model" value={reportData.content.device_info.product_name} />
                     <InfoRow label="Serial Number" value={reportData.content.device_info.serial_number} />
                     <InfoRow label="Firmware Version" value={reportData.content.device_info.firmware_version} />
-                    <InfoRow label="Hardware Version" value={reportData.content.device_info.hardware_version} />
                 </div>
             </SectionPreview>
 

@@ -625,8 +625,9 @@ module.exports = function (db, authenticate, serviceUpload) {
     router.post('/:ticketId/activities/:activityId/correct', authenticate, (req, res) => {
         try {
             const { ticketId, activityId } = req.params;
-            const { corrections, correction_reason } = req.body;
+            const { corrections, correction_reason, new_content } = req.body;
             // corrections: [{ field_path: 'repair_process.parts_replaced[0].name', old_value: '主板', new_value: '子板' }, ...]
+            // new_content: 直接更新活动的content字段（适用于评论、发货信息等文本内容）
             const user = req.user;
 
             if (!correction_reason || correction_reason.trim().length === 0) {
@@ -742,14 +743,30 @@ module.exports = function (db, authenticate, serviceUpload) {
             metadata._last_corrected_at = now;
             metadata._correction_count = correctionHistory.length;
 
-            // 更新活动
-            db.prepare(`
-                UPDATE ticket_activities SET
-                    metadata = ?,
-                    is_edited = 1,
-                    edited_at = ?
-                WHERE id = ?
-            `).run(JSON.stringify(metadata), now, activityId);
+            // 更新活动 - 支持更新 content 字段
+            if (new_content !== undefined && new_content !== activity.content) {
+                // 记录原始内容到历史
+                if (!metadata._original_content) {
+                    metadata._original_content = activity.content;
+                }
+                db.prepare(`
+                    UPDATE ticket_activities SET
+                        content = ?,
+                        metadata = ?,
+                        is_edited = 1,
+                        edited_at = ?
+                    WHERE id = ?
+                `).run(new_content, JSON.stringify(metadata), now, activityId);
+            } else {
+                // 仅更新 metadata
+                db.prepare(`
+                    UPDATE ticket_activities SET
+                        metadata = ?,
+                        is_edited = 1,
+                        edited_at = ?
+                    WHERE id = ?
+                `).run(JSON.stringify(metadata), now, activityId);
+            }
 
             // 创建更正活动记录到时间轴 (使用 system_event 类型)
             const activityTypeLabel = {

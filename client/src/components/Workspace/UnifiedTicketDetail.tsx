@@ -30,6 +30,7 @@ import { OpRepairReportEditor } from './OpRepairReportEditor';
 import { PIEditor } from './PIEditor';
 import { ClosingHandoverModal } from './ClosingHandoverModal';
 import ProductWarrantyRegistrationModal from '../Service/ProductWarrantyRegistrationModal';
+import ProductModal from './ProductModal';
 // Types
 // ==============================
 
@@ -204,6 +205,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [keyDeliverablesCollapsed, setKeyDeliverablesCollapsed] = useState(false);
     const [customerContextCollapsed, setCustomerContextCollapsed] = useState(false);
     const [isWarrantyRegistrationOpen, setIsWarrantyRegistrationOpen] = useState(false);
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
 
     // System settings for workflow control
     const [systemSettings, setSystemSettings] = useState<{ require_finance_confirmation?: boolean }>({});
@@ -987,44 +989,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             }
                             headerRight={
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    {/* Warranty Status Display */}
-                                    {warrantyCalc?.final_warranty_status === 'warranty_unknown' ? (
-                                        // Unknown warranty - show warning and register button (not for OP)
-                                        <>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <AlertTriangle size={14} color="#F59E0B" />
-                                                <span style={{ fontSize: 13, fontWeight: 600, color: '#F59E0B' }}>
-                                                    保修待确认
-                                                </span>
-                                            </div>
-                                            {/* One-click register button - hidden for OP department */}
-                                            {actingDeptNorm !== 'PRODUCTION' && actingDeptNorm !== 'OP' && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setIsWarrantyRegistrationOpen(true); }}
-                                                    style={{
-                                                        padding: '4px 10px', borderRadius: 6,
-                                                        background: 'rgba(255,210,0,0.15)', border: '1px solid rgba(255,210,0,0.4)',
-                                                        color: '#FFD200', fontSize: 11, fontWeight: 600,
-                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                                                        transition: 'all 0.2s'
-                                                    }}
-                                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,210,0,0.25)'; }}
-                                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,210,0,0.15)'; }}
-                                                >
-                                                    <Shield size={12} />
-                                                    一键注册保修
-                                                </button>
-                                            )}
-                                        </>
-                                    ) : (
-                                        // Normal warranty display
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <Shield size={14} color={(warrantyCalc?.final_warranty_status === 'warranty_valid') ? '#10B981' : '#EF4444'} />
-                                            <span style={{ fontSize: 13, fontWeight: 600, color: (warrantyCalc?.final_warranty_status === 'warranty_valid') ? '#10B981' : '#EF4444' }}>
-                                                {(warrantyCalc?.final_warranty_status === 'warranty_valid') ? '在保' : '过保'}
-                                            </span>
-                                        </div>
-                                    )}
+                                    {/* Header 不显示保修状态，所有保修信息在序列号区域显示 */}
                                 </div>
                             }
                             defaultOpen={true}
@@ -1039,17 +1004,106 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 60 }}>产品型号</span>
                                             <span style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>{String(ticket.product_name || '-')}</span>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <div
-                                                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
-                                                onClick={() => ticket.product_id && navigate(`/service/products/${ticket.product_id}`)}
-                                            >
-                                                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>序列号</span>
-                                                <span style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
-                                                    {String(ticket.serial_number || '-')}
-                                                </span>
-                                            </div>
-                                            {assetData?.service_history && assetData.service_history.length > 0 && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                            {/* SN 链接：使用 assetData 查询结果的 device.id，而非工单存储的 product_id */}
+                                            {(() => {
+                                                const realDeviceId = assetData?.device?.id;
+                                                const isUnregistered = assetData?.device?.is_unregistered;
+                                                const canNavigate = realDeviceId && !isUnregistered;
+                                                // 场景判断：B=已入库但无保修, C=未入库
+                                                const warrantyStatus = warrantyCalc?.final_warranty_status;
+                                                const isScenarioC = isUnregistered; // 未入库
+                                                const isScenarioB = !isUnregistered && realDeviceId && warrantyStatus === 'warranty_unknown'; // 已入库但无保修
+                                                // 权限：MS 部门可操作入库/注册
+                                                const canOperate = actingDeptNorm === 'MS' || isGlobalAdmin;
+                                                
+                                                return (
+                                                    <>
+                                                        <div
+                                                            style={{ 
+                                                                display: 'flex', alignItems: 'center', gap: 8, 
+                                                                cursor: canNavigate ? 'pointer' : 'default',
+                                                                opacity: isUnregistered ? 0.7 : 1
+                                                            }}
+                                                            onClick={() => canNavigate && navigate(`/service/products/${realDeviceId}`)}
+                                                            title={isUnregistered ? '设备未入库，无法查看详情' : undefined}
+                                                        >
+                                                            {/* 序列号标签颜色与销售渠道一致 */}
+                                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>序列号</span>
+                                                            <span style={{ 
+                                                                fontSize: 14, 
+                                                                color: canNavigate ? '#fff' : 'rgba(255,255,255,0.6)', 
+                                                                fontWeight: 500,
+                                                                textDecoration: canNavigate ? 'underline' : 'none',
+                                                                textDecorationColor: 'rgba(255,255,255,0.3)'
+                                                            }}>
+                                                                {String(ticket.serial_number || '-')}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* 场景 C: 未入库 - 显示产品入库按钮 (红色) */}
+                                                        {isScenarioC && canOperate && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setIsProductModalOpen(true); }}
+                                                                style={{
+                                                                    padding: '6px 12px', fontSize: 13, fontWeight: 600,
+                                                                    background: 'rgba(230, 0, 0, 0.15)', border: '1px solid rgba(230, 0, 0, 0.4)',
+                                                                    borderRadius: 4, color: '#E60000', cursor: 'pointer',
+                                                                    transition: 'all 0.2s',
+                                                                    display: 'flex', alignItems: 'center', gap: 6,
+                                                                    flexShrink: 0
+                                                                }}
+                                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(230, 0, 0, 0.25)'}
+                                                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(230, 0, 0, 0.15)'}
+                                                            >
+                                                                <AlertTriangle size={16} />
+                                                                产品入库
+                                                            </button>
+                                                        )}
+
+                                                        {/* 场景 B: 已入库但未注册保修 - 显示注册保修按钮 (红色) */}
+                                                        {isScenarioB && canOperate && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setIsWarrantyRegistrationOpen(true); }}
+                                                                style={{
+                                                                    padding: '6px 12px', fontSize: 13, fontWeight: 600,
+                                                                    background: 'rgba(230, 0, 0, 0.15)', border: '1px solid rgba(230, 0, 0, 0.4)',
+                                                                    borderRadius: 4, color: '#E60000', cursor: 'pointer',
+                                                                    transition: 'all 0.2s',
+                                                                    display: 'flex', alignItems: 'center', gap: 6,
+                                                                    flexShrink: 0
+                                                                }}
+                                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(230, 0, 0, 0.25)'}
+                                                                onMouseLeave={e => e.currentTarget.style.background = 'rgba(230, 0, 0, 0.15)'}
+                                                            >
+                                                                <AlertTriangle size={16} />
+                                                                注册保修
+                                                            </button>
+                                                        )}
+
+                                                        {/* 场景 A: 已入库且在保 - 显示在保 (绿色) */}
+                                                        {assetData?.device && !assetData.device.is_unregistered && warrantyCalc?.final_warranty_status === 'warranty_valid' && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                                                <Shield size={16} color="#10B981" />
+                                                                <span style={{ fontSize: 14, fontWeight: 600, color: '#10B981' }}>
+                                                                    在保
+                                                                </span>
+                                                            </div>
+                                                        )}
+
+                                                        {/* 场景 A: 已入库但过保 - 显示过保 (橙色) */}
+                                                        {assetData?.device && !assetData.device.is_unregistered && warrantyCalc?.final_warranty_status === 'warranty_expired' && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                                                <Shield size={16} color="#F59E0B" />
+                                                                <span style={{ fontSize: 14, fontWeight: 600, color: '#F59E0B' }}>
+                                                                    过保
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
+                                            {assetData?.service_history && assetData.service_history.length > 0 && !assetData?.device?.is_unregistered && (
                                                 <div
                                                     style={{
                                                         display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 8,
@@ -1059,7 +1113,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                     }}
                                                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
                                                     onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
-                                                    onClick={() => ticket.product_id && window.open(`/service/products/${ticket.product_id}`, '_blank')}
+                                                    onClick={() => assetData?.device?.id && window.open(`/service/products/${assetData.device.id}`, '_blank')}
                                                 >
                                                     <Clock size={13} style={{ opacity: 0.6 }} />
                                                     <span>关联工单数: {assetData.service_history.length}</span>
@@ -2272,10 +2326,75 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     onClose={() => setIsWarrantyRegistrationOpen(false)}
                     serialNumber={ticket.serial_number || ''}
                     productName={ticket.product_name || ''}
-                    onRegistered={() => {
+                    isNewProduct={assetData?.device?.is_unregistered === true}
+                    onRegistered={async (newProductId) => {
                         setIsWarrantyRegistrationOpen(false);
+                        
+                        // 入库成功后自动关联工单 product_id
+                        if (newProductId && !ticket.product_id) {
+                            try {
+                                await axios.put(`/api/v1/tickets/${ticket.id}`, {
+                                    product_id: newProductId,
+                                    change_reason: '入库新设备后自动关联'
+                                }, { headers: { Authorization: `Bearer ${token}` } });
+                            } catch (err) {
+                                console.error('[AutoLink] Failed to link product_id:', err);
+                            }
+                        }
+                        
                         fetchDetail(); // Refresh to get updated warranty info
                         refreshWarrantyCalc(); // Also refresh warranty calculation immediately
+                        
+                        // 刷新 assetData（SN 查询结果）
+                        if (ticket.serial_number) {
+                            axios.get(`/api/v1/context/by-serial-number?serial_number=${ticket.serial_number}`, {
+                                headers: { Authorization: `Bearer ${token}` }
+                            }).then(res => {
+                                if (res.data.success) {
+                                    setAssetData(res.data.data);
+                                }
+                            }).catch(err => console.error('[AssetRefresh] Failed', err));
+                        }
+                    }}
+                />
+            )}
+
+            {/* Product Modal (产品入库) */}
+            {isProductModalOpen && ticket && (
+                <ProductModal
+                    isOpen={isProductModalOpen}
+                    onClose={() => setIsProductModalOpen(false)}
+                    editingProduct={null}
+                    prefillSerialNumber={ticket.serial_number || ''}
+                    prefillProductName={ticket.product_name || ''}
+                    onSuccess={async (newProduct) => {
+                        setIsProductModalOpen(false);
+                        
+                        // 入库成功后自动关联工单 product_id
+                        if (newProduct?.id && !ticket.product_id) {
+                            try {
+                                await axios.put(`/api/v1/tickets/${ticket.id}`, {
+                                    product_id: newProduct.id,
+                                    change_reason: '入库新设备后自动关联'
+                                }, { headers: { Authorization: `Bearer ${token}` } });
+                            } catch (err) {
+                                console.error('[AutoLink] Failed to link product_id:', err);
+                            }
+                        }
+                        
+                        fetchDetail();
+                        refreshWarrantyCalc();
+                        
+                        // 刷新 assetData
+                        if (ticket.serial_number) {
+                            axios.get(`/api/v1/context/by-serial-number?serial_number=${ticket.serial_number}`, {
+                                headers: { Authorization: `Bearer ${token}` }
+                            }).then(res => {
+                                if (res.data.success) {
+                                    setAssetData(res.data.data);
+                                }
+                            }).catch(err => console.error('[AssetRefresh] Failed', err));
+                        }
                     }}
                 />
             )}

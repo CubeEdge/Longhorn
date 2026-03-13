@@ -268,15 +268,19 @@ const TicketCreationModal: React.FC = () => {
                 if (res.data.success) {
                     const device = res.data.data.device;
                     setMachineInfo(device);
-                    // Auto-match product catalog if possible
-                    if (device.model_name) {
-                        const matched = products.find(p => p.name.toLowerCase() === device.model_name.toLowerCase());
-                        if (matched) {
-                            handleFieldChange('product_id', matched.id, true);
-                        }
+                    
+                    // 根据 SN 查询结果设置 product_id
+                    if (device.id && !device.is_unregistered) {
+                        // SN 在台账中：使用真实的设备 ID
+                        handleFieldChange('product_id', device.id, true);
+                    } else {
+                        // SN 不在台账：清空 product_id，保留用户选择的型号名称供参考
+                        handleFieldChange('product_id', null, false);
                     }
                 } else {
                     setMachineInfo(null);
+                    // 查询失败也清空 product_id
+                    handleFieldChange('product_id', null, false);
                 }
             } catch (err) {
                 setMachineInfo(null);

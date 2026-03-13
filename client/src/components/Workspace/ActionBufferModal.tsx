@@ -394,9 +394,13 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
         try {
             // 1. Create a log activity for the provided information
             let logContent = `执行了 ${actionLabel} 动作`;
+            let activityType = 'comment';  // 默认为评论类型
+            
             if (currentNode === 'op_repairing') {
                 logContent = `【维修结案报告】\n内容：${formData.repair_content}\n测试结果：${formData.test_result}`;
             } else if (currentNode === 'op_shipping') {
+                // 发货信息使用结构化活动类型
+                activityType = 'shipping_info';
                 // 根据发货方式生成不同的日志
                 if (shippingMethod === 'express') {
                     logContent = `【快递直发】\n承运商：${formData.carrier}\n单号：${formData.tracking_number}`;
@@ -408,6 +412,8 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                     logContent = `【合并发货】随订单 ${formData.associated_order_ref} 发出${formData.tracking_number ? `\n合单运单号：${formData.tracking_number}` : ''}`;
                 }
             } else if (currentNode === 'op_shipping_transit') {
+                // 补充单号也属于发货信息
+                activityType = 'shipping_info';
                 logContent = `【补充外销单号】\n国际运单号：${formData.forwarder_final_tracking}${formData.closing_comment ? `\n备注：${formData.closing_comment}` : ''}`;
             } else if (currentNode === 'ms_review') {
                 logContent = `【批准维修】商业方案与报价已获客户确认`;
@@ -416,11 +422,13 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             } else if (currentNode === 'ge_review') {
                 logContent = `【财务收款确认】财务部已核实并确认相关款项核销到账`;
             } else if (currentNode === 'op_receiving' || currentNode === 'submitted') {
+                // 收货信息使用结构化活动类型
+                activityType = 'receiving_info';
                 logContent = `【完成收货入库】${formData.at_receipt_sn ? `\n修正序列号：${formData.at_receipt_sn}` : ''}\n备注：${formData.receipt_notes || '无'}`;
             }
 
             const activityRes = await axios.post(`/api/v1/tickets/${ticket.id}/activities`, {
-                activity_type: 'comment',
+                activity_type: activityType,
                 content: logContent,
                 visibility: 'all',
                 metadata: {

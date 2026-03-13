@@ -1303,6 +1303,44 @@ module.exports = function (db, authenticate, serviceUpload) {
                 LEFT JOIN users u ON ta.actor_id = u.id
                 WHERE ta.ticket_id = ? ORDER BY ta.created_at DESC
             `).all(id);
+            
+            // 从活动记录计算关键日期
+            let activityDates = {
+                received_date: null,    // 收货入库日期 (receiving_info活动)
+                diagnosis_date: null,   // 检测日期 (diagnostic_report活动)
+                repair_date: null       // 维修日期 (op_repair_report活动)
+            };
+            for (const act of rawActivities) {
+                if (act.activity_type === 'receiving_info' && !activityDates.received_date) {
+                    activityDates.received_date = act.created_at;
+                }
+                if (act.activity_type === 'diagnostic_report' && !activityDates.diagnosis_date) {
+                    activityDates.diagnosis_date = act.created_at;
+                }
+                if (act.activity_type === 'op_repair_report' && !activityDates.repair_date) {
+                    activityDates.repair_date = act.created_at;
+                }
+                // 兼容旧数据：如果是comment类型但包含特定关键词
+                if (act.activity_type === 'comment' && act.content) {
+                    if (!activityDates.received_date && act.content.includes('【完成收货入库】')) {
+                        activityDates.received_date = act.created_at;
+                    }
+                    if (!activityDates.repair_date && act.content.includes('【维修结案报告】')) {
+                        activityDates.repair_date = act.created_at;
+                    }
+                }
+            }
+            // 将计算出的日期合并到ticketData（如果原数据为空）
+            if (activityDates.received_date && !ticketData.received_date) {
+                ticketData.received_date = activityDates.received_date;
+            }
+            if (activityDates.diagnosis_date) {
+                ticketData.repair_started_at = activityDates.diagnosis_date;
+            }
+            if (activityDates.repair_date) {
+                ticketData.repair_completed_at = activityDates.repair_date;
+            }
+
             const activities = rawActivities.map(a => {
                 const activity = {
                     ...a,
@@ -1474,6 +1512,19 @@ module.exports = function (db, authenticate, serviceUpload) {
                 return res.status(400).json({ success: false, error: '无效的工单类型' });
             }
 
+            // PRD: 以 SN 查询结果为准设置 product_id，避免前端型号下拉框造成的错误关联
+            let finalProductId = product_id;
+            if (serial_number) {
+                const device = db.prepare('SELECT id FROM products WHERE serial_number = ?').get(serial_number);
+                if (device) {
+                    // SN 在台账中，使用真实设备 ID（覆盖前端可能传入的错误 product_id）
+                    finalProductId = device.id;
+                } else {
+                    // SN 不在台账中，清空 product_id（避免错误关联到其他设备）
+                    finalProductId = null;
+                }
+            }
+
             const now = new Date().toISOString();
             const ticketNumber = generateTicketNumber(ticket_type, channel_code);
 
@@ -1536,7 +1587,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 channel_code,
                 processedSnapshot,
                 account_id || null, contact_id || null, dealer_id || null, reporter_name || null, reporter_type || null, region || null,
-                product_id || null, serial_number || null, firmware_version || null, hardware_version || null,
+                finalProductId || null, serial_number || null, firmware_version || null, hardware_version || null,
                 issue_type || null, issue_category || null, issue_subcategory || null, severity || 3,
                 service_type || null, channel || null, problem_summary || null, communication_log || null,
                 problem_description || null, solution_for_customer || null, is_warranty !== undefined ? is_warranty : 1,

@@ -17,6 +17,7 @@ interface Product {
     serial_number: string;
     product_sku: string;
     product_type: string;
+    product_line: 'Camera' | 'EVF' | 'Accessory';
     product_family: 'A' | 'B' | 'C' | 'D';
     production_date: string;
 
