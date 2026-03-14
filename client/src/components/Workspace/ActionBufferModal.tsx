@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Save, Truck, Wrench, CreditCard, FileCheck, Loader2, Camera, PackageOpen, Paperclip, AlertCircle, ShieldAlert, ShieldCheck, Users, Package, Plane } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Save, Truck, Wrench, CreditCard, FileCheck, Loader2, Camera, PackageOpen, Paperclip, AlertCircle, ShieldAlert, ShieldCheck, Users, Package, Plane, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -13,9 +13,17 @@ interface ActionBufferModalProps {
     nextNode: string;
     actionLabel: string;
     onSuccess: () => void;
+    // 编辑模式支持（用于更正历史记录）
+    editMode?: boolean;
+    editData?: Record<string, unknown> | null;
+    editActivityId?: number | null;
+    editNodeType?: 'op_receive' | 'op_shipping' | null;  // 指定要编辑的节点类型
 }
 
-export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, onClose, ticket, nextNode, actionLabel, onSuccess }) => {
+export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ 
+    isOpen, onClose, ticket, nextNode, actionLabel, onSuccess,
+    editMode = false, editData = null, editActivityId = null, editNodeType = null
+}) => {
     const { token } = useAuthStore();
     const [submitting, setSubmitting] = useState(false);
 
@@ -24,9 +32,34 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
     const [snDiffers, setSnDiffers] = useState(false);
     const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('express');
 
+    // 编辑模式：预填数据
+    useEffect(() => {
+        if (editMode && editData && isOpen) {
+            const data = editData as any;
+            setFormData(data);
+            // 恢复发货方式
+            if (data.shipping_method) {
+                setShippingMethod(data.shipping_method as ShippingMethod);
+            }
+            // 恢复序列号修正状态
+            if (data.at_receipt_sn) {
+                setSnDiffers(true);
+            }
+        } else if (!isOpen) {
+            // 关闭时重置
+            setFormData({});
+            setAttachments([]);
+            setSnDiffers(false);
+            setShippingMethod('express');
+        }
+    }, [editMode, editData, isOpen]);
+
     if (!isOpen) return null;
 
-    const currentNode = ticket.current_node;
+    // 编辑模式下使用 editNodeType 指定的节点类型，否则使用当前节点
+    const currentNode = editMode && editNodeType 
+        ? (editNodeType === 'op_receive' ? 'op_receiving' : 'op_shipping')
+        : ticket.current_node;
 
     // Helper to render specific fields based on node
     const renderFields = () => {
@@ -392,16 +425,14 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
 
         setSubmitting(true);
         try {
-            // 1. Create a log activity for the provided information
+            // 构建活动内容
             let logContent = `执行了 ${actionLabel} 动作`;
             let activityType = 'comment';  // 默认为评论类型
             
             if (currentNode === 'op_repairing') {
                 logContent = `【维修结案报告】\n内容：${formData.repair_content}\n测试结果：${formData.test_result}`;
             } else if (currentNode === 'op_shipping') {
-                // 发货信息使用结构化活动类型
                 activityType = 'shipping_info';
-                // 根据发货方式生成不同的日志
                 if (shippingMethod === 'express') {
                     logContent = `【快递直发】\n承运商：${formData.carrier}\n单号：${formData.tracking_number}`;
                 } else if (shippingMethod === 'forwarder') {
@@ -412,7 +443,6 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                     logContent = `【合并发货】随订单 ${formData.associated_order_ref} 发出${formData.tracking_number ? `\n合单运单号：${formData.tracking_number}` : ''}`;
                 }
             } else if (currentNode === 'op_shipping_transit') {
-                // 补充单号也属于发货信息
                 activityType = 'shipping_info';
                 logContent = `【补充外销单号】\n国际运单号：${formData.forwarder_final_tracking}${formData.closing_comment ? `\n备注：${formData.closing_comment}` : ''}`;
             } else if (currentNode === 'ms_review') {
@@ -422,11 +452,35 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             } else if (currentNode === 'ge_review') {
                 logContent = `【财务收款确认】财务部已核实并确认相关款项核销到账`;
             } else if (currentNode === 'op_receiving' || currentNode === 'submitted') {
-                // 收货信息使用结构化活动类型
                 activityType = 'receiving_info';
                 logContent = `【完成收货入库】${formData.at_receipt_sn ? `\n修正序列号：${formData.at_receipt_sn}` : ''}\n备注：${formData.receipt_notes || '无'}`;
             }
 
+            // ===== 编辑模式：更新现有活动，不推进节点 =====
+            if (editMode && editActivityId) {
+                // 更新现有活动
+                await axios.patch(`/api/v1/tickets/${ticket.id}/activities/${editActivityId}`, {
+                    content: `[已更正] ${logContent}`,
+                    metadata: {
+                        ...formData,
+                        shipping_method: currentNode === 'op_shipping' ? shippingMethod : undefined,
+                        corrected_at: new Date().toISOString()
+                    }
+                }, { headers: { Authorization: `Bearer ${token}` } });
+
+                // 记录更正日志
+                await axios.post(`/api/v1/tickets/${ticket.id}/activities`, {
+                    activity_type: 'internal_note',
+                    content: `更正了${editNodeType === 'op_receive' ? '收货信息' : '发货信息'}`,
+                    visibility: 'internal'
+                }, { headers: { Authorization: `Bearer ${token}` } });
+
+                onSuccess();
+                onClose();
+                return;
+            }
+
+            // ===== 正常模式：创建活动并推进节点 =====
             const activityRes = await axios.post(`/api/v1/tickets/${ticket.id}/activities`, {
                 activity_type: activityType,
                 content: logContent,
@@ -441,7 +495,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
 
             const activityId = activityRes.data.id;
 
-            // 2. Handle file uploads if any
+            // Handle file uploads if any
             if (attachments.length > 0) {
                 const formDataUpload = new FormData();
                 attachments.forEach(file => formDataUpload.append('files', file));
@@ -453,8 +507,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                 });
             }
 
-            // 3. Perform the actual transition
-            // Update fields in the ticket record as well
+            // Perform the actual transition
             let targetNode = nextNode;
             const patchData: any = {
                 change_reason: `流程推进: ${actionLabel}`
@@ -464,19 +517,15 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
             if (currentNode === 'op_shipping') {
                 patchData.shipping_method = shippingMethod;
                 if (shippingMethod === 'express') {
-                    // 快递直发 -> resolved
                     targetNode = 'resolved';
                 } else if (shippingMethod === 'forwarder') {
-                    // 货代中转 -> op_shipping_transit (待补单)
                     targetNode = 'op_shipping_transit';
                     patchData.forwarder_name = formData.forwarder_name;
                     patchData.forwarder_domestic_tracking = formData.forwarder_domestic_tracking;
                 } else if (shippingMethod === 'pickup') {
-                    // 自提 -> resolved
                     targetNode = 'resolved';
                     patchData.pickup_person = formData.pickup_person;
                 } else if (shippingMethod === 'combined') {
-                    // 合并发货 -> resolved
                     targetNode = 'resolved';
                     patchData.associated_order_ref = formData.associated_order_ref;
                 }
@@ -555,7 +604,9 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                             {getIcon()}
                         </div>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-main)' }}>确认执行: {getActionLabelZh(actionLabel)}</h3>
+                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: editMode ? '#F59E0B' : 'var(--text-main)' }}>
+                                {editMode ? '更正: ' : '确认执行: '}{getActionLabelZh(editMode && editNodeType ? (editNodeType === 'op_receive' ? '收货信息' : '发货信息') : actionLabel)}
+                            </h3>
                             <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{ticket.ticket_number}</p>
                         </div>
                     </div>
@@ -583,8 +634,8 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({ isOpen, on
                             boxShadow: 'var(--glass-shadow-accent)'
                         }}
                     >
-                        {submitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                        提交并推进至下个环节
+                        {submitting ? <Loader2 size={16} className="animate-spin" /> : (editMode ? <RefreshCw size={16} /> : <Save size={16} />)}
+                        {editMode ? '保存更正' : '提交并推进至下个环节'}
                     </button>
                 </div>
             </div>

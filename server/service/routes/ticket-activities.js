@@ -219,11 +219,12 @@ module.exports = function (db, authenticate, serviceUpload) {
             // Enrich with attachments
             const data = rows.map(row => {
                 const activity = formatActivity(row);
+                // Bug fix: 必须同时验证 ticket_id 和 activity_id，防止跨工单附件关联错误
                 const attachments = db.prepare(`
                     SELECT id, file_name, file_size, file_type, uploaded_at
                     FROM ticket_attachments
-                    WHERE activity_id = ?
-                `).all(row.id);
+                    WHERE activity_id = ? AND ticket_id = ?
+                `).all(row.id, ticketId);
 
                 if (attachments.length > 0) {
                     activity.attachments = attachments.map(att => ({
@@ -549,7 +550,7 @@ module.exports = function (db, authenticate, serviceUpload) {
             }
 
             // Only comments and certain reports can be edited
-            if (!['comment', 'internal_note', 'op_repair_report'].includes(activity.activity_type)) {
+            if (!['comment', 'internal_note', 'op_repair_report', 'shipping_info', 'receiving_info'].includes(activity.activity_type)) {
                 return res.status(400).json({ success: false, error: '该类型活动不可编辑' });
             }
 

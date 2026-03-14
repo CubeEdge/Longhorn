@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, Save, Plus, Edit2, Shield, ChevronDown, ChevronRight, Package, Tag, Settings, Calendar } from 'lucide-react';
+import { X, Save, Plus, Edit2, Shield, ChevronDown, ChevronRight, Package, Tag, Settings, Calendar, Check } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import ProductWarrantyRegistrationModal from '../Service/ProductWarrantyRegistrationModal';
+import type { WarrantyRegistrationData } from '../Service/ProductWarrantyRegistrationModal';
 
 interface Product {
     id: number;
@@ -70,6 +71,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
     const [skus, setSkus] = useState<ProductSku[]>([]);
     const [showWarrantyModal, setShowWarrantyModal] = useState(false);
     const [showOptional, setShowOptional] = useState(false);
+    // 暂存的保修数据（方案B：产品未入库时暂存，入库时一并提交）
+    const [pendingWarrantyData, setPendingWarrantyData] = useState<WarrantyRegistrationData | null>(null);
     // 传递给保修注册窗口的预填数据
     const [warrantyPrefillData, setWarrantyPrefillData] = useState<{
         productLine?: 'Camera' | 'EVF' | 'Accessory';
@@ -157,7 +160,57 @@ const ProductModal: React.FC<ProductModalProps> = ({
             });
 
             if (res.data.success) {
-                onSuccess(res.data.data);
+                const savedProduct = res.data.data;
+                
+                // ======== 方案B核心：产品入库后处理暂存的保修数据 ========
+                if (pendingWarrantyData && !editingProduct) {
+                    try {
+                        // Step 1: 上传发票文件（如有）
+                        let invoiceProofUrl = '';
+                        if (pendingWarrantyData.invoiceFile) {
+                            const uploadFormData = new FormData();
+                            uploadFormData.append('file', pendingWarrantyData.invoiceFile);
+                            uploadFormData.append('type', 'warranty_invoice');
+                            
+                            const uploadRes = await axios.post('/api/v1/upload', uploadFormData, {
+                                headers: {
+                                    Authorization: `Bearer ${token}`,
+                                    'Content-Type': 'multipart/form-data'
+                                }
+                            });
+                            if (uploadRes.data.success) {
+                                invoiceProofUrl = uploadRes.data.data.url;
+                            }
+                        }
+                        
+                        // Step 2: 注册保修信息
+                        await axios.post('/api/v1/products/register-warranty', {
+                            serial_number: formData.serial_number,
+                            model_name: pendingWarrantyData.selectedModelName || formData.model_name,
+                            product_sku: formData.product_sku || '',
+                            sku_id: pendingWarrantyData.selectedSkuId || formData.sku_id || undefined,
+                            product_line: pendingWarrantyData.selectedProductLine || formData.product_line,
+                            product_family: pendingWarrantyData.selectedProductFamily || formData.product_family,
+                            sale_source: pendingWarrantyData.saleSource,
+                            sale_date: pendingWarrantyData.saleDate,
+                            warranty_months: pendingWarrantyData.warrantyMonths,
+                            sales_invoice_proof: invoiceProofUrl,
+                            remarks: pendingWarrantyData.remarks || '',
+                            sold_to_dealer_id: pendingWarrantyData.selectedDealerId || null,
+                            current_owner_id: pendingWarrantyData.selectedOwnerId || null
+                        }, {
+                            headers: { Authorization: `Bearer ${token}` }
+                        });
+                        
+                        console.log('产品入库并注册保修成功');
+                    } catch (warrantyErr) {
+                        console.error('保修注册失败，但产品已入库:', warrantyErr);
+                        // 产品已入库成功，保修注册失败时仍然关闭窗口并通知成功
+                        // 用户可以稍后在工单详情页重新注册保修
+                    }
+                }
+                
+                onSuccess(savedProduct);
                 onClose();
             }
         } catch (err: any) {
@@ -395,10 +448,24 @@ const ProductModal: React.FC<ProductModalProps> = ({
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div style={{ 
                                 flex: 1, padding: '10px 12px', borderRadius: 8, 
-                                border: '1px solid rgba(255,255,255,0.08)', 
-                                background: 'rgba(255,255,255,0.02)', color: '#666', fontSize: '0.85rem'
+                                border: pendingWarrantyData 
+                                    ? '1px solid rgba(16,185,129,0.3)' 
+                                    : '1px solid rgba(255,255,255,0.08)', 
+                                background: pendingWarrantyData 
+                                    ? 'rgba(16,185,129,0.08)' 
+                                    : 'rgba(255,255,255,0.02)', 
+                                color: pendingWarrantyData ? '#10B981' : '#666', 
+                                fontSize: '0.85rem',
+                                display: 'flex', alignItems: 'center', gap: 8
                             }}>
-                                {formData.warranty_start_date || '未设置（系统自动计算）'}
+                                {pendingWarrantyData ? (
+                                    <>
+                                        <Check size={16} />
+                                        已填写保修信息（{pendingWarrantyData.saleDate}，{pendingWarrantyData.warrantyMonths}个月）
+                                    </>
+                                ) : (
+                                    formData.warranty_start_date || '未设置（系统自动计算）'
+                                )}
                             </div>
                             <button
                                 type="button"
@@ -415,22 +482,41 @@ const ProductModal: React.FC<ProductModalProps> = ({
                                 disabled={!formData.serial_number}
                                 style={{
                                     padding: '10px 14px', borderRadius: 8,
-                                    background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)',
-                                    color: '#3B82F6', fontSize: '0.8rem', fontWeight: 600,
+                                    background: pendingWarrantyData 
+                                        ? 'rgba(16,185,129,0.1)' 
+                                        : 'rgba(59,130,246,0.1)', 
+                                    border: pendingWarrantyData 
+                                        ? '1px solid rgba(16,185,129,0.3)' 
+                                        : '1px solid rgba(59,130,246,0.3)',
+                                    color: pendingWarrantyData ? '#10B981' : '#3B82F6', 
+                                    fontSize: '0.8rem', fontWeight: 600,
                                     cursor: formData.serial_number ? 'pointer' : 'not-allowed',
                                     display: 'flex', alignItems: 'center', gap: 6,
                                     transition: 'all 0.2s',
                                     opacity: formData.serial_number ? 1 : 0.5
                                 }}
-                                onMouseEnter={e => { if (formData.serial_number) e.currentTarget.style.background = 'rgba(59,130,246,0.2)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(59,130,246,0.1)'; }}
+                                onMouseEnter={e => { 
+                                    if (formData.serial_number) {
+                                        e.currentTarget.style.background = pendingWarrantyData 
+                                            ? 'rgba(16,185,129,0.2)' 
+                                            : 'rgba(59,130,246,0.2)';
+                                    }
+                                }}
+                                onMouseLeave={e => { 
+                                    e.currentTarget.style.background = pendingWarrantyData 
+                                        ? 'rgba(16,185,129,0.1)' 
+                                        : 'rgba(59,130,246,0.1)'; 
+                                }}
                             >
                                 <Calendar size={14} />
-                                注册保修
+                                {pendingWarrantyData ? '修改保修' : '注册保修'}
                             </button>
                         </div>
                         <div style={{ fontSize: '0.7rem', color: '#555', marginTop: 8 }}>
-                            * 保修日期由系统根据销售信息自动计算，点击"注册保修"录入销售日期
+                            {pendingWarrantyData 
+                                ? '* 保修信息已暂存，将在保存入库时一并提交'
+                                : '* 保修日期由系统根据销售信息自动计算，点击"注册保修"录入销售日期'
+                            }
                         </div>
                     </div>
 
@@ -482,9 +568,12 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 productName={formData.model_name || ''}
                 isNewProduct={true}
                 prefillData={warrantyPrefillData}
-                onRegistered={() => {
+                onRegistered={(result) => {
                     setShowWarrantyModal(false);
-                    // 重新获取数据以更新保修信息
+                    // 方案B：接收暂存的保修数据
+                    if (result && typeof result === 'object' && 'saleSource' in result) {
+                        setPendingWarrantyData(result as WarrantyRegistrationData);
+                    }
                 }}
             />
         </>

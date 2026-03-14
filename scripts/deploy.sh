@@ -26,12 +26,14 @@ cd "$(dirname "$0")/.."
 FAST_MODE=true
 SYNC_GIT=false
 FORCE_SERVER_SYNC=false
+FORCE_CLEAN=false
 
 for arg in "$@"; do
     case $arg in
         --full) FAST_MODE=false ;;
         --git) SYNC_GIT=true ;;
         --force-server) FORCE_SERVER_SYNC=true ;;
+        --clean) FORCE_CLEAN=true ;;
     esac
 done
 
@@ -103,7 +105,9 @@ if [ "$FAST_MODE" = true ]; then
         fi
     fi
     
-    if [ "$CLIENT_CHANGED" = true ]; then
+    if [ "$CLIENT_CHANGED" = true ] || [ "$FORCE_CLEAN" = true ]; then
+        log "🧹 Cleaning old dist..."
+        rm -rf client/dist
         log "🔨 Building client locally..."
         cd client
         npm run build || error "Local build failed"

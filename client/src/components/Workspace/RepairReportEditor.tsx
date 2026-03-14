@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Wrench, AlertCircle, CheckCircle, Save, X, Download, Send, FileText, Stethoscope, Plus, Trash2, Settings, ChevronDown, ChevronUp, DollarSign, Package } from 'lucide-react';
+import { Wrench, AlertCircle, Save, X, Download, Send, FileText, Stethoscope, Plus, Trash2, Settings, ChevronDown, ChevronUp, DollarSign, Package } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -332,6 +332,67 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                         }
                     } catch (e) {
                         console.error('Failed to parse diagnostic metadata:', e);
+                    }
+                }
+
+                // Find op_repair_report activity and import repair data (actions, parts, testing results, QA)
+                const opRepairActivity = activities.find((a: any) => a.activity_type === 'op_repair_report');
+                if (opRepairActivity && opRepairActivity.metadata) {
+                    try {
+                        const opRepairData = typeof opRepairActivity.metadata === 'string'
+                            ? JSON.parse(opRepairActivity.metadata)
+                            : opRepairActivity.metadata;
+                        
+                        setReportData((prev: ReportData) => {
+                            const newContent = { ...prev.content };
+                            
+                            // Import repair process data
+                            if (opRepairData.repair_process) {
+                                const rp = opRepairData.repair_process;
+                                // Merge actions_taken (keep existing from diagnostic, add from repair)
+                                const existingActions = newContent.repair_process.actions_taken || [];
+                                const repairActions = rp.actions_taken || [];
+                                newContent.repair_process.actions_taken = [...existingActions, ...repairActions].filter(Boolean);
+                                
+                                // Import parts_replaced with unit_price default
+                                if (rp.parts_replaced && rp.parts_replaced.length > 0) {
+                                    newContent.repair_process.parts_replaced = rp.parts_replaced.map((part: any) => ({
+                                        id: part.id || Date.now().toString() + Math.random(),
+                                        name: part.name || '',
+                                        part_number: part.part_number || '',
+                                        quantity: part.quantity || 1,
+                                        unit_price: part.unit_price || 0,  // 正式报告需要价格
+                                        status: part.status || 'new'
+                                    }));
+                                }
+                                
+                                // Import testing_results
+                                if (rp.testing_results) {
+                                    newContent.repair_process.testing_results = rp.testing_results;
+                                }
+                            }
+                            
+                            // Import QA result
+                            if (opRepairData.qa_result) {
+                                newContent.qa_result = {
+                                    passed: opRepairData.qa_result.passed ?? true,
+                                    test_duration: opRepairData.qa_result.test_duration || '48 hours',
+                                    notes: opRepairData.qa_result.notes || ''
+                                };
+                            }
+                            
+                            // Import warranty terms
+                            if (opRepairData.warranty_terms) {
+                                newContent.warranty_terms = {
+                                    ...newContent.warranty_terms,
+                                    repair_warranty_days: opRepairData.warranty_terms.repair_warranty_days || 90
+                                };
+                            }
+                            
+                            return { ...prev, content: newContent };
+                        });
+                    } catch (e) {
+                        console.error('Failed to parse op_repair_report metadata:', e);
                     }
                 }
             }
@@ -701,15 +762,6 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                         <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
                                             {reportData.content.device_info.product_name || '-'} / {reportData.content.device_info.serial_number || '-'}
                                         </div>
-                                        <div style={{ marginTop: 4 }}>
-                                            {ticketInfo.warranty_status === 'in_warranty' || ticketInfo.is_warranty ? (
-                                                <span style={{ fontSize: 11, color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(16,185,129,0.3)' }}>保修内</span>
-                                            ) : ticketInfo.warranty_status === 'warranty_unknown' ? (
-                                                <span style={{ fontSize: 11, color: '#F59E0B', background: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(245,158,11,0.3)' }}>保修待确认</span>
-                                            ) : (
-                                                <span style={{ fontSize: 11, color: '#EF4444', background: 'rgba(239,68,68,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.3)' }}>已过保</span>
-                                            )}
-                                        </div>
                                     </div>
                                     <div style={{ width: 1, height: 32, background: 'rgba(255,255,255,0.1)' }} />
                                     <div>
@@ -844,55 +896,6 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             {/* MS only sections */}
                             {!isOpMode && (
                                 <>
-                                    {/* QA Result - 紧凑布局 */}
-                                    <Section title="质量保证" icon={<CheckCircle size={16} />}>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: canEdit ? 'pointer' : 'default' }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={reportData.content.qa_result.passed}
-                                                    onChange={e => updateContent('qa_result.passed', e.target.checked)}
-                                                    disabled={!canEdit}
-                                                />
-                                                <span style={{ color: '#fff', fontSize: 13 }}>质检通过</span>
-                                            </label>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <span style={{ color: '#888', fontSize: 12 }}>测试时长:</span>
-                                                <input
-                                                    type="text"
-                                                    value={reportData.content.qa_result.test_duration}
-                                                    onChange={e => updateContent('qa_result.test_duration', e.target.value)}
-                                                    disabled={!canEdit}
-                                                    style={{ width: 80, padding: '4px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 12 }}
-                                                />
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <span style={{ color: '#888', fontSize: 12 }}>维修质保:</span>
-                                                <input
-                                                    type="number"
-                                                    value={reportData.content.warranty_terms.repair_warranty_days}
-                                                    onChange={e => updateContent('warranty_terms.repair_warranty_days', parseInt(e.target.value) || 90)}
-                                                    disabled={!canEdit}
-                                                    style={{ width: 60, padding: '4px 8px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 12, textAlign: 'center' }}
-                                                />
-                                                <span style={{ color: '#888', fontSize: 12 }}>天</span>
-                                            </div>
-                                        </div>
-                                        <TextArea
-                                            label="质检备注"
-                                            value={reportData.content.qa_result.notes}
-                                            onChange={v => updateContent('qa_result.notes', v)}
-                                            disabled={!canEdit}
-                                            placeholder="质检过程中的备注..."
-                                        />
-                                        {/* 保修条款 - 简化为小字备注 */}
-                                        <div style={{ marginTop: 12, padding: 10, background: 'rgba(255,255,255,0.02)', borderRadius: 6, border: '1px dashed rgba(255,255,255,0.1)' }}>
-                                            <div style={{ fontSize: 11, color: '#666', lineHeight: 1.6 }}>
-                                                <strong style={{ color: '#888' }}>维修保修条款：</strong>本次维修服务自客户签收之日起享有{reportData.content.warranty_terms.repair_warranty_days || 90}天质保期，仅限于本次维修所涉及的部件及服务。质保不包括：人为损坏、流体侵入、擅自拆修或改装、电压异常等非正常使用导致的损坏。如有疑问，请联系售后服务。
-                                            </div>
-                                        </div>
-                                    </Section>
-
                                     {/* Fee Details - Unified Section */}
                                     <Section title="费用明细" icon={<DollarSign size={16} />}>
                                         {/* Parts Sub-section */}
@@ -1129,6 +1132,27 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                             </div>
                                         </div>
                                     </Section>
+
+                                    {/* 维修保修条款 - 放在报告最后 */}
+                                    <div style={{ marginTop: 16, padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px dashed rgba(255,255,255,0.1)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                            <span style={{ fontSize: 13, color: '#888', fontWeight: 500 }}>维修保修条款</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{ fontSize: 12, color: '#666' }}>质保期:</span>
+                                                <input
+                                                    type="number"
+                                                    value={reportData.content.warranty_terms.repair_warranty_days}
+                                                    onChange={e => updateContent('warranty_terms.repair_warranty_days', parseInt(e.target.value) || 90)}
+                                                    disabled={!canEdit}
+                                                    style={{ width: 50, padding: '4px 6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 12, textAlign: 'center' }}
+                                                />
+                                                <span style={{ fontSize: 12, color: '#666' }}>天</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ fontSize: 12, color: '#666', lineHeight: 1.8 }}>
+                                            本次维修服务自客户签收之日起享有 <strong style={{ color: '#F59E0B' }}>{reportData.content.warranty_terms.repair_warranty_days || 90}</strong> 天质保期，仅限于本次维修所涉及的部件及服务。质保不包括：人为损坏、流体侵入、擅自拆修或改装、电压异常等非正常使用导致的损坏。如有疑问，请联系售后服务。
+                                        </div>
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -1389,82 +1413,91 @@ const ReportPreview: React.FC<{ reportData: ReportData; ticketInfo?: any }> = ({
         <div id="repair-report-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', color: '#333', fontSize: 13 }}>
             {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: 40, borderBottom: '3px solid #1a365d', paddingBottom: 20 }}>
-                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1a365d' }}>{reportData.content.header.title}</h1>
-                <p style={{ margin: '8px 0 0 0', fontSize: 14, color: '#4a5568' }}>{reportData.content.header.subtitle}</p>
+                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1a365d' }}>维修报告</h1>
+                <p style={{ margin: '8px 0 0 0', fontSize: 14, color: '#4a5568' }}>Repair Service Report</p>
             </div>
 
-            {/* Report Info - 合并报告信息和关键日期 */}
+            {/* Report Info Header */}
             <div style={{ marginBottom: 30, padding: 16, background: '#f7fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                {/* 第一行：报告基本信息 */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', gap: 32 }}>
                         <div>
-                            <div style={{ fontSize: 11, color: '#718096' }}>Report Number</div>
+                            <div style={{ fontSize: 11, color: '#718096' }}>报告编号</div>
                             <div style={{ fontSize: 14, fontWeight: 600, color: '#1a365d' }}>{reportData.report_number || 'DRAFT'}</div>
                         </div>
                         <div>
-                            <div style={{ fontSize: 11, color: '#718096' }}>Service Type</div>
+                            <div style={{ fontSize: 11, color: '#718096' }}>服务类型</div>
                             <div style={{ fontSize: 13, fontWeight: 600, color: reportData.service_type === 'warranty' ? '#38a169' : '#d69e2e' }}>
-                                {reportData.service_type === 'warranty' ? 'Warranty Service' : 'Paid Service'}
+                                {reportData.service_type === 'warranty' ? '保内服务' : '保外服务'}
                             </div>
                         </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 11, color: '#718096' }}>Report Date</div>
-                        <div style={{ fontSize: 13 }}>{new Date().toLocaleDateString()}</div>
+                        <div style={{ fontSize: 11, color: '#718096' }}>报告日期</div>
+                        <div style={{ fontSize: 13 }}>{new Date().toLocaleDateString('zh-CN')}</div>
                         {reportData.created_by && (
                             <div style={{ fontSize: 11, color: '#718096', marginTop: 4 }}>
-                                by {reportData.created_by.display_name}
+                                编制: {reportData.created_by.display_name}
                             </div>
                         )}
                     </div>
                 </div>
-                {/* 第二行：关键日期时间轴 */}
+                {/* 关键日期 */}
                 {ticketInfo && (
                     <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
                         <div>
-                            <div style={{ fontSize: 10, color: '#718096' }}>RMA Date</div>
+                            <div style={{ fontSize: 10, color: '#718096' }}>工单日期</div>
                             <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.created_at ? new Date(ticketInfo.created_at).toLocaleDateString('zh-CN') : '-'}</div>
                         </div>
                         <div style={{ width: 1, background: '#e2e8f0' }} />
                         <div>
-                            <div style={{ fontSize: 10, color: '#718096' }}>Received</div>
+                            <div style={{ fontSize: 10, color: '#718096' }}>收货日期</div>
                             <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.received_date ? new Date(ticketInfo.received_date).toLocaleDateString('zh-CN') : ticketInfo.returned_date ? new Date(ticketInfo.returned_date).toLocaleDateString('zh-CN') : '-'}</div>
                         </div>
                         <div style={{ width: 1, background: '#e2e8f0' }} />
                         <div>
-                            <div style={{ fontSize: 10, color: '#718096' }}>Diagnosis</div>
+                            <div style={{ fontSize: 10, color: '#718096' }}>诊断日期</div>
                             <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.repair_started_at ? new Date(ticketInfo.repair_started_at).toLocaleDateString('zh-CN') : '-'}</div>
                         </div>
                         <div style={{ width: 1, background: '#e2e8f0' }} />
                         <div>
-                            <div style={{ fontSize: 10, color: '#718096' }}>Repair</div>
+                            <div style={{ fontSize: 10, color: '#718096' }}>完成日期</div>
                             <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.repair_completed_at ? new Date(ticketInfo.repair_completed_at).toLocaleDateString('zh-CN') : new Date().toLocaleDateString('zh-CN')}</div>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* Device Info */}
-            <SectionPreview title="1. Device Information">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                    <InfoRow label="Product Model" value={reportData.content.device_info.product_name} />
-                    <InfoRow label="Serial Number" value={reportData.content.device_info.serial_number} />
-                    <InfoRow label="Firmware Version" value={reportData.content.device_info.firmware_version} />
+            {/* 1. 客户信息 */}
+            <SectionPreview title="1. 客户信息">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <InfoRow label="客户名称" value={ticketInfo?.customer_name || ticketInfo?.account_name || '-'} />
+                    <InfoRow label="联系人" value={ticketInfo?.contact_name || '-'} />
+                    <InfoRow label="联系电话" value={ticketInfo?.contact_phone || '-'} />
+                    <InfoRow label="联系邮箱" value={ticketInfo?.contact_email || '-'} />
                 </div>
             </SectionPreview>
 
-            {/* Issue Description */}
-            <SectionPreview title="2. Issue Description">
+            {/* 2. 设备信息 */}
+            <SectionPreview title="2. 设备信息">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    <InfoRow label="产品型号" value={reportData.content.device_info.product_name} />
+                    <InfoRow label="序列号" value={reportData.content.device_info.serial_number} />
+                    <InfoRow label="固件版本" value={reportData.content.device_info.firmware_version} />
+                </div>
+            </SectionPreview>
+
+            {/* 3. 问题描述 */}
+            <SectionPreview title="3. 问题描述">
                 <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Customer Reported:</div>
+                    <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>客户报修:</div>
                     <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontStyle: 'italic', fontSize: 13 }}>
-                        {reportData.content.issue_description.customer_reported || '[No description provided]'}
+                        {reportData.content.issue_description.customer_reported || '[未提供]'}
                     </div>
                 </div>
                 {reportData.content.issue_description.symptoms.length > 0 && (
                     <div>
-                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Symptoms:</div>
+                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>故障现象:</div>
                         <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
                             {reportData.content.issue_description.symptoms.map((s: string, i: number) => (
                                 <li key={i} style={{ marginBottom: 4 }}>{s}</li>
@@ -1474,13 +1507,13 @@ const ReportPreview: React.FC<{ reportData: ReportData; ticketInfo?: any }> = ({
                 )}
             </SectionPreview>
 
-            {/* Diagnosis */}
-            <SectionPreview title="3. Technical Diagnosis">
-                <InfoBlock label="Findings" value={reportData.content.diagnosis.findings} />
-                <InfoBlock label="Root Cause" value={reportData.content.diagnosis.root_cause} />
+            {/* 4. 技术诊断 */}
+            <SectionPreview title="4. 技术诊断">
+                <InfoBlock label="检测结果" value={reportData.content.diagnosis.findings} />
+                <InfoBlock label="故障原因" value={reportData.content.diagnosis.root_cause} />
                 {reportData.content.diagnosis.troubleshooting_steps.length > 0 && (
                     <div>
-                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Troubleshooting Steps:</div>
+                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>排查步骤:</div>
                         <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
                             {reportData.content.diagnosis.troubleshooting_steps.map((s: string, i: number) => (
                                 <li key={i} style={{ marginBottom: 4 }}>{s}</li>
@@ -1490,87 +1523,11 @@ const ReportPreview: React.FC<{ reportData: ReportData; ticketInfo?: any }> = ({
                 )}
             </SectionPreview>
 
-            {/* Fee Details - NEW */}
-            <SectionPreview title="4. Fee Details">
-                {/* Parts */}
-                {reportData.content.repair_process.parts_replaced.length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Parts:</div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                            <thead>
-                                <tr style={{ background: '#edf2f7' }}>
-                                    <th style={{ padding: 8, textAlign: 'left', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Part Name</th>
-                                    <th style={{ padding: 8, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Part No.</th>
-                                    <th style={{ padding: 8, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Qty</th>
-                                    <th style={{ padding: 8, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Unit Price</th>
-                                    <th style={{ padding: 8, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => (
-                                    <tr key={i}>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>{part.name}</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center', fontFamily: 'monospace', fontSize: 11 }}>{part.part_number || '-'}</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{part.quantity}</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(part.unit_price || 0).toFixed(2)}</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        <div style={{ textAlign: 'right', marginTop: 6, fontSize: 12, color: '#666' }}>Parts Subtotal: <span style={{ fontWeight: 600 }}>{reportData.currency} {Number(reportData.parts_total || 0).toFixed(2)}</span></div>
-                    </div>
-                )}
-                {/* Labor */}
-                {reportData.content.labor_charges.length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Labor:</div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                            <thead>
-                                <tr style={{ background: '#edf2f7' }}>
-                                    <th style={{ padding: 8, textAlign: 'left', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Description</th>
-                                    <th style={{ padding: 8, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Hours</th>
-                                    <th style={{ padding: 8, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Rate</th>
-                                    <th style={{ padding: 8, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {reportData.content.labor_charges.map((charge: LaborCharge, i: number) => (
-                                    <tr key={i}>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>{charge.description}</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{charge.hours}h</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(charge.rate || 0).toFixed(2)}/h</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(charge.total || 0).toFixed(2)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        <div style={{ textAlign: 'right', marginTop: 6, fontSize: 12, color: '#666' }}>Labor Subtotal: <span style={{ fontWeight: 600 }}>{reportData.currency} {Number(reportData.labor_total || 0).toFixed(2)}</span></div>
-                    </div>
-                )}
-                {/* Shipping */}
-                {(reportData.content.logistics?.shipping_fee || 0) > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Shipping:</div>
-                        <div style={{ padding: 10, background: '#f7fafc', borderRadius: 6, display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                            <span>{reportData.content.logistics?.shipping_method || 'Express'}</span>
-                            <span style={{ fontWeight: 600 }}>¥{Number(reportData.content.logistics?.shipping_fee || 0).toFixed(2)}</span>
-                        </div>
-                    </div>
-                )}
-                {/* No fee items */}
-                {reportData.content.repair_process.parts_replaced.length === 0 && 
-                 reportData.content.labor_charges.length === 0 && 
-                 !(reportData.content.logistics?.shipping_fee > 0) && (
-                    <div style={{ padding: 20, textAlign: 'center', color: '#a0aec0', fontSize: 13 }}>No fee items recorded</div>
-                )}
-            </SectionPreview>
-
-            {/* Repair Process */}
-            <SectionPreview title="5. Repair Process">
+            {/* 5. 维修过程 */}
+            <SectionPreview title="5. 维修过程">
                 {reportData.content.repair_process.actions_taken.length > 0 && (
                     <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>Actions Taken:</div>
+                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>维修操作:</div>
                         <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
                             {reportData.content.repair_process.actions_taken.map((a: string, i: number) => (
                                 <li key={i} style={{ marginBottom: 4 }}>{a}</li>
@@ -1578,32 +1535,102 @@ const ReportPreview: React.FC<{ reportData: ReportData; ticketInfo?: any }> = ({
                         </ul>
                     </div>
                 )}
-                <InfoBlock label="Testing Results" value={reportData.content.repair_process.testing_results} />
+                <InfoBlock label="测试结果" value={reportData.content.repair_process.testing_results} />
             </SectionPreview>
 
-            {/* QA Result */}
-            <SectionPreview title="6. Quality Assurance">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                    <span style={{ fontSize: 12, color: '#718096' }}>QA Status:</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: reportData.content.qa_result.passed ? '#38a169' : '#e53e3e', fontWeight: 600, fontSize: 13 }}>
-                        {reportData.content.qa_result.passed ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-                        {reportData.content.qa_result.passed ? 'PASSED' : 'FAILED'}
-                    </span>
-                    <span style={{ fontSize: 12, color: '#718096' }}>Test Duration: {reportData.content.qa_result.test_duration}</span>
-                </div>
-                {reportData.content.qa_result.notes && (
-                    <InfoBlock label="QA Notes" value={reportData.content.qa_result.notes} />
+            {/* 6. 费用明细表 (合并原来的费用详情和费用汇总) */}
+            <SectionPreview title="6. 费用明细">
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}>
+                    <thead>
+                        <tr style={{ background: '#edf2f7' }}>
+                            <th style={{ padding: 10, textAlign: 'left', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>项目</th>
+                            <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>规格/编号</th>
+                            <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>数量</th>
+                            <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>单价</th>
+                            <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>小计</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {/* 零件 */}
+                        {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => (
+                            <tr key={`part-${i}`}>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>零件: {part.name}</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center', fontFamily: 'monospace', fontSize: 11 }}>{part.part_number || '-'}</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{part.quantity}</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(part.unit_price || 0).toFixed(2)}</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}</td>
+                            </tr>
+                        ))}
+                        {/* 工时 */}
+                        {reportData.content.labor_charges.map((charge: LaborCharge, i: number) => (
+                            <tr key={`labor-${i}`}>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>工时: {charge.description}</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{charge.hours}小时</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>1</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(charge.rate || 0).toFixed(2)}/小时</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(charge.total || 0).toFixed(2)}</td>
+                            </tr>
+                        ))}
+                        {/* 运费 */}
+                        {(reportData.content.logistics?.shipping_fee || 0) > 0 && (
+                            <tr>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>运费: {reportData.content.logistics?.shipping_method || '快递'}</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>-</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>1</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>-</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.content.logistics?.shipping_fee || 0).toFixed(2)}</td>
+                            </tr>
+                        )}
+                        {/* 无费用项目时显示空行 */}
+                        {reportData.content.repair_process.parts_replaced.length === 0 && 
+                         reportData.content.labor_charges.length === 0 && 
+                         !(reportData.content.logistics?.shipping_fee > 0) && (
+                            <tr>
+                                <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#a0aec0' }}>未记录费用项目</td>
+                            </tr>
+                        )}
+                    </tbody>
+                    <tfoot>
+                        <tr style={{ background: '#f7fafc' }}>
+                            <td colSpan={3} style={{ padding: 10 }}></td>
+                            <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>零件小计:</td>
+                            <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.parts_total || 0).toFixed(2)}</td>
+                        </tr>
+                        <tr style={{ background: '#f7fafc' }}>
+                            <td colSpan={3} style={{ padding: 10 }}></td>
+                            <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>工时小计:</td>
+                            <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.labor_total || 0).toFixed(2)}</td>
+                        </tr>
+                        {(reportData.content.logistics?.shipping_fee || 0) > 0 && (
+                            <tr style={{ background: '#f7fafc' }}>
+                                <td colSpan={3} style={{ padding: 10 }}></td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>运费:</td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.content.logistics?.shipping_fee || 0).toFixed(2)}</td>
+                            </tr>
+                        )}
+                        <tr style={{ background: '#1a365d' }}>
+                            <td colSpan={3} style={{ padding: 12 }}></td>
+                            <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: '#fff', fontSize: 14 }}>合计金额:</td>
+                            <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: '#fff', fontSize: 14 }}>{reportData.currency} {Number(reportData.total_cost || 0).toLocaleString()}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                {reportData.service_type === 'warranty' && (
+                    <div style={{ fontSize: 12, color: '#38a169', fontStyle: 'italic', textAlign: 'right' }}>
+                        * 本次为保内服务，以上费用仅供记录，实际免收。
+                    </div>
                 )}
             </SectionPreview>
 
-            {/* Warranty Terms */}
-            <SectionPreview title="7. Warranty Terms">
-                <div style={{ padding: 14, background: '#ebf8ff', borderRadius: 8, border: '1px solid #90cdf4' }}>
+            {/* Footer - 包含保修条款 */}
+            <div style={{ marginTop: 40, paddingTop: 20, borderTop: '2px solid #e2e8f0' }}>
+                {/* 维修保修条款 */}
+                <div style={{ padding: 14, background: '#ebf8ff', borderRadius: 8, border: '1px solid #90cdf4', marginBottom: 20 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: '#2b6cb0', marginBottom: 6 }}>
-                        Repair Warranty: {reportData.content.warranty_terms.repair_warranty_days} Days
+                        维修保修: {reportData.content.warranty_terms.repair_warranty_days} 天
                     </div>
                     <div style={{ fontSize: 12, color: '#4a5568' }}>
-                        This warranty covers the parts replaced during this repair service. It does not cover:
+                        本保修仅适用于本次维修更换的部件，不包括:
                     </div>
                     <ul style={{ margin: '6px 0 0 0', paddingLeft: 20, fontSize: 12, color: '#4a5568' }}>
                         {reportData.content.warranty_terms.exclusions.map((e: string, i: number) => (
@@ -1611,34 +1638,11 @@ const ReportPreview: React.FC<{ reportData: ReportData; ticketInfo?: any }> = ({
                         ))}
                     </ul>
                 </div>
-            </SectionPreview>
-            {/* Fee Summary */}
-            <SectionPreview title="8. Fee Summary">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #edf2f7' }}>
-                        <span style={{ color: '#718096' }}>Parts Total:</span>
-                        <span style={{ fontWeight: 600 }}>{reportData.currency} {Number(reportData.parts_total || 0).toLocaleString()}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #edf2f7' }}>
-                        <span style={{ color: '#718096' }}>Labor Total:</span>
-                        <span style={{ fontWeight: 600 }}>{reportData.currency} {Number(reportData.labor_total || 0).toLocaleString()}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', marginTop: 4 }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: '#1a365d' }}>Total Amount:</span>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: '#1a365d' }}>{reportData.currency} {Number(reportData.total_cost || 0).toLocaleString()}</span>
-                    </div>
-                    {reportData.service_type === 'warranty' && (
-                        <div style={{ fontSize: 11, color: '#38a169', fontStyle: 'italic', textAlign: 'right' }}>
-                            * This is an In-Warranty service. The above total is for record only and is waived (0.00).
-                        </div>
-                    )}
+                {/* 公司信息 */}
+                <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: 12, color: '#a0aec0' }}>本报告由卓曜科技（深圳）有限公司出具 | KINEFINITY TECHNOLOGY CO., LTD.</p>
+                    <p style={{ fontSize: 12, color: '#a0aec0', marginTop: 4 }}>如有疑问，请联系 service@kinefinity.com</p>
                 </div>
-            </SectionPreview>
-
-            {/* Footer */}
-            <div style={{ marginTop: 60, paddingTop: 30, borderTop: '2px solid #e2e8f0', textAlign: 'center' }}>
-                <p style={{ fontSize: 12, color: '#a0aec0' }}>This is an official repair report from KINEFINITY TECHNOLOGY CO., LTD.</p>
-                <p style={{ fontSize: 12, color: '#a0aec0', marginTop: 4 }}>For inquiries, please contact service@kinefinity.com</p>
             </div>
         </div>
     </div>
@@ -1697,7 +1701,7 @@ const InfoBlock: React.FC<{ label: string; value: string }> = ({ label, value })
     <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 12, color: '#718096', marginBottom: 4 }}>{label}:</div>
         <div style={{ padding: 10, background: '#f7fafc', borderRadius: 6, lineHeight: 1.5, fontSize: 13 }}>
-            {value || <span style={{ color: '#a0aec0', fontStyle: 'italic' }}>[No information provided]</span>}
+            {value || <span style={{ color: '#a0aec0', fontStyle: 'italic' }}>[未提供]</span>}
         </div>
     </div>
 );

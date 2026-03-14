@@ -55,7 +55,10 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
     useEffect(() => {
         if (ticket.final_settlement) {
             try {
-                const data = JSON.parse(ticket.final_settlement);
+                // 处理字符串或已解析对象
+                const data = typeof ticket.final_settlement === 'string' 
+                    ? JSON.parse(ticket.final_settlement) 
+                    : ticket.final_settlement;
                 setFormData({
                     payment_confirmed: !!data.payment_confirmed,
                     payment_memo: data.payment_memo || '',
@@ -118,14 +121,28 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
 
     if (!isOpen) return null;
 
+    // 检测是否为更正模式（工单已经不在 ms_closing 节点）
+    const isCorrectMode = ticket.current_node !== 'ms_closing';
+
     const handleSave = async (isFinal: boolean) => {
         setLoading(true);
         try {
-            await axios.patch(`/api/v1/tickets/${ticket.id}`, {
+            // 构建 PATCH 数据
+            const patchData: any = {
                 final_settlement: JSON.stringify(formData)
-            }, { headers: { Authorization: `Bearer ${token}` } });
+            };
+            
+            // 更正模式下添加 change_reason 记录到时间线
+            if (isCorrectMode) {
+                patchData.change_reason = '更正了结案确认信息';
+            }
+            
+            await axios.patch(`/api/v1/tickets/${ticket.id}`, patchData, { 
+                headers: { Authorization: `Bearer ${token}` } 
+            });
 
-            if (isFinal) {
+            // 只有在非更正模式且 isFinal 时才执行 settle action
+            if (isFinal && !isCorrectMode) {
                 await axios.post(`/api/v1/tickets/${ticket.id}/action`, {
                     action: 'settle'
                 }, { headers: { Authorization: `Bearer ${token}` } });
@@ -518,19 +535,19 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                     ) : (
                         <button
                             onClick={() => handleSave(true)}
-                            disabled={loading || !canConfirm}
+                            disabled={loading || (!isCorrectMode && !canConfirm)}
                             style={{
-                                flex: 1.5, padding: '14px', background: canConfirm ? '#FFD200' : 'rgba(255,210,0,0.1)',
-                                border: 'none', borderRadius: 12, color: canConfirm ? '#000' : '#666',
-                                fontSize: 15, fontWeight: 700, cursor: canConfirm ? 'pointer' : 'not-allowed',
+                                flex: 1.5, padding: '14px', background: (isCorrectMode || canConfirm) ? '#FFD200' : 'rgba(255,210,0,0.1)',
+                                border: 'none', borderRadius: 12, color: (isCorrectMode || canConfirm) ? '#000' : '#666',
+                                fontSize: 15, fontWeight: 700, cursor: (isCorrectMode || canConfirm) ? 'pointer' : 'not-allowed',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                boxShadow: canConfirm ? '0 8px 20px rgba(255,210,0,0.25)' : 'none',
+                                boxShadow: (isCorrectMode || canConfirm) ? '0 8px 20px rgba(255,210,0,0.25)' : 'none',
                                 transition: 'all 0.2s'
                             }}
                         >
                             {loading ? '处理中...' : (
                                 <>
-                                    <ArrowRight size={20} /> 确认并移交至展示发货 (OP)
+                                    <ArrowRight size={20} /> {isCorrectMode ? '保存更正' : '确认并移交至展示发货 (OP)'}
                                 </>
                             )}
                         </button>

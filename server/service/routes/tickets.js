@@ -7,6 +7,8 @@
  */
 
 const express = require('express');
+const path = require('path');
+const fs = require('fs-extra');
 const slaService = require('../sla_service');
 const { hasGlobalAccess } = require('../middleware/permission');
 
@@ -534,7 +536,14 @@ module.exports = function (db, authenticate, serviceUpload) {
 
                 // Auto close
                 auto_close_reminder_sent: row.auto_close_reminder_sent,
-                auto_close_at: row.auto_close_at
+                auto_close_at: row.auto_close_at,
+
+                // P2 Warranty Assessment Fields
+                technical_damage_status: row.technical_damage_status,
+                technical_warranty_suggestion: row.technical_warranty_suggestion,
+                warranty_calculation: row.warranty_calculation ? (typeof row.warranty_calculation === 'string' ? JSON.parse(row.warranty_calculation) : row.warranty_calculation) : null,
+                ms_review: row.ms_review ? (typeof row.ms_review === 'string' ? JSON.parse(row.ms_review) : row.ms_review) : null,
+                final_settlement: row.final_settlement ? (typeof row.final_settlement === 'string' ? JSON.parse(row.final_settlement) : row.final_settlement) : null
             };
         }
 
@@ -1615,6 +1624,99 @@ module.exports = function (db, authenticate, serviceUpload) {
             // Trigger auto-assignment if not manually assigned to a specific person
             if (!assigned_to) {
                 autoAssignTicket(result.lastInsertRowid, initialNode, ticket_type, req.user.id);
+            }
+
+            // ====== 处理创建工单时上传的附件 ======
+            let attachmentsCount = 0;
+            if (req.files && req.files.length > 0) {
+                const typeMap = { 'rma': 'RMA', 'inquiry': 'Inquiry', 'svc': 'Inquiry', 'dealer_repair': 'DealerRepair' };
+                const typeDir = typeMap[ticket_type.toLowerCase()] || 'Other';
+                
+                // Base Dir Calculation (Consistent with server/index.js)
+                const SERVICE_BASE_DIR = (process.platform === 'darwin' && !__dirname.includes('KineCore'))
+                    ? '/Volumes/fileserver/Service'
+                    : path.join(__dirname, '../../data/Service');
+
+                const finalTargetDir = path.join(SERVICE_BASE_DIR, 'Tickets', typeDir, ticketNumber);
+                fs.ensureDirSync(finalTargetDir);
+
+                req.files.forEach(file => {
+                    const finalPath = path.join(finalTargetDir, file.filename);
+                    try {
+                        // Move from Temp to Final
+                        fs.moveSync(file.path, finalPath, { overwrite: true });
+
+                        // In DB we store the path relative to SERVICE_BASE_DIR
+                        const dbPath = `Tickets/${typeDir}/${ticketNumber}/${file.filename}`;
+
+                        // 工单级附件：activity_id = NULL
+                        db.prepare(`
+                            INSERT INTO ticket_attachments (
+                                ticket_id, activity_id, file_name, file_path, 
+                                file_size, file_type, uploaded_by
+                            ) VALUES (?, NULL, ?, ?, ?, ?, ?)
+                        `).run(
+                            result.lastInsertRowid,
+                            file.originalname,
+                            dbPath,
+                            file.size,
+                            file.mimetype,
+                            req.user.id
+                        );
+
+                        attachmentsCount++;
+
+                        // Fire-and-forget background thumbnail generation for images
+                        if (file.mimetype.startsWith('image/')) {
+                            const thumbDir = path.resolve(__dirname, '../../data/.thumbnails');
+                            fs.ensureDirSync(thumbDir);
+                            const thumbFilename = String(dbPath).replace(/[^a-zA-Z0-9.-]/g, '_') + '_thumb.webp';
+                            const thumbPath = path.join(thumbDir, thumbFilename);
+                            const THUMB_SIZE = 400;
+                            
+                            const ext = path.extname(finalPath).toLowerCase();
+                            const isHeic = ext === '.heic' || ext === '.heif';
+                            
+                            if (isHeic && process.platform === 'darwin') {
+                                // macOS HEIC: use sips + sharp
+                                const { exec } = require('child_process');
+                                const tempJpg = thumbPath.replace('.webp', '_temp.jpg');
+                                exec(`sips -s format jpeg -Z ${THUMB_SIZE} "${finalPath}" --out "${tempJpg}"`, async (err) => {
+                                    if (!err) {
+                                        try {
+                                            const sharp = require('sharp');
+                                            await sharp(tempJpg)
+                                                .rotate()
+                                                .resize(THUMB_SIZE, THUMB_SIZE, { fit: 'inside', withoutEnlargement: true })
+                                                .webp({ quality: 80 })
+                                                .toFile(thumbPath);
+                                            fs.removeSync(tempJpg);
+                                        } catch (sharpErr) {
+                                            console.error('[Thumb] sharp conversion failed:', sharpErr.message);
+                                        }
+                                    }
+                                });
+                            } else {
+                                // Non-HEIC: direct sharp processing
+                                const sharp = require('sharp');
+                                sharp(finalPath)
+                                    .rotate()
+                                    .resize(THUMB_SIZE, THUMB_SIZE, { fit: 'inside', withoutEnlargement: true })
+                                    .webp({ quality: 80 })
+                                    .toFile(thumbPath)
+                                    .catch(e => console.error('[Thumb] Generation failed:', e.message));
+                            }
+                        }
+                    } catch (moveErr) {
+                        console.error('[Tickets] Attachment move error:', moveErr.message);
+                    }
+                });
+
+                // Update attachments_count on ticket
+                if (attachmentsCount > 0) {
+                    db.prepare('UPDATE tickets SET attachments_count = ? WHERE id = ?')
+                        .run(attachmentsCount, result.lastInsertRowid);
+                }
             }
 
             res.json({

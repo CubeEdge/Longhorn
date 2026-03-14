@@ -9,7 +9,7 @@ import {
   Clock, User, MessageSquare,
   ArrowRight, Plus as PlusIcon, AlertTriangle,
   AtSign, Paperclip, ChevronDown, ChevronRight, UserCheck,
-  Edit3, Trash2, X, Wrench, RefreshCw
+  Edit3, Trash2, X, Wrench, RefreshCw, Package, Truck, CheckCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -129,6 +129,13 @@ const FieldUpdateContent: React.FC<FieldUpdateContentProps> = ({ metadata }) => 
   };
 
   const fieldLabel = metadata.field_label || metadata.field_name || '未知字段';
+  
+  // 过滤无意义的变更：未知字段 且 新旧值都为空
+  const isEmptyOld = metadata.old_value === null || metadata.old_value === undefined || metadata.old_value === '';
+  const isEmptyNew = metadata.new_value === null || metadata.new_value === undefined || metadata.new_value === '';
+  if (fieldLabel === '未知字段' && isEmptyOld && isEmptyNew) {
+    return null;
+  }
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 6px' }}>
@@ -206,6 +213,9 @@ interface ActivityTimelineProps {
   onActivityClick?: (activity: Activity) => void;
   ticketId?: number;  // 用于更正API调用
   onRefresh?: () => void;  // 更正后刷新活动列表
+  // 关键节点支持
+  ticket?: any;  // 工单数据（用于检测节点完成状态）
+  onKeyNodeClick?: (nodeType: 'op_receive' | 'op_shipping' | 'ms_review' | 'ms_closing') => void;
 }
 
 // ==============================
@@ -297,15 +307,18 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   activities,
   loading,
   onActivityClick,
+  ticket,
+  onKeyNodeClick,
   // ticketId and onRefresh are used by ActivityDetailDrawer, kept in props for consistency
 }) => {
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string, type: 'image' | 'video' } | null>(null);
   const [showSystemEvents, setShowSystemEvents] = useState(false);
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   void token; // suppress unused warning, used for thumbnail URLs
+  void onKeyNodeClick; // 保留接口兼容性，关键节点现在通过 onActivityClick 处理
 
   // Define activity type categories
-  // Key outputs: user-driven important outputs that should appear in "讨论与诊断"
+  // Key outputs: user-driven important outputs that should appear in "讨论与关键节点"
   const COMMENT_TYPES = ['comment', 'diagnostic_report', 'op_repair_report'];
   const KEY_OUTPUT_TYPES = ['document_published', 'document_recalled']; // PI/维修报告发布撤回
   const SYSTEM_TYPES = ['status_change', 'assignment_change', 'field_update', 'system_event', 'creation', 'assignment', 'priority_change', 'soft_delete'];
@@ -314,7 +327,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   const filteredActivities = activities.filter(a => a.activity_type !== 'mention');
 
   // Helper to check if a comment is a key output (logistics, repair content, etc.)
-  // These should appear in "讨论与诊断" not "系统变更"
+  // These should appear in "讨论与关键节点" not "系统变更"
   const isKeyOutputComment = (activity: Activity): boolean => {
     if (activity.activity_type !== 'comment') return false;
     const content = activity.content || '';
@@ -323,6 +336,190 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
            /^【.*发出.*件/.test(content) ||
            /(单号|快递|物流|收货|发货)/.test(content);
   };
+
+  // ====== 关键节点检测与生成 ======
+  // 辅助函数：从活动中查找特定节点的操作人
+  const findNodeTransitionActor = (fromNode: string, toNode: string): Activity | undefined => {
+    // 优先查找 status_change 活动，记录节点转换
+    return activities.find(a => {
+      if (a.activity_type === 'status_change' && a.metadata) {
+        const meta = a.metadata as any;
+        return (meta.from_node === fromNode && meta.to_node === toNode) ||
+               (meta.from_status === fromNode && meta.to_status === toNode);
+      }
+      return false;
+    });
+  };
+
+  // 解析 final_settlement JSON 字符串
+  const parseFinalSettlement = (data: any): Record<string, any> => {
+    if (!data) return {};
+    if (typeof data === 'string') {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        return {};
+      }
+    }
+    return data;
+  };
+
+  // 生成关键节点的虚拟活动条目
+  // 重要：关键节点时间应使用最新变更时间，而非第一次提交时间
+  const generateKeyNodeActivities = (): Activity[] => {
+    if (!ticket) return [];
+    const keyNodes: Activity[] = [];
+    const rmaFlow = ['submitted', 'op_receiving', 'op_diagnosing', 'ms_review', 'op_repairing', 'ms_closing', 'op_shipping', 'op_shipping_transit', 'resolved'];
+    const currentIndex = rmaFlow.indexOf(ticket.current_node);
+    
+    // 辅助函数：从活动列表中找到所有匹配条件的活动，取最新的一个
+    // 注意：activities 已按 created_at DESC 排序，所以第一个就是最新的
+    const findLatestActivity = (predicate: (a: Activity) => boolean): Activity | undefined => {
+      return activities.find(predicate);
+    };
+
+    // 1. OP 收货信息（op_receiving/submitted → op_diagnosing 之后）
+    if (currentIndex > rmaFlow.indexOf('op_receiving')) {
+      // 从活动中找到收货信息（优先专用类型，其次节点转换）- 取最新的
+      const receiveActivity = findLatestActivity(a => a.activity_type === 'receiving_info') ||
+                              findNodeTransitionActor('op_receiving', 'op_diagnosing') ||
+                              findNodeTransitionActor('submitted', 'op_diagnosing');
+      keyNodes.push({
+        id: -1001,
+        activity_type: 'key_node_op_receive',
+        content: '完成收货入库',
+        created_at: receiveActivity?.created_at || ticket.updated_at || ticket.created_at,
+        actor: receiveActivity?.actor || null,
+        visibility: 'internal',
+        metadata: { 
+          node_type: 'op_receive',
+          original_activity_id: receiveActivity?.id,
+          ...(receiveActivity?.activity_type === 'receiving_info' ? (receiveActivity?.metadata || {}) : {})
+        }
+      } as Activity);
+    }
+
+    // 2. MS 审核信息（ms_review 完成后）
+    if (ticket.ms_review || currentIndex > rmaFlow.indexOf('ms_review')) {
+      // 查找审核操作人：优先 field_update(ms_review)，其次节点转换 - 取最新的
+      const reviewActivity = findLatestActivity(a => 
+        a.activity_type === 'field_update' && (a.metadata as any)?.field_name === 'ms_review'
+      ) || findNodeTransitionActor('ms_review', 'op_repairing');
+      
+      // ms_review 的实际字段映射（处理JSON字符串情况）
+      let msReviewData: any = {};
+      if (ticket.ms_review) {
+        msReviewData = typeof ticket.ms_review === 'string' 
+          ? JSON.parse(ticket.ms_review) 
+          : ticket.ms_review;
+      }
+      
+      // 映射保修决策：warranty_valid -> in_warranty, warranty_expired/warranty_void_damage -> out_warranty
+      const warrantyDecision = msReviewData.final_decision === 'warranty_valid' 
+        ? 'in_warranty' 
+        : (msReviewData.final_decision === 'warranty_expired' || msReviewData.final_decision === 'warranty_void_damage' 
+          ? 'out_warranty' 
+          : msReviewData.final_decision);
+      
+      keyNodes.push({
+        id: -1002,
+        activity_type: 'key_node_ms_review',
+        content: '完成商务审核',
+        created_at: reviewActivity?.created_at || ticket.updated_at || ticket.created_at,
+        actor: reviewActivity?.actor || null,
+        visibility: 'internal',
+        metadata: { 
+          node_type: 'ms_review', 
+          sensitive: true,
+          // 映射实际字段名
+          warranty_decision: warrantyDecision,
+          charge_decision: msReviewData.final_decision === 'warranty_valid' ? 'free' : 'charge',
+          estimated_cost: msReviewData.estimated_cost_max || msReviewData.estimated_cost_min,
+          customer_confirmed: msReviewData.customer_confirmed,
+          review_notes: msReviewData.decision_remark
+        }
+      } as Activity);
+    }
+
+    // 3. MS 结案信息（ms_closing 完成后）
+    if (ticket.final_settlement || currentIndex > rmaFlow.indexOf('ms_closing')) {
+      // 查找结案操作人：优先 field_update(final_settlement)，其次节点转换 - 取最新的
+      const closingActivity = findLatestActivity(a => 
+        a.activity_type === 'field_update' && (a.metadata as any)?.field_name === 'final_settlement'
+      ) || findNodeTransitionActor('ms_closing', 'op_shipping');
+      
+      // 解析 final_settlement
+      const settlementData = parseFinalSettlement(ticket.final_settlement);
+      keyNodes.push({
+        id: -1003,
+        activity_type: 'key_node_ms_closing',
+        content: '完成结案确认',
+        created_at: closingActivity?.created_at || ticket.updated_at || ticket.created_at,
+        actor: closingActivity?.actor || null,
+        visibility: 'internal',
+        metadata: { 
+          node_type: 'ms_closing', 
+          sensitive: true,
+          // 映射实际字段名
+          settlement_type: settlementData.shipping_combine === 'standalone' ? '独立发货' : 
+                          (settlementData.shipping_combine === 'with_order' ? '随订单发货' : '随其他RMA'),
+          payment_confirmed: settlementData.payment_confirmed,
+          actual_payment: settlementData.actual_payment,
+          closing_notes: settlementData.handover_notes
+        }
+      } as Activity);
+    }
+
+    // 4. OP 发货信息（op_shipping 完成后）
+    if (currentIndex >= rmaFlow.indexOf('resolved') || ticket.current_node === 'op_shipping_transit') {
+      // 从活动中找到发货信息 - 取最新的
+      const shippingActivity = findLatestActivity(a => a.activity_type === 'shipping_info');
+      keyNodes.push({
+        id: -1004,
+        activity_type: 'key_node_op_shipping',
+        content: shippingActivity ? '发货信息已录入' : '完成发货',
+        created_at: shippingActivity?.created_at || ticket.updated_at || ticket.created_at,
+        actor: shippingActivity?.actor || null,
+        visibility: 'internal',
+        metadata: { 
+          node_type: 'op_shipping',
+          shipping_method: ticket.shipping_method,
+          ...(shippingActivity?.metadata || {})
+        }
+      } as Activity);
+    }
+
+    return keyNodes;
+  };
+
+  const keyNodeActivities = generateKeyNodeActivities();
+
+  // 检查是否有权限编辑关键节点（保留用于未来扩展）
+  // 权限规则：原操作人 / Admin/Exec / 对应部门Lead
+  const canEditKeyNode = (nodeType: string, activityActorId?: number): boolean => {
+    if (!user) return false;
+    
+    // 1. Admin/Exec 始终可以编辑
+    const isAdmin = user.role === 'Admin' || user.role === 'Exec';
+    if (isAdmin) return true;
+    
+    // 2. 原操作人可以编辑
+    if (activityActorId && activityActorId === user.id) return true;
+    
+    // 3. 对应部门 Lead 可以编辑
+    const userDept = (user.department_code || '').toUpperCase();
+    const isOpLead = user.role === 'Lead' && (userDept === 'OP' || userDept === 'PRODUCTION');
+    const isMsLead = user.role === 'Lead' && userDept === 'MS';
+    
+    if (nodeType === 'op_receive' || nodeType === 'op_shipping') {
+      return isOpLead;
+    }
+    if (nodeType === 'ms_review' || nodeType === 'ms_closing') {
+      return isMsLead;
+    }
+    return false;
+  };
+  void canEditKeyNode; // 保留用于未来扩展，权限检查现在在 ActivityDetailDrawer 内部进行
 
   // Helper to check if a comment is a pure system operation (status changes, etc.)
   const isSystemOperationComment = (activity: Activity): boolean => {
@@ -333,14 +530,24 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
     return /^【(状态|指派|节点|系统)/.test(content);
   };
 
+  // Helper: 判断是否为"创建工单"事件（应显示在关键节点）
+  const isCreationEvent = (a: Activity) => 
+    a.activity_type === 'system_event' && (a.metadata as any)?.event_type === 'creation';
+
   // Split activities into comments/key outputs and system events
-  const commentActivities = filteredActivities.filter(a => 
+  const regularCommentActivities = filteredActivities.filter(a => 
     COMMENT_TYPES.includes(a.activity_type) ||
     KEY_OUTPUT_TYPES.includes(a.activity_type) ||
-    isKeyOutputComment(a)
+    isKeyOutputComment(a) ||
+    isCreationEvent(a)  // 创建工单事件显示在关键节点
   ).filter(a => !isSystemOperationComment(a));
+  
+  // 合并关键节点活动到评论活动中，按时间排序
+  const commentActivities = [...regularCommentActivities, ...keyNodeActivities]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  
   const systemActivities = filteredActivities.filter(a => 
-    SYSTEM_TYPES.includes(a.activity_type) || 
+    (SYSTEM_TYPES.includes(a.activity_type) && !isCreationEvent(a)) ||  // 排除创建工单事件
     isSystemOperationComment(a)
   );
   const getVisibilityBadge = (visibility: string) => {
@@ -373,6 +580,11 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       case 'diagnostic_report': return <Wrench size={12} />;
       case 'op_repair_report': return <Wrench size={12} />;
       case 'soft_delete': return <Trash2 size={12} />;
+      // 关键节点图标
+      case 'key_node_op_receive': return <Package size={12} />;
+      case 'key_node_op_shipping': return <Truck size={12} />;
+      case 'key_node_ms_review': return <CheckCircle size={12} />;
+      case 'key_node_ms_closing': return <CheckCircle size={12} />;
       default: return <Clock size={12} />;
     }
   };
@@ -404,7 +616,152 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
     const isFieldUpdate = activity.activity_type === 'field_update';
     const actorName = activity.actor?.name || '系统';
     const formattedDate = formatFullDateTime(activity.created_at);
-    const isSystemEvent = SYSTEM_TYPES.includes(activity.activity_type) || isSystemOpComment;
+    
+    // 检测是否为系统自动事件（不显示操作人）
+    // 注：创建工单是用户操作，应该显示操作人
+    const isAutoSystemEvent = SYSTEM_TYPES.includes(activity.activity_type) || isSystemOpComment;
+    const isCreationEvent = activity.activity_type === 'system_event' && 
+                            (activity.metadata as any)?.event_type === 'creation';
+    // 创建工单事件应该显示操作人
+    const isSystemEvent = isAutoSystemEvent && !isCreationEvent;
+    
+    // 检测是否为关键节点活动
+    const isKeyNode = activity.activity_type.startsWith('key_node_');
+    const keyNodeType = activity.metadata?.node_type as 'op_receive' | 'op_shipping' | 'ms_review' | 'ms_closing' | undefined;
+    
+    // 检测是否为重要节点（需要 Kine Yellow 圆环标记）
+    const isImportantNode = isKeyNode || 
+      activity.activity_type === 'op_repair_report' || 
+      activity.activity_type === 'diagnostic_report' ||
+      activity.activity_type === 'creation';
+
+    // 关键节点渲染 - 改为和普通活动类似的格式，点击打开侧滑详情
+    if (isKeyNode && keyNodeType) {
+      const nodeActionLabels: Record<string, string> = {
+        'op_receive': '完成了收货入库',
+        'op_shipping': '完成了发货',
+        'ms_review': '完成了商务审核',
+        'ms_closing': '完成了结案确认'
+      };
+      const nodeColors: Record<string, string> = {
+        'op_receive': '#3B82F6',
+        'op_shipping': '#10B981',
+        'ms_review': '#F59E0B',
+        'ms_closing': '#8B5CF6'
+      };
+      const nodeColor = nodeColors[keyNodeType] || '#888';
+      const nodeActorName = activity.actor?.name || '系统';
+      const meta = activity.metadata as any;
+
+      // 生成详细内容说明
+      const getDetailSummary = (): string => {
+        switch (keyNodeType) {
+          case 'op_receive': {
+            const parts: string[] = [];
+            // 兼容新旧字段名
+            if (meta.at_receipt_sn) parts.push(`修正SN: ${meta.at_receipt_sn}`);
+            const notes = meta.receipt_notes || meta.notes;
+            if (notes) parts.push(notes.length > 20 ? notes.substring(0, 20) + '...' : notes);
+            return parts.length > 0 ? parts.join('，') : '';
+          }
+          case 'op_shipping': {
+            const parts: string[] = [];
+            // 发货方式映射
+            const methodMap: Record<string, string> = {
+              'express': '快递直发',
+              'forwarder': '货代中转',
+              'pickup': '客户自提',
+              'combined': '合并发货'
+            };
+            if (meta.shipping_method) {
+              parts.push(methodMap[meta.shipping_method] || meta.shipping_method);
+            }
+            // 兼容 carrier 和 shipping_carrier
+            const carrier = meta.carrier || meta.shipping_carrier;
+            if (carrier) parts.push(carrier);
+            if (meta.tracking_number) parts.push(meta.tracking_number);
+            // 货代中转显示货代名
+            if (meta.shipping_method === 'forwarder' && meta.forwarder_name) {
+              parts.push(meta.forwarder_name);
+            }
+            // 自提显示提货人
+            if (meta.shipping_method === 'pickup' && meta.pickup_person) {
+              parts.push(meta.pickup_person);
+            }
+            return parts.join(' ');
+          }
+          case 'ms_review': {
+            const parts: string[] = [];
+            if (meta.warranty_decision) {
+              parts.push(meta.warranty_decision === 'in_warranty' ? '在保' : (meta.warranty_decision === 'out_warranty' ? '保外' : meta.warranty_decision));
+              if (meta.charge_decision) parts.push(meta.charge_decision === 'free' ? '免费' : '收费');
+            }
+            if (meta.customer_confirmed) parts.push('客户已确认');
+            return parts.join('，');
+          }
+          case 'ms_closing': {
+            const parts: string[] = [];
+            if (meta.settlement_type) parts.push(meta.settlement_type);
+            if (meta.final_cost !== undefined && meta.final_cost > 0) parts.push(`¥${meta.final_cost}`);
+            return parts.join('，');
+          }
+          default:
+            return '';
+        }
+      };
+
+      const detailSummary = getDetailSummary();
+
+      return (
+        <div
+          key={activity.id}
+          onClick={() => onActivityClick && onActivityClick(activity)}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            padding: '4px 12px',
+            borderRadius: '6px',
+            transition: 'background 0.2s',
+            cursor: onActivityClick ? 'pointer' : 'default',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          {/* Meta: Time & Kine Yellow ring (无icon) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '20px' }}>
+            <span style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-mono, monospace)', minWidth: '80px', whiteSpace: 'nowrap' }}>
+              {formattedDate}
+            </span>
+            {/* Kine Yellow 圆环标记 - 只显示圆环，不显示icon */}
+            <div style={{ 
+              width: 18, height: 18,
+              borderRadius: '50%',
+              border: '2px solid #FFD700',
+              opacity: 0.9
+            }} />
+          </div>
+
+          {/* Main Body */}
+          <div style={{ flex: 1, minWidth: 0, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-main)', flexShrink: 0, fontSize: 13 }}>{nodeActorName}</span>
+            <span style={{ 
+              color: nodeColor, 
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}>
+              {nodeActionLabels[keyNodeType]}
+            </span>
+            {/* 详细内容说明 */}
+            {detailSummary && (
+              <span style={{ fontSize: 12, color: '#888' }}>
+                [{detailSummary}]
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div
@@ -429,16 +786,26 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
           <span style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-mono, monospace)', minWidth: '80px', whiteSpace: 'nowrap' }}>
             {formattedDate}
           </span>
-          <span style={{ color, display: 'flex', alignItems: 'center', opacity: 0.8 }}>
-            {getTypeIcon(displayType)}
-          </span>
+          {/* 重要节点（维修记录、诊断报告）显示 Kine Yellow 空心圆环标记 */}
+          {isImportantNode && !isKeyNode ? (
+            <div style={{ 
+              width: 18, height: 18,
+              borderRadius: '50%',
+              border: '2px solid #FFD700',
+              opacity: 0.9
+            }} />
+          ) : (
+            <span style={{ color, display: 'flex', alignItems: 'center', opacity: 0.8 }}>
+              {getTypeIcon(displayType)}
+            </span>
+          )}
         </div>
 
         {/* Main Body */}
         <div style={{ flex: 1, minWidth: 0, fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'nowrap' }}>
-            {/* 系统事件不显示操作人姓名 */}
-            {!isSystemEvent && <span style={{ fontWeight: 600, color: 'var(--text-main)', flexShrink: 0, fontSize: 13 }}>{actorName}</span>}
+            {/* 系统事件不显示操作人姓名；document_published/document_recalled 的 content 已包含操作人名字，不重复显示 */}
+            {!isSystemEvent && !KEY_OUTPUT_TYPES.includes(activity.activity_type) && <span style={{ fontWeight: 600, color: 'var(--text-main)', flexShrink: 0, fontSize: 13 }}>{actorName}</span>}
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, minWidth: 0 }}>
               {getVisibilityBadge(activity.visibility)}
@@ -498,7 +865,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                 letterSpacing: '0.05em'
               }}>
                 <MessageSquare size={12} />
-                讨论与诊断 ({commentActivities.length})
+                讨论与关键节点 ({commentActivities.length})
               </div>
               {commentActivities.map(renderActivityItem)}
             </div>
@@ -571,7 +938,7 @@ export const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({
   const getRoleBadge = (role: string) => {
     const roles: Record<string, { color: string; label: string }> = {
       owner: { color: '#FFD700', label: '创建者' },
-      assignee: { color: '#10B981', label: '处理人' },
+      assignee: { color: '#10B981', label: '对接人' },
       mentioned: { color: '#3B82F6', label: '协作中' },
       follower: { color: '#8B5CF6', label: '关注者' }
     };
@@ -757,18 +1124,31 @@ function formatFullDateTime(dateStr: string): string {
 // Activity Detail Drawer
 // ==============================
 
+// 更正请求的类型
+export interface CorrectionRequest {
+  activityId: number;
+  activityType: string;
+  reason: string;
+  originalContent?: string;
+  metadata?: Record<string, unknown>;
+}
+
 export interface ActivityDetailDrawerProps {
   activity: Activity | null;
   onClose: () => void;
   ticketId?: number;  // 用于更正API调用
   onRefresh?: () => void;  // 更正后刷新活动列表
+  onCorrectionRequest?: (request: CorrectionRequest) => void;  // 请求打开完整编辑器进行更正
+  onKeyNodeCorrectionRequest?: (nodeType: 'op_receive' | 'op_shipping' | 'ms_review' | 'ms_closing', reason: string) => void;  // 关键节点更正请求
 }
 
 export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   activity,
   onClose,
   ticketId,
-  onRefresh
+  onRefresh,
+  onCorrectionRequest,
+  onKeyNodeCorrectionRequest
 }) => {
   const { token, user } = useAuthStore();
   const [lightboxMedia, setLightboxMedia] = useState<{ url: string, type: 'image' | 'video' } | null>(null);
@@ -776,8 +1156,51 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   // 更正功能状态
   const [correctionModal, setCorrectionModal] = useState(false);
   const [correctionReason, setCorrectionReason] = useState('');
-  const [correctedContent, setCorrectedContent] = useState('');  // 编辑后的内容
+  const [correctedContent, setCorrectedContent] = useState('');  // 编辑后的内容（仅用于简单类型）
   const [correcting, setCorrecting] = useState(false);
+
+  // 判断是否为复杂类型（需要打开完整编辑器）
+  const isComplexActivityType = (type: string): boolean => {
+    return ['op_repair_report', 'diagnostic_report'].includes(type);
+  };
+
+  // 判断是否为关键节点
+  const isKeyNodeActivity = activity?.activity_type.startsWith('key_node_') || false;
+  const keyNodeType = activity?.metadata?.node_type as 'op_receive' | 'op_shipping' | 'ms_review' | 'ms_closing' | undefined;
+
+  // 检查是否可以更正关键节点
+  const canCorrectKeyNode = (nodeType: string): boolean => {
+    if (!user) return false;
+    
+    // 1. Admin/Exec 始终可以编辑
+    const isAdmin = user.role === 'Admin' || user.role === 'Exec';
+    if (isAdmin) return true;
+    
+    // 2. 原操作人可以编辑
+    if (activity?.actor?.id && activity.actor.id === user.id) return true;
+    
+    // 3. 对应部门 Lead 可以编辑
+    const userDept = (user.department_code || '').toUpperCase();
+    const isOpLead = user.role === 'Lead' && (userDept === 'OP' || userDept === 'PRODUCTION');
+    const isMsLead = user.role === 'Lead' && userDept === 'MS';
+    
+    if (nodeType === 'op_receive' || nodeType === 'op_shipping') {
+      return isOpLead;
+    }
+    if (nodeType === 'ms_review' || nodeType === 'ms_closing') {
+      return isMsLead;
+    }
+    return false;
+  };
+
+  // 处理关键节点更正请求
+  const handleKeyNodeCorrection = () => {
+    if (!keyNodeType || !correctionReason.trim() || !onKeyNodeCorrectionRequest) return;
+    onKeyNodeCorrectionRequest(keyNodeType, correctionReason.trim());
+    setCorrectionModal(false);
+    setCorrectionReason('');
+    onClose();
+  };
 
   // 打开更正弹窗时初始化内容
   const openCorrectionModal = () => {
@@ -792,6 +1215,18 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
     const correctableTypes = ['op_repair_report', 'diagnostic_report', 'shipping_info', 'comment', 'internal_note'];
     if (!correctableTypes.includes(act.activity_type)) return false;
     
+    // 判断活动类型属于哪个部门
+    const getActivityDepartment = (actType: string): 'OP' | 'MS' | 'unknown' => {
+      if (['op_repair_report', 'diagnostic_report'].includes(actType)) {
+        return 'OP';  // 维修记录和诊断报告属于 OP 部门
+      }
+      // 其他类型根据 actor 的部门判断
+      return 'unknown';
+    };
+    
+    const activityDept = getActivityDepartment(act.activity_type);
+    const userDept = (user.department_code || '').toUpperCase();
+    
     // 权限检查：
     // 1. 原操作人始终可以更正自己的内容
     const isOriginalActor = act.actor?.id === user.id;
@@ -803,20 +1238,43 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
     
     // 3. Lead 只能更正本部门的内容
     if (user.role === 'Lead') {
-      const actorRole = act.actor?.role || '';
-      // OP Lead 只能改 OP 内容，MS Lead 只能改 MS 内容
-      const userDept = user.department_code || '';
-      if (userDept === 'OP' && actorRole === 'OP') return true;
-      if (userDept === 'MS' && actorRole === 'MS') return true;
+      // 如果活动类型有明确的部门归属（如维修记录属于OP）
+      if (activityDept !== 'unknown') {
+        // 用户部门必须匹配活动部门
+        const userDeptNorm = userDept === 'PRODUCTION' ? 'OP' : userDept;
+        return userDeptNorm === activityDept;
+      }
+      
+      // 其他类型（comment, internal_note, shipping_info）：不允许 Lead 修改他人内容
+      // 只能由原操作人或 Admin/Exec 修改
+      return false;
     }
     
     return false;
   };
 
-  // 处理更正提交
+  // 处理更正提交（简单类型直接提交，复杂类型请求打开编辑器）
   const handleCorrection = async () => {
     if (!activity || !ticketId || !correctionReason.trim()) return;
     
+    // 复杂类型：请求父组件打开完整编辑器
+    if (isComplexActivityType(activity.activity_type)) {
+      if (onCorrectionRequest) {
+        onCorrectionRequest({
+          activityId: activity.id,
+          activityType: activity.activity_type,
+          reason: correctionReason.trim(),
+          originalContent: activity.content,
+          metadata: activity.metadata
+        });
+        setCorrectionModal(false);
+        setCorrectionReason('');
+        onClose();
+      }
+      return;
+    }
+    
+    // 简单类型：直接提交更正
     setCorrecting(true);
     try {
       await axios.post(
@@ -881,9 +1339,10 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
         {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* User Info - 系统事件不显示操作人 */}
+          {/* User Info - 系统事件不显示操作人；document_published/document_recalled 应显示实际发布者 */}
           {(() => {
-            const isSystemEvent = ['status_change', 'assignment', 'assignment_change', 'field_update', 'system_event', 'document_published', 'document_recalled'].includes(activity.activity_type);
+            // 注意：document_published/document_recalled 虽然是系统记录的事件，但应显示实际发布者
+            const isSystemEvent = ['status_change', 'assignment', 'assignment_change', 'field_update', 'system_event'].includes(activity.activity_type);
             return isSystemEvent ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3B82F6', fontWeight: 600, fontSize: 14 }}>
@@ -931,13 +1390,235 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             </div>
           )}
 
+          {/* 关键节点详情 */}
+          {isKeyNodeActivity && keyNodeType && (() => {
+            const meta = activity.metadata as any;
+            const nodeLabels: Record<string, string> = {
+              'op_receive': '收货入库',
+              'op_shipping': '发货信息',
+              'ms_review': '商务审核',
+              'ms_closing': '结案确认'
+            };
+            const nodeColors: Record<string, string> = {
+              'op_receive': '#3B82F6',
+              'op_shipping': '#10B981',
+              'ms_review': '#F59E0B',
+              'ms_closing': '#8B5CF6'
+            };
+            const nodeColor = nodeColors[keyNodeType] || '#888';
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Header with Correction Button */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ 
+                    display: 'flex', alignItems: 'center', gap: 8, 
+                    color: nodeColor, fontWeight: 600, fontSize: 14 
+                  }}>
+                    <span style={{
+                      padding: '4px 10px', borderRadius: 6,
+                      background: `${nodeColor}20`, fontSize: 13
+                    }}>
+                      {nodeLabels[keyNodeType]}
+                    </span>
+                  </div>
+                  {canCorrectKeyNode(keyNodeType) && onKeyNodeCorrectionRequest && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openCorrectionModal(); }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 4,
+                        padding: '4px 8px', fontSize: 11,
+                        background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)',
+                        borderRadius: 4, color: '#FFA500', cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,165,0,0.2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,165,0,0.1)'}
+                    >
+                      <RefreshCw size={12} /> 更正
+                    </button>
+                  )}
+                </div>
+
+                {/* 收货入库详情 */}
+                {keyNodeType === 'op_receive' && (() => {
+                  const receiptNotes = meta.receipt_notes || meta.notes;
+                  const hasData = meta.at_receipt_sn || receiptNotes;
+                  return (
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {meta.at_receipt_sn && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                          <span style={{ color: '#888' }}>修正序列号</span>
+                          <span style={{ color: '#F59E0B', fontFamily: 'monospace' }}>{meta.at_receipt_sn}</span>
+                        </div>
+                      )}
+                      {receiptNotes && (
+                        <div style={{ fontSize: 13 }}>
+                          <div style={{ color: '#888', marginBottom: 4 }}>收货备注:</div>
+                          <div style={{ color: '#ddd' }}>{receiptNotes}</div>
+                        </div>
+                      )}
+                      {!hasData && (
+                        <div style={{ fontSize: 13, color: '#666', fontStyle: 'italic' }}>已确认收货，无其他备注信息</div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* 发货信息详情 */}
+                {keyNodeType === 'op_shipping' && (() => {
+                  const carrier = meta.carrier || meta.shipping_carrier;
+                  const methodMap: Record<string, string> = {
+                    'express': '快递直发',
+                    'forwarder': '货代中转',
+                    'pickup': '客户自提',
+                    'combined': '合并发货'
+                  };
+                  const hasData = meta.shipping_method || carrier || meta.tracking_number || 
+                    meta.forwarder_name || meta.pickup_person || meta.associated_order_ref;
+                  return (
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {meta.shipping_method && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                          <span style={{ color: '#888' }}>发货方式</span>
+                          <span style={{ color: '#10B981' }}>{methodMap[meta.shipping_method] || meta.shipping_method}</span>
+                        </div>
+                      )}
+                      {/* 快递直发 */}
+                      {meta.shipping_method === 'express' && carrier && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                          <span style={{ color: '#888' }}>快递公司</span>
+                          <span style={{ color: '#ddd' }}>{carrier}</span>
+                        </div>
+                      )}
+                      {meta.shipping_method === 'express' && meta.tracking_number && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                          <span style={{ color: '#888' }}>快递单号</span>
+                          <span style={{ color: '#10B981', fontFamily: 'monospace' }}>{meta.tracking_number}</span>
+                        </div>
+                      )}
+                      {/* 货代中转 */}
+                      {meta.shipping_method === 'forwarder' && meta.forwarder_name && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                          <span style={{ color: '#888' }}>货代名称</span>
+                          <span style={{ color: '#ddd' }}>{meta.forwarder_name}</span>
+                        </div>
+                      )}
+                      {meta.shipping_method === 'forwarder' && meta.forwarder_domestic_tracking && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                          <span style={{ color: '#888' }}>国内转运单号</span>
+                          <span style={{ color: '#10B981', fontFamily: 'monospace' }}>{meta.forwarder_domestic_tracking}</span>
+                        </div>
+                      )}
+                      {/* 客户自提 */}
+                      {meta.shipping_method === 'pickup' && meta.pickup_person && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                          <span style={{ color: '#888' }}>提货人</span>
+                          <span style={{ color: '#ddd' }}>{meta.pickup_person}</span>
+                        </div>
+                      )}
+                      {/* 合并发货 */}
+                      {meta.shipping_method === 'combined' && meta.associated_order_ref && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                          <span style={{ color: '#888' }}>关联订单</span>
+                          <span style={{ color: '#3B82F6', fontFamily: 'monospace' }}>{meta.associated_order_ref}</span>
+                        </div>
+                      )}
+                      {/* 通用单号（非 express 模式） */}
+                      {meta.shipping_method !== 'express' && meta.tracking_number && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                          <span style={{ color: '#888' }}>运单号</span>
+                          <span style={{ color: '#10B981', fontFamily: 'monospace' }}>{meta.tracking_number}</span>
+                        </div>
+                      )}
+                      {!hasData && (
+                        <div style={{ fontSize: 13, color: '#666', fontStyle: 'italic' }}>已确认发货，无详细信息</div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* 商务审核详情 */}
+                {keyNodeType === 'ms_review' && (
+                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {meta.warranty_decision && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                        <span style={{ color: '#888' }}>保修判定</span>
+                        <span style={{ color: meta.warranty_decision === 'in_warranty' ? '#10B981' : '#FFD700', fontWeight: 500 }}>
+                          {meta.warranty_decision === 'in_warranty' ? '保内' : (meta.warranty_decision === 'out_warranty' ? '保外' : meta.warranty_decision)}
+                        </span>
+                      </div>
+                    )}
+                    {meta.estimated_cost !== undefined && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                        <span style={{ color: '#888' }}>预估费用</span>
+                        <span style={{ color: '#FFD700' }}>¥{meta.estimated_cost}</span>
+                      </div>
+                    )}
+                    {meta.review_notes && (
+                      <div style={{ fontSize: 13 }}>
+                        <div style={{ color: '#888', marginBottom: 4 }}>审核备注:</div>
+                        <div style={{ color: '#ddd' }}>{meta.review_notes}</div>
+                      </div>
+                    )}
+                    {!meta.warranty_decision && meta.estimated_cost === undefined && !meta.review_notes && (
+                      <div style={{ fontSize: 13, color: '#666', fontStyle: 'italic' }}>暂无详细信息</div>
+                    )}
+                  </div>
+                )}
+
+                {/* 结案确认详情 */}
+                {keyNodeType === 'ms_closing' && (
+                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {meta.settlement_type && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                        <span style={{ color: '#888' }}>发货方式</span>
+                        <span style={{ color: '#ddd' }}>{meta.settlement_type}</span>
+                      </div>
+                    )}
+                    {meta.payment_confirmed !== undefined && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                        <span style={{ color: '#888' }}>款项确认</span>
+                        <span style={{ color: meta.payment_confirmed ? '#10B981' : '#888' }}>
+                          {meta.payment_confirmed ? '已确认' : '未确认'}
+                        </span>
+                      </div>
+                    )}
+                    {meta.actual_payment && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                        <span style={{ color: '#888' }}>实收金额</span>
+                        <span style={{ color: '#FFD700' }}>¥{meta.actual_payment}</span>
+                      </div>
+                    )}
+                    {meta.closing_notes && (
+                      <div style={{ fontSize: 13 }}>
+                        <div style={{ color: '#888', marginBottom: 4 }}>留言备注:</div>
+                        <div style={{ color: '#ddd' }}>{meta.closing_notes}</div>
+                      </div>
+                    )}
+                    {!meta.settlement_type && !meta.payment_confirmed && !meta.actual_payment && !meta.closing_notes && (
+                      <div style={{ fontSize: 13, color: '#666', fontStyle: 'italic' }}>暂无详细信息</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Text Content */}
-          {activity.content && !(activity.activity_type === 'comment' && activity.metadata?.action === 'repair_complete') && !(activity.activity_type === 'diagnostic_report') && !(activity.activity_type === 'op_repair_report') && (
-            <div style={{
-              fontSize: 14, color: '#ddd', lineHeight: 1.6, wordBreak: 'break-word',
-              background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8
-            }} dangerouslySetInnerHTML={{ __html: activity.content_html || activity.content.replace(/\n/g, '<br/>') }} />
-          )}
+          {activity.content && !(activity.activity_type === 'comment' && activity.metadata?.action === 'repair_complete') && !(activity.activity_type === 'diagnostic_report') && !(activity.activity_type === 'op_repair_report') && !isKeyNodeActivity && (() => {
+            // 过滤掉无意义的空字段修改内容
+            let displayContent = activity.content_html || activity.content.replace(/\n/g, '<br/>');
+            // 移除 "修改了 未知字段 (空) → (空)" 这样的无意义内容
+            displayContent = displayContent.replace(/修改了\s*未知字段\s*\(空\)\s*→\s*\(空\)/g, '').trim();
+            if (!displayContent) return null;
+            
+            return (
+              <div style={{
+                fontSize: 14, color: '#ddd', lineHeight: 1.6, wordBreak: 'break-word',
+                background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8
+              }} dangerouslySetInnerHTML={{ __html: displayContent }} />
+            );
+          })()}
 
           {/* Diagnostic Report Content */}
           {activity.activity_type === 'diagnostic_report' && activity.metadata && (() => {
@@ -1313,12 +1994,16 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
           zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center'
         }} onClick={() => setCorrectionModal(false)}>
           <div style={{
-            background: '#1a1a1a', borderRadius: 12, width: 500, maxWidth: '90vw',
+            background: '#1a1a1a', borderRadius: 12, 
+            width: isComplexActivityType(activity?.activity_type || '') ? 420 : 500, 
+            maxWidth: '90vw',
             border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
             maxHeight: '80vh', display: 'flex', flexDirection: 'column'
           }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>更正活动记录</h3>
+              <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>
+                {isComplexActivityType(activity?.activity_type || '') ? '确认更正' : '更正活动记录'}
+              </h3>
               <button onClick={() => setCorrectionModal(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
                 <X size={18} />
               </button>
@@ -1332,29 +2017,59 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     'diagnostic_report': '诊断报告',
                     'shipping_info': '发货信息',
                     'comment': '评论',
-                    'internal_note': '内部备注'
+                    'internal_note': '内部备注',
+                    'key_node_op_receive': '收货入库',
+                    'key_node_op_shipping': '发货信息',
+                    'key_node_ms_review': '商务审核',
+                    'key_node_ms_closing': '结案确认'
                   }[activity?.activity_type || ''] || activity?.activity_type}
                 </div>
               </div>
               
-              {/* 内容编辑区 */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 8 }}>内容（可编辑）</label>
-                <textarea
-                  value={correctedContent}
-                  onChange={e => setCorrectedContent(e.target.value)}
-                  placeholder="编辑内容..."
-                  style={{
-                    width: '100%', padding: 12, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)',
-                    borderRadius: 8, color: '#fff', fontSize: 13, resize: 'vertical', minHeight: 100, fontFamily: 'inherit'
-                  }}
-                />
-                {correctedContent !== (activity?.content || '') && (
-                  <div style={{ fontSize: 11, color: '#FFA500', marginTop: 6 }}>
-                    内容已修改
-                  </div>
-                )}
-              </div>
+              {/* 关键节点更正提示 */}
+              {isKeyNodeActivity && (
+                <div style={{ 
+                  fontSize: 13, color: '#ccc', marginBottom: 16, padding: 12, 
+                  background: 'rgba(59,130,246,0.1)', borderRadius: 8, 
+                  border: '1px solid rgba(59,130,246,0.2)',
+                  lineHeight: 1.6
+                }}>
+                  确认后将打开对应的编辑界面，您可以在其中修改详细内容。
+                </div>
+              )}
+              
+              {/* 复杂类型的提示说明 */}
+              {!isKeyNodeActivity && isComplexActivityType(activity?.activity_type || '') && (
+                <div style={{ 
+                  fontSize: 13, color: '#ccc', marginBottom: 16, padding: 12, 
+                  background: 'rgba(59,130,246,0.1)', borderRadius: 8, 
+                  border: '1px solid rgba(59,130,246,0.2)',
+                  lineHeight: 1.6
+                }}>
+                  确认后将打开完整的编辑界面，您可以在其中修改详细内容。
+                </div>
+              )}
+              
+              {/* 内容编辑区 - 仅简单类型显示（非关键节点且非复杂类型） */}
+              {!isKeyNodeActivity && !isComplexActivityType(activity?.activity_type || '') && (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 8 }}>内容（可编辑）</label>
+                  <textarea
+                    value={correctedContent}
+                    onChange={e => setCorrectedContent(e.target.value)}
+                    placeholder="编辑内容..."
+                    style={{
+                      width: '100%', padding: 12, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 8, color: '#fff', fontSize: 13, resize: 'vertical', minHeight: 100, fontFamily: 'inherit'
+                    }}
+                  />
+                  {correctedContent !== (activity?.content || '') && (
+                    <div style={{ fontSize: 11, color: '#FFA500', marginTop: 6 }}>
+                      内容已修改
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 8 }}>更正原因 *</label>
@@ -1379,7 +2094,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   取消
                 </button>
                 <button
-                  onClick={handleCorrection}
+                  onClick={isKeyNodeActivity ? handleKeyNodeCorrection : handleCorrection}
                   disabled={correcting || !correctionReason.trim()}
                   style={{
                     flex: 1.5, padding: '10px', background: correcting || !correctionReason.trim() ? '#444' : '#FFA500',
@@ -1387,7 +2102,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
                   }}
                 >
-                  {correcting ? '处理中...' : '确认更正'}
+                  {correcting ? '处理中...' : (isKeyNodeActivity ? '确认并编辑' : (isComplexActivityType(activity?.activity_type || '') ? '确认并编辑' : '确认更正'))}
                 </button>
               </div>
             </div>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Filter, ChevronLeft, ChevronRight, Loader2, Package, List, Layers, AlertTriangle, ChevronDown, ChevronUp, Clock, AlertCircle, CheckCircle, HelpCircle, Users, ClipboardList } from 'lucide-react';
+import { Search, Filter, ChevronLeft, ChevronRight, Loader2, Package, List, Layers, AlertTriangle, ChevronDown, ChevronUp, Clock, AlertCircle, CheckCircle, Users, ClipboardList } from 'lucide-react';
 import { useLanguage } from '../../i18n/useLanguage';
 import { useCachedTickets } from '../../hooks/useCachedTickets';
 import { useListStateStore } from '../../store/useListStateStore';
@@ -17,6 +17,7 @@ interface RMATicket {
     issue_type: string;
     issue_category: string;
     severity: number;
+    current_node: string;  // 流程节点
     // Account/Contact Info
     account_id?: number;
     contact_id?: number;
@@ -47,26 +48,63 @@ interface RMATicket {
     updated_at: string;
 }
 
-// Status colors using Kine brand colors from context.md
-// Kine Yellow: #FFD700, Kine Green: #10B981, Kine Red: #EF4444
-// P2 Unified Status: open, in_progress, waiting, resolved, closed, cancelled
-const statusColors: Record<string, string> = {
-    // Legacy RMA statuses (for backward compatibility)
-    Pending: 'var(--accent-blue)',
-    Confirming: '#f59e0b',
-    Diagnosing: '#8b5cf6',
-    InRepair: '#3b82f6',
-    Repaired: '#10B981',
-    Shipped: '#06b6d4',
-    Completed: '#10B981',
-    Cancelled: '#6b7280',
-    // P2 Unified statuses
-    open: 'var(--accent-blue)',        // New/Pending
-    in_progress: '#8b5cf6',            // In progress/Diagnosing
-    waiting: '#3b82f6',                // Waiting/InRepair
-    resolved: '#10B981',               // Resolved/Repaired
-    closed: '#10B981',                 // Closed/Completed
-    cancelled: '#6b7280'               // Cancelled
+// RMA流程节点顺序和标签
+const nodeOrder = [
+    'submitted',           // 待收货 (MS)
+    'op_receiving',        // 收货确认 (OP)
+    'op_diagnosing',       // 诊断中 (OP)
+    'ms_review',           // 商务审核 (MS)
+    'op_repairing',        // 维修中 (OP)
+    'ms_closing',          // 结案确认 (MS)
+    'op_shipping',         // 发货中 (OP)
+    'op_shipping_transit', // 货代中转 (OP)
+    'resolved',            // 已解决
+    'closed',              // 已关闭
+    'cancelled'            // 已取消
+];
+
+const nodeLabels: Record<string, string> = {
+    submitted: '待收货',
+    op_receiving: '收货确认',
+    op_diagnosing: '诊断中',
+    ms_review: '商务审核',
+    op_repairing: '维修中',
+    ms_closing: '结案确认',
+    op_shipping: '发货中',
+    op_shipping_transit: '货代中转',
+    resolved: '已解决',
+    closed: '已关闭',
+    cancelled: '已取消'
+};
+
+// 流程节点颜色（区分MS/OP/完成状态）
+const nodeColors: Record<string, string> = {
+    submitted: 'var(--accent-blue)',   // MS - 待处理
+    op_receiving: '#f59e0b',           // OP - 收货
+    op_diagnosing: '#8b5cf6',          // OP - 诊断
+    ms_review: '#FFD700',              // MS - 审核（Kine Yellow）
+    op_repairing: '#3b82f6',           // OP - 维修
+    ms_closing: '#FFD700',             // MS - 结案（Kine Yellow）
+    op_shipping: '#06b6d4',            // OP - 发货
+    op_shipping_transit: '#06b6d4',    // OP - 中转
+    resolved: '#10B981',               // 已解决
+    closed: '#10B981',                 // 已关闭
+    cancelled: '#6b7280'               // 已取消
+};
+
+// 流程节点图标
+const nodeIcons: Record<string, React.ElementType> = {
+    submitted: Package,
+    op_receiving: Package,
+    op_diagnosing: Clock,
+    ms_review: AlertTriangle,
+    op_repairing: Clock,
+    ms_closing: CheckCircle,
+    op_shipping: Package,
+    op_shipping_transit: Package,
+    resolved: CheckCircle,
+    closed: CheckCircle,
+    cancelled: AlertCircle
 };
 
 const CollapsibleSection: React.FC<{
@@ -150,7 +188,7 @@ const RMATicketListPage: React.FC = () => {
     // Filters
     const timeScope = searchParams.get('time_scope') || '30d';
     const productFamilyScope = searchParams.get('product_family') || 'all';
-    const statusFilter = searchParams.get('status') || 'all';
+    const nodeFilter = searchParams.get('current_node') || 'all';  // 改为流程节点筛选
     const channelFilter = searchParams.get('channel_code') || 'all';
     const serviceTierFilter = searchParams.get('service_tier') || 'all';
     const searchTerm = searchParams.get('keyword') || '';
@@ -187,10 +225,10 @@ const RMATicketListPage: React.FC = () => {
         setRmaFilters({
             time_scope: timeScope,
             product_family: productFamilyScope,
-            status: statusFilter,
+            status: nodeFilter,  // 保存当前节点筛选值
             keyword: searchTerm
         });
-    }, [timeScope, productFamilyScope, statusFilter, searchTerm, setRmaFilters]);
+    }, [timeScope, productFamilyScope, nodeFilter, searchTerm, setRmaFilters]);
 
     // Restore scroll position on mount
     useEffect(() => {
@@ -226,13 +264,13 @@ const RMATicketListPage: React.FC = () => {
         }
 
         if (productFamilyScope !== 'all') params.product_family = productFamilyScope;
-        if (statusFilter !== 'all') params.status = statusFilter;
+        if (nodeFilter !== 'all') params.current_node = nodeFilter;  // 改用current_node参数
         if (channelFilter !== 'all') params.channel_code = channelFilter;
         if (searchTerm) params.keyword = searchTerm;
         if (serviceTierFilter !== 'all') params.service_tier = serviceTierFilter;
 
         return params;
-    }, [page, pageSize, timeScope, productFamilyScope, statusFilter, channelFilter, searchTerm, searchParams, sortBy, sortOrder]);
+    }, [page, pageSize, timeScope, productFamilyScope, nodeFilter, channelFilter, searchTerm, searchParams, sortBy, sortOrder, serviceTierFilter]);
 
     const { tickets, meta, isLoading } = useCachedTickets<RMATicket>('rma', queryParams);
     const total = meta.total;
@@ -284,66 +322,22 @@ const RMATicketListPage: React.FC = () => {
         { id: 'D', label: '通用配件' }
     ];
 
-    const getStatusLabel = (status: string) => {
-        const labels: Record<string, string> = {
-            // Legacy RMA statuses
-            Pending: t('rma_ticket.status.pending' as any) || '已收货',
-            Confirming: t('rma_ticket.status.confirming' as any) || '确认中',
-            Diagnosing: t('rma_ticket.status.diagnosing' as any) || '检测中',
-            InRepair: t('rma_ticket.status.in_repair' as any) || '维修中',
-            Repaired: t('rma_ticket.status.repaired' as any) || '已修复',
-            Shipped: t('rma_ticket.status.shipped' as any) || '已发货',
-            Completed: t('rma_ticket.status.completed' as any) || '已完成',
-            Cancelled: t('rma_ticket.status.cancelled' as any) || '已取消',
-            // P2 Unified statuses
-            open: t('rma_ticket.status.pending' as any) || '新工单',
-            in_progress: t('rma_ticket.status.diagnosing' as any) || '处理中',
-            waiting: t('rma_ticket.status.in_repair' as any) || '等待中',
-            resolved: t('rma_ticket.status.repaired' as any) || '已解决',
-            closed: t('rma_ticket.status.completed' as any) || '已完成',
-            cancelled: t('rma_ticket.status.cancelled' as any) || '已取消'
-        };
-        return labels[status] || status;
-    };
-
-    // Group tickets by status (P2 Unified Status)
+    // Group tickets by current_node (RMA流程节点)
     const groupedTickets = useMemo(() => {
-        const groups: Record<string, RMATicket[]> = {
-            // P2 Unified statuses
-            open: [],
-            in_progress: [],
-            waiting: [],
-            resolved: [],
-            closed: [],
-            cancelled: []
-        };
+        const groups: Record<string, RMATicket[]> = {};
+        nodeOrder.forEach(node => { groups[node] = []; });
+        
         tickets.forEach(ticket => {
-            if (groups[ticket.status]) {
-                groups[ticket.status].push(ticket);
+            const node = ticket.current_node || 'submitted';
+            if (groups[node]) {
+                groups[node].push(ticket);
+            } else {
+                // 未知节点归入submitted
+                groups['submitted'].push(ticket);
             }
         });
         return groups;
     }, [tickets]);
-
-    const statusOrder = ['open', 'in_progress', 'waiting', 'resolved', 'closed', 'cancelled'];
-    const statusIcons: Record<string, React.ElementType> = {
-        // Legacy RMA statuses
-        Pending: Package,
-        Confirming: HelpCircle,
-        Diagnosing: Clock,
-        InRepair: Clock,
-        Repaired: CheckCircle,
-        Shipped: Package,
-        Completed: CheckCircle,
-        Cancelled: AlertCircle,
-        // P2 Unified statuses
-        open: Package,
-        in_progress: Clock,
-        waiting: Clock,
-        resolved: CheckCircle,
-        closed: CheckCircle,
-        cancelled: AlertCircle
-    };
 
     const TicketCard = ({ ticket }: { ticket: RMATicket }) => (
         <div
@@ -364,7 +358,7 @@ const RMATicketListPage: React.FC = () => {
         >
             {/* Left Column - Main Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
-                {/* Line 1: Ticket Number + Severity + Status */}
+                {/* Line 1: Ticket Number + Severity + Node Status */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{ticket.ticket_number}</span>
                     {ticket.severity && (
@@ -379,9 +373,10 @@ const RMATicketListPage: React.FC = () => {
                     <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: '4px',
                         padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600,
-                        background: `${statusColors[ticket.status] || '#6b7280'}20`, color: statusColors[ticket.status] || '#6b7280'
+                        background: `${nodeColors[ticket.current_node] || '#6b7280'}20`, 
+                        color: nodeColors[ticket.current_node] || '#6b7280'
                     }}>
-                        {getStatusLabel(ticket.status)}
+                        {nodeLabels[ticket.current_node] || ticket.current_node || '待处理'}
                     </span>
                 </div>
 
@@ -683,37 +678,39 @@ const RMATicketListPage: React.FC = () => {
                     display: 'flex', alignItems: 'center', gap: '24px', animation: 'slideDown 0.2s ease-out'
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>STATUS</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>流程节点</span>
                         <KineSelect
-                            value={statusFilter}
-                            onChange={(val) => updateFilter({ status: val })}
+                            value={nodeFilter}
+                            onChange={(val) => updateFilter({ current_node: val })}
                             options={[
-                                { value: 'all', label: t('filter.all_status') },
-                                // P2 Unified Status
-                                { value: 'open', label: '新工单' },
-                                { value: 'in_progress', label: '处理中' },
-                                { value: 'waiting', label: '等待中' },
+                                { value: 'all', label: '全部节点' },
+                                { value: 'submitted', label: '待收货' },
+                                { value: 'op_receiving', label: '收货确认' },
+                                { value: 'op_diagnosing', label: '诊断中' },
+                                { value: 'ms_review', label: '商务审核' },
+                                { value: 'op_repairing', label: '维修中' },
+                                { value: 'ms_closing', label: '结案确认' },
+                                { value: 'op_shipping', label: '发货中' },
                                 { value: 'resolved', label: '已解决' },
-                                { value: 'closed', label: '已完成' },
-                                { value: 'cancelled', label: '已取消' }
+                                { value: 'closed', label: '已关闭' }
                             ]}
                         />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>CHANNEL</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>渠道</span>
                         <KineSelect
                             value={channelFilter}
                             onChange={(val) => updateFilter({ channel_code: val })}
                             options={[
-                                { value: 'all', label: 'All Channels' },
-                                { value: 'D', label: t('rma_ticket.channel.dealer') },
-                                { value: 'C', label: t('rma_ticket.channel.customer') },
-                                { value: 'I', label: t('rma_ticket.channel.internal') }
+                                { value: 'all', label: '全部渠道' },
+                                { value: 'D', label: '经销商渠道 (D)' },
+                                { value: 'C', label: '客户直送 (C)' },
+                                { value: 'I', label: '内部返修 (I)' }
                             ]}
                         />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{t('filter.service_tier')}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>服务等级</span>
                         <KineSelect
                             value={serviceTierFilter}
                             onChange={(val) => updateFilter({ service_tier: val })}
@@ -741,26 +738,27 @@ const RMATicketListPage: React.FC = () => {
                     <p>{t('rma_ticket.empty_hint')}</p>
                 </div>
             ) : groupMode === 'grouped' ? (
-                // Grouped Mode
+                // Grouped Mode - 按流程节点分组
                 <div ref={scrollContainerRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto' }}>
-                    {statusOrder.map(status => {
-                        const statusTickets = groupedTickets[status] || [];
-                        if (statusTickets.length === 0) return null;
-                        const Icon = statusIcons[status];
-                        const defaultOpen = ['open', 'in_progress', 'waiting'].includes(status);
+                    {nodeOrder.map(node => {
+                        const nodeTickets = groupedTickets[node] || [];
+                        if (nodeTickets.length === 0) return null;
+                        const Icon = nodeIcons[node] || Package;
+                        // 默认展开活跃节点，折叠已完成节点
+                        const defaultOpen = !['resolved', 'closed', 'cancelled'].includes(node);
                         return (
                             <CollapsibleSection
-                                key={status}
-                                title={getStatusLabel(status)}
-                                count={statusTickets.length}
+                                key={node}
+                                title={nodeLabels[node] || node}
+                                count={nodeTickets.length}
                                 icon={Icon}
-                                color={statusColors[status] || '#6b7280'}
-                                sectionKey={status}
+                                color={nodeColors[node] || '#6b7280'}
+                                sectionKey={node}
                                 defaultOpen={defaultOpen}
-                                initialOpen={!isRmaSectionCollapsed(status, defaultOpen)}
+                                initialOpen={!isRmaSectionCollapsed(node, defaultOpen)}
                                 onToggle={handleSectionToggle}
                             >
-                                {statusTickets.map(ticket => (
+                                {nodeTickets.map(ticket => (
                                     <TicketCard key={ticket.id} ticket={ticket} />
                                 ))}
                             </CollapsibleSection>

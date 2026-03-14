@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
-import { FileText, Plus, Trash2, Stethoscope, Wrench, X, Save, CheckCircle, Loader2 } from 'lucide-react';
+import { FileText, Plus, Trash2, Stethoscope, Wrench, X, Save, CheckCircle, Loader2, RefreshCw } from 'lucide-react';
 
 interface OpRepairReportEditorProps {
     isOpen: boolean;
@@ -11,6 +11,10 @@ interface OpRepairReportEditorProps {
     onSuccess: () => void;
     warrantyCalc?: any;
     currentNode?: string; // Current workflow node - determines if "complete" button should show
+    // 编辑模式相关 props（用于更正历史记录）
+    editMode?: boolean;
+    editData?: Record<string, unknown> | null;
+    correctionReason?: string;
 }
 
 const DEFAULT_CONTENT = {
@@ -52,7 +56,8 @@ const DEFAULT_CONTENT = {
 };
 
 export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
-    isOpen, onClose, ticketId, ticketNumber, onSuccess, warrantyCalc, currentNode
+    isOpen, onClose, ticketId, ticketNumber, onSuccess, warrantyCalc: _warrantyCalc, currentNode,
+    editMode: _editMode = false, editData: _editData = null, correctionReason: _correctionReason = ''
 }) => {
     const { token, user } = useAuthStore();
     const [loading, setLoading] = useState(false);
@@ -76,11 +81,27 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
         version: 1
     });
 
+    // 更正功能状态
+    const [showCorrectionConfirm, setShowCorrectionConfirm] = useState(false);
+    const [correctionReason, setCorrectionReason] = useState('');
+    const [originalActorId, setOriginalActorId] = useState<number | null>(null);
+
     const isAdmin = user?.role === 'Admin' || user?.role === 'Exec' || user?.department_code === 'management';
     const isOp = user?.department_code === 'production' || user?.department_code === 'OP';
+    const isOpLead = isOp && user?.role === 'Lead';
     // OP can edit during repair and QA phases
     const opEditableNodes = ['op_repairing', 'op_qa'];
     const isOpEditableNode = opEditableNodes.includes(ticketInfo?.current_node || '');
+
+    // 更正权限检查：
+    // - 原操作人可以更正
+    // - Admin/Exec 可以更正
+    // - OP Lead 可以更正（维修记录属于 OP 部门）
+    const canCorrect = activityId && (
+        (originalActorId && originalActorId === user?.id) ||  // 原操作人
+        isAdmin ||  // Admin/Exec
+        isOpLead    // OP Lead
+    );
 
     // Admin/Lead can edit anytime. OP can edit during repair/QA phases. Everyone else is read-only.
     // 维修记录编辑权限：
@@ -132,6 +153,10 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
             if (opReportActivity) {
                 // If it exists, populate our form
                 setActivityId(opReportActivity.id);
+                // 记录原操作人ID（用于更正权限检查）
+                if (opReportActivity.actor?.id) {
+                    setOriginalActorId(opReportActivity.actor.id);
+                }
                 if (opReportActivity.metadata) {
                     setReportData((prev: any) => ({
                         ...prev,
@@ -333,6 +358,29 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
         }
     };
 
+    // 处理更正确认：关闭只读模式，进入编辑模式
+    const handleCorrectionConfirm = async () => {
+        if (!correctionReason.trim() || !activityId) return;
+        
+        try {
+            // 记录更正原因到活动日志
+            await axios.post(`/api/v1/tickets/${ticketId}/activities`, {
+                activity_type: 'internal_note',
+                content: `更正维修记录，原因：${correctionReason.trim()}`
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            // 关闭确认弹窗，进入编辑模式
+            setShowCorrectionConfirm(false);
+            // 刷新数据以重新计算权限
+            onSuccess();
+        } catch (err: any) {
+            console.error("Correction confirm error:", err);
+            alert('操作失败: ' + (err.response?.data?.error || err.message));
+        }
+    };
+
     // Determine if we're in "editing" mode (op_repairing node) or "viewing" mode
     const isEditingMode = currentNode === 'op_repairing' || ticketInfo?.current_node === 'op_repairing';
 
@@ -345,7 +393,7 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
             <div style={{
-                width: 900, height: '90vh', background: '#1c1c1e', borderRadius: 16,
+                width: 675, height: '90vh', background: '#1c1c1e', borderRadius: 16,
                 border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden',
                 boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
                 display: 'flex', flexDirection: 'column', position: 'relative'
@@ -377,20 +425,43 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                             </div>
                         </div>
                     </div>
-                    {/* Close button */}
-                    <button
-                        onClick={onClose}
-                        style={{
-                            width: 32, height: 32, borderRadius: 8,
-                            background: 'rgba(255,255,255,0.05)', border: 'none',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', color: '#888', transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#888'; }}
-                    >
-                        <X size={18} />
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {/* 更正按钮：只在已提交的记录且有权限时显示 */}
+                        {activityId && canCorrect && isReadOnly && (
+                            <button
+                                onClick={() => {
+                                    setCorrectionReason('');
+                                    setShowCorrectionConfirm(true);
+                                }}
+                                style={{
+                                    padding: '6px 12px', borderRadius: 6,
+                                    background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                    cursor: 'pointer', color: '#F59E0B', fontSize: 13, fontWeight: 500,
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(245, 158, 11, 0.25)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245, 158, 11, 0.15)'; }}
+                            >
+                                <RefreshCw size={14} />
+                                更正
+                            </button>
+                        )}
+                        {/* Close button */}
+                        <button
+                            onClick={onClose}
+                            style={{
+                                width: 32, height: 32, borderRadius: 8,
+                                background: 'rgba(255,255,255,0.05)', border: 'none',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', color: '#888', transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#888'; }}
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Body */}
@@ -411,27 +482,6 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                                     <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>机器型号 / 序列号</div>
                                     <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
                                         {reportData.content.device_info.product_name || '-'} / <span style={{ color: '#fff' }}>{reportData.content.device_info.serial_number || '-'}</span>
-                                    </div>
-                                    <div style={{ marginTop: 4 }}>
-                                        {/* Use calculated warranty status if available, fallback to ticket flag */}
-                                        {warrantyCalc ? (
-                                            warrantyCalc.final_warranty_status === 'warranty_valid' ? (
-                                                <span style={{ fontSize: 11, color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(16,185,129,0.3)' }}>保修内</span>
-                                            ) : warrantyCalc.final_warranty_status === 'warranty_unknown' ? (
-                                                <span style={{ fontSize: 11, color: '#F59E0B', background: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(245,158,11,0.3)' }}>保修待确认</span>
-                                            ) : (
-                                                <span style={{ fontSize: 11, color: '#EF4444', background: 'rgba(239,68,68,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(239,68,68,0.3)' }}>已过保</span>
-                                            )
-                                        ) : (
-                                            ticketInfo?.is_warranty ? (
-                                                <span style={{ fontSize: 11, color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(16,185,129,0.2)' }}>保修内</span>
-                                            ) : (
-                                                <span style={{ fontSize: 11, color: '#F59E0B', background: 'rgba(245,158,11,0.1)', padding: '2px 6px', borderRadius: 4, border: '1px solid rgba(245,158,11,0.2)' }}>已过保</span>
-                                            )
-                                        )}
-                                        {ticketInfo?.original_order && (
-                                            <span style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>关联工单数: {ticketInfo.rma_count || 1}</span>
-                                        )}
                                     </div>
                                 </div>
                                 <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }} />
@@ -634,6 +684,70 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                 )}
 
             </div>
+
+            {/* 更正确认弹窗 */}
+            {showCorrectionConfirm && (
+                <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10
+                }}>
+                    <div style={{
+                        width: 400, background: '#2a2a2e', borderRadius: 12,
+                        border: '1px solid rgba(255,255,255,0.1)', padding: 24
+                    }}>
+                        <h4 style={{ margin: '0 0 16px 0', fontSize: 16, fontWeight: 600, color: '#fff' }}>
+                            确认更正维修记录
+                        </h4>
+                        <div style={{ 
+                            fontSize: 13, color: '#ccc', marginBottom: 16, padding: 12, 
+                            background: 'rgba(59,130,246,0.1)', borderRadius: 8, 
+                            border: '1px solid rgba(59,130,246,0.2)',
+                            lineHeight: 1.6
+                        }}>
+                            确认后将进入编辑模式，您可以修改维修记录的详细内容。
+                        </div>
+                        <div style={{ marginBottom: 16 }}>
+                            <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 6 }}>
+                                更正原因 <span style={{ color: '#EF4444' }}>*</span>
+                            </label>
+                            <textarea
+                                value={correctionReason}
+                                onChange={e => setCorrectionReason(e.target.value)}
+                                placeholder="请填写更正原因..."
+                                style={{
+                                    width: '100%', minHeight: 80, padding: 12, background: 'rgba(255,255,255,0.05)',
+                                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff',
+                                    fontSize: 13, resize: 'vertical', fontFamily: 'inherit'
+                                }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                            <button
+                                onClick={() => setShowCorrectionConfirm(false)}
+                                style={{
+                                    padding: '8px 16px', borderRadius: 6, background: 'rgba(255,255,255,0.1)',
+                                    border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13
+                                }}
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={handleCorrectionConfirm}
+                                disabled={!correctionReason.trim()}
+                                style={{
+                                    padding: '8px 16px', borderRadius: 6,
+                                    background: correctionReason.trim() ? '#F59E0B' : 'rgba(245,158,11,0.3)',
+                                    border: 'none', color: correctionReason.trim() ? '#000' : '#888',
+                                    cursor: correctionReason.trim() ? 'pointer' : 'not-allowed', fontSize: 13, fontWeight: 500
+                                }}
+                            >
+                                确认并编辑
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

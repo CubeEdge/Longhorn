@@ -199,6 +199,9 @@ module.exports = function (db, authenticate) {
                 production_date,
                 description,
                 status = 'ACTIVE',
+                // Product classification
+                product_line,
+                product_family,
                 // Sales trace
                 sales_channel = 'DIRECT',
                 sold_to_dealer_id,
@@ -210,12 +213,8 @@ module.exports = function (db, authenticate) {
                 // Warranty
                 warranty_start_date,
                 warranty_months = 24,
-                // [v2.0] New fields
-                sku_id,
-                grade = 'A',
-                specification,
-                warehouse,
-                entry_channel
+                // SKU linkage
+                sku_id
             } = req.body;
 
             if (!model_name) {
@@ -249,21 +248,22 @@ module.exports = function (db, authenticate) {
             const result = db.prepare(`
                 INSERT INTO products (
                     model_name, serial_number, product_sku,
-                    firmware_version, production_date, description, status,
+                    firmware_version, production_date, status,
+                    product_line, product_family,
                     sales_channel, sold_to_dealer_id, ship_to_dealer_date,
                     current_owner_id, registration_date, sales_invoice_date,
                     warranty_start_date, warranty_months, warranty_end_date, warranty_status,
-                    sku_id, grade, specification, warehouse, entry_channel,
-                    created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    notes, sku_id, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             `).run(
                 model_name,
                 serial_number || null,
                 product_sku || null,
                 firmware_version || null,
                 production_date || null,
-                description || null,
                 status,
+                product_line || null,
+                product_family || null,
                 sales_channel,
                 sold_to_dealer_id || null,
                 ship_to_dealer_date || null,
@@ -274,11 +274,8 @@ module.exports = function (db, authenticate) {
                 warranty_months,
                 warranty_end_date,
                 warranty_status,
-                sku_id || null,
-                grade,
-                specification || null,
-                warehouse || null,
-                entry_channel || null
+                description || null,
+                sku_id || null
             );
 
             // Auto-upgrade account to ACTIVE if owner is provided
@@ -333,12 +330,8 @@ module.exports = function (db, authenticate) {
                 // Warranty
                 warranty_start_date,
                 warranty_months,
-                // [v2.0] New fields
-                sku_id,
-                grade,
-                specification,
-                warehouse,
-                entry_channel
+                // SKU linkage
+                sku_id
             } = req.body;
 
             // Check if product exists
@@ -368,7 +361,6 @@ module.exports = function (db, authenticate) {
             addUpdate('product_sku', product_sku);
             addUpdate('firmware_version', firmware_version);
             addUpdate('production_date', production_date);
-            addUpdate('description', description);
 
             // Status field (ACTIVE/IN_REPAIR/STOLEN/SCRAPPED)
             if (status !== undefined) {
@@ -401,12 +393,11 @@ module.exports = function (db, authenticate) {
                 params.push(warranty_months);
             }
 
-            // [v2.0] Add updates for new fields
+            // Description -> notes
+            addUpdate('notes', description);
+            
+            // SKU linkage
             addUpdate('sku_id', sku_id);
-            addUpdate('grade', grade);
-            addUpdate('specification', specification);
-            addUpdate('warehouse', warehouse);
-            addUpdate('entry_channel', entry_channel);
 
             // Recalculate warranty end date if start date or months changed
             if (warranty_start_date !== undefined || warranty_months !== undefined) {

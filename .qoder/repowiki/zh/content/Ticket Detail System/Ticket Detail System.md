@@ -14,6 +14,8 @@
 - [ticket-activities.js](file://server/service/routes/ticket-activities.js)
 - [ActionBufferModal.tsx](file://client/src/components/Workspace/ActionBufferModal.tsx)
 - [Ticket_Refinement_Plan.md](file://docs/Ticket_Refinement_Plan.md)
+- [uiux.md](file://.agent/workflows/uiux.md)
+- [log_prompt.md](file://docs/log_prompt.md)
 </cite>
 
 ## 更新摘要
@@ -22,6 +24,8 @@
 - 添加多种活动类型的修正请求支持
 - 增强诊断报告、OP维修报告、发货信息、评论和内部备注的修正能力
 - 实现完整的权限控制和审计追踪机制
+- 改进工单活动时间轴分类和UI/UX设计
+- 优化侧滑窗口布局和交互体验
 
 ## 目录
 1. [项目概述](#项目概述)
@@ -31,15 +35,16 @@
 5. [权限控制机制](#权限控制机制)
 6. [工作流处理](#工作流处理)
 7. [修正功能增强](#修正功能增强)
-8. [性能优化策略](#性能优化策略)
-9. [错误处理与调试](#错误处理与调试)
-10. [总结](#总结)
+8. [UI/UX改进](#uiux改进)
+9. [性能优化策略](#性能优化策略)
+10. [错误处理与调试](#错误处理与调试)
+11. [总结](#总结)
 
 ## 项目概述
 
 工单详情系统是Longhorn项目中的核心功能模块，负责提供统一的工单管理界面，支持多种工单类型（咨询工单、RMA返修工单、经销商维修工单）的统一展示和操作。该系统采用前后端分离架构，前端使用React构建现代化的用户界面，后端基于Express.js提供RESTful API服务。
 
-系统的核心目标是为用户提供一致的工单管理体验，无论工单类型如何，都能通过统一的界面进行查看、编辑、评论和状态跟踪。**最新更新**增强了活动详细信息抽屉的修正功能，支持多种活动类型的修正请求，包括诊断报告、OP维修报告、发货信息、评论和内部备注。
+系统的核心目标是为用户提供一致的工单管理体验，无论工单类型如何，都能通过统一的界面进行查看、编辑、评论和状态跟踪。**最新更新**增强了活动详细信息抽屉的修正功能，支持多种活动类型的修正请求，包括诊断报告、OP维修报告、发货信息、评论和内部备注。同时，系统还改进了工单活动时间轴的分类方式，采用更直观的UI/UX设计，提升了用户的操作体验。
 
 ## 系统架构
 
@@ -53,6 +58,7 @@ Hooks[数据钩子]
 Store[状态管理]
 Drawer[活动详细信息抽屉]
 Correction[修正功能模块]
+Timeline[活动时间轴]
 end
 subgraph "API网关"
 Auth[认证中间件]
@@ -78,6 +84,7 @@ List --> Hooks
 Hooks --> Store
 Detail --> Drawer
 Drawer --> Correction
+Drawer --> Timeline
 Drawer --> Auth
 List --> Auth
 Auth --> Routes
@@ -459,6 +466,55 @@ Drawer-->>User : 显示成功消息
 - [TicketDetailComponents.tsx:756-1345](file://client/src/components/Workspace/TicketDetailComponents.tsx#L756-L1345)
 - [ticket-activities.js:650-815](file://server/service/routes/ticket-activities.js#L650-L815)
 
+## UI/UX改进
+
+### 活动时间轴分类优化
+
+系统对活动时间轴进行了重大UI/UX改进，采用更直观的分类方式：
+
+```mermaid
+graph TD
+subgraph "改进后的时间轴分类"
+Discussion[讨论与诊断<br/>评论、诊断报告、维修记录]
+SystemEvents[系统变更<br/>状态变更、指派、优先级、字段更新]
+KeyOutputs[关键输出<br/>文档发布、撤回、物流信息]
+end
+subgraph "分类规则"
+COMMENT_TYPES[评论类型: comment, diagnostic_report, op_repair_report]
+KEY_OUTPUT_TYPES[关键输出: document_published, document_recalled]
+SYSTEM_TYPES[系统事件: status_change, assignment_change, field_update, system_event]
+end
+Discussion --> COMMENT_TYPES
+Discussion --> KEY_OUTPUT_TYPES
+SystemEvents --> SYSTEM_TYPES
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:307-345](file://client/src/components/Workspace/TicketDetailComponents.tsx#L307-L345)
+
+### 侧滑窗口标准化
+
+系统实现了统一的侧滑窗口设计规范：
+
+- **宽度统一**：所有侧滑窗口宽度统一为400px
+- **布局优化**：采用macOS26设计风格，使用Kine Yellow主题色
+- **交互增强**：固定页脚确保操作按钮始终可见
+- **内容精简**：移除冗余字段，如RMA/SVC工单中的"处理记录"字段
+
+### 文本显示优化
+
+系统实现了更直观的文本显示方式：
+
+- **单行自然语言**：将"Actor + Action + Field + Value + Reason"串联在同一行展示
+- **智能截断**：长字段自动截断（20字符），保持界面整洁
+- **颜色编码**：使用不同颜色区分不同类型的操作和状态
+- **辅助信息**：在必要时显示修正次数和最后修正时间
+
+**章节来源**
+- [TicketDetailComponents.tsx:307-547](file://client/src/components/Workspace/TicketDetailComponents.tsx#L307-L547)
+- [uiux.md:5](file://.agent/workflows/uiux.md#L5)
+- [log_prompt.md:504-531](file://docs/log_prompt.md#L504-L531)
+
 ## 性能优化策略
 
 ### 缓存策略
@@ -549,5 +605,14 @@ Redirect --> Request
 - **权限控制**：严格的权限验证确保只有授权用户才能进行修正操作
 - **审计追踪**：完整的修正历史记录和通知机制
 - **用户友好界面**：直观的修正流程和反馈机制
+- **UI/UX改进**：采用macOS26设计风格，优化时间轴分类和侧滑窗口布局
+- **文本显示优化**：实现单行自然语言显示和智能截断
 
 该系统为Longhorn项目提供了强大的工单管理能力，能够满足复杂业务场景下的工单处理需求。通过持续的优化和扩展，系统将继续为用户提供更好的服务体验。修正功能的引入进一步增强了系统的可靠性和数据准确性，为工单管理提供了更加完善的解决方案。
+
+**更新亮点**：
+- **活动修正系统**：实现了完整的活动修正功能，支持多种活动类型的修正请求
+- **UI/UX改进**：采用macOS26设计风格，优化了时间轴分类和侧滑窗口布局
+- **权限控制增强**：严格的权限验证确保数据安全和操作合规
+- **审计追踪完善**：完整的修正历史记录和通知机制
+- **性能优化**：智能缓存和并行数据获取机制提升用户体验

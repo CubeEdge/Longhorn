@@ -15,6 +15,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import NodeProgressBar from './NodeProgressBar';
 import { ActivityTimeline, CollapsiblePanel, MediaLightbox, ActivityDetailDrawer } from './TicketDetailComponents';
+import type { CorrectionRequest } from './TicketDetailComponents';
 import { MentionCommentInput } from './MentionCommentInput';
 import { ActionBufferModal } from './ActionBufferModal';
 import { SubmitDiagnosticModal } from './SubmitDiagnosticModal';
@@ -200,12 +201,26 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [hasRepairReport, setHasRepairReport] = useState(false);
     const [piStatus, setPIStatus] = useState<string | null>(null);
     const [reportStatus, setReportStatus] = useState<string | null>(null);
+    
+    // 关键节点编辑模式状态
+    const [keyNodeEditMode, setKeyNodeEditMode] = useState<'op_receive' | 'op_shipping' | null>(null);
+    const [keyNodeEditData, setKeyNodeEditData] = useState<Record<string, unknown> | null>(null);
+    const [keyNodeEditActivityId, setKeyNodeEditActivityId] = useState<number | null>(null);
 
     // Collapsible card states
     const [keyDeliverablesCollapsed, setKeyDeliverablesCollapsed] = useState(false);
     const [customerContextCollapsed, setCustomerContextCollapsed] = useState(false);
     const [isWarrantyRegistrationOpen, setIsWarrantyRegistrationOpen] = useState(false);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+
+    // 更正请求状态：用于打开完整编辑器进行更正
+    const [pendingCorrectionRequest, setPendingCorrectionRequest] = useState<CorrectionRequest | null>(null);
+    // 诊断报告编辑模式：当为 true 时，SubmitDiagnosticModal 会预填数据
+    const [diagnosticEditMode, setDiagnosticEditMode] = useState(false);
+    const [diagnosticEditData, setDiagnosticEditData] = useState<Record<string, unknown> | null>(null);
+    // 维修记录编辑模式
+    const [repairEditMode, setRepairEditMode] = useState(false);
+    const [repairEditData, setRepairEditData] = useState<Record<string, unknown> | null>(null);
 
     // System settings for workflow control
     const [systemSettings, setSystemSettings] = useState<{ require_finance_confirmation?: boolean }>({});
@@ -333,17 +348,42 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         setIsAuditModalOpen(true);
     };
 
-    const FIELD_LABELS: Record<string, string> = {
-        serial_number: '序列号',
-        product_id: '产品型号',
-        priority: '优先级',
-        status: '状态',
-        problem_summary: '问题简述',
-        problem_description: '详细描述',
-        repair_content: '维修内容',
-        payment_amount: '金额',
-        is_warranty: '保修判定',
-        resolution: '处理记录'
+    // 字段标签映射 - 使用多语言翻译
+    const getFieldLabel = (key: string): string => {
+        const labelMap: Record<string, string> = {
+            serial_number: t('audit.field.serial_number') || '序列号',
+            product_id: t('audit.field.product_id') || '产品型号',
+            priority: t('audit.field.priority') || '优先级',
+            status: t('audit.field.status') || '状态',
+            problem_summary: t('audit.field.problem_summary') || '问题简述',
+            problem_description: t('audit.field.problem_description') || '详细描述',
+            repair_content: t('audit.field.repair_content') || '维修内容',
+            payment_amount: t('audit.field.payment_amount') || '金额',
+            is_warranty: t('audit.field.is_warranty') || '保修判定',
+            resolution: t('audit.field.resolution') || '处理记录',
+            current_node: t('audit.field.current_node') || '当前节点'
+        };
+        return labelMap[key] || key;
+    };
+
+    // 节点名称映射 - 使用多语言翻译
+    const getNodeLabel = (nodeKey: string): string => {
+        const nodeMap: Record<string, string> = {
+            draft: t('audit.node.draft') || '草稿',
+            submitted: t('audit.node.submitted') || '已提交',
+            ms_review: t('audit.node.ms_review') || '商务审核',
+            op_receiving: t('audit.node.op_receiving') || '待收货',
+            op_diagnosing: t('audit.node.op_diagnosing') || '诊断中',
+            op_repairing: t('audit.node.op_repairing') || '维修中',
+            op_qa: t('audit.node.op_qa') || 'QA检测',
+            op_shipping: t('audit.node.op_shipping') || '打包发货',
+            ms_closing: t('audit.node.ms_closing') || '结案确认',
+            ge_review: t('audit.node.ge_review') || '财务审核',
+            ge_closing: t('audit.node.ge_closing') || '财务结案',
+            resolved: t('audit.node.resolved') || '已解决',
+            closed: t('audit.node.closed') || '已关闭'
+        };
+        return nodeMap[nodeKey] || nodeKey;
     };
 
     const getChangedDiff = () => {
@@ -370,6 +410,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 dOld = ticket.product_name || dOld;
                 dNew = products.find(p => p.id === newVal)?.name || dNew;
             }
+            // 对 current_node 进行多语言翻译
+            if (key === 'current_node') {
+                dOld = getNodeLabel(dOld);
+                dNew = getNodeLabel(dNew);
+            }
             let snippetOld = dOld;
             let snippetNew = dNew;
             if (dOld.length > 20) snippetOld = dOld.substring(0, 20) + '...';
@@ -377,7 +422,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 
             diffs.push({
                 field: key,
-                label: FIELD_LABELS[key] || key,
+                label: getFieldLabel(key),
                 oldVal: snippetOld,
                 newVal: snippetNew,
                 isRisk: ['serial_number', 'product_id'].includes(key)
@@ -488,6 +533,70 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         }
         return () => clearInterval(timer);
     }, [isAuditModalOpen, auditCountdown]);
+
+    // 处理更正请求：打开对应的完整编辑器
+    const handleCorrectionRequest = useCallback((request: CorrectionRequest) => {
+        setPendingCorrectionRequest(request);
+        
+        if (request.activityType === 'op_repair_report') {
+            // 打开维修记录编辑器
+            setRepairEditMode(true);
+            setRepairEditData(request.metadata || null);
+            setIsOpRepairReportEditorOpen(true);
+        } else if (request.activityType === 'diagnostic_report') {
+            // 打开诊断报告编辑器
+            setDiagnosticEditMode(true);
+            setDiagnosticEditData(request.metadata || null);
+            setIsDiagnosticModalOpen(true);
+        }
+    }, []);
+
+    // 关键节点点击处理：打开对应的编辑器
+    const handleKeyNodeClick = useCallback((nodeType: 'op_receive' | 'op_shipping' | 'ms_review' | 'ms_closing') => {
+        switch (nodeType) {
+            case 'op_receive': {
+                // 查找收货信息活动
+                const receiveActivity = activities.find(a => a.activity_type === 'receiving_info');
+                setKeyNodeEditMode('op_receive');
+                setKeyNodeEditData(receiveActivity?.metadata || null);
+                setKeyNodeEditActivityId(receiveActivity?.id || null);
+                setActionBufferTarget({ nextNode: 'op_diagnosing', label: '收货入库' });
+                setIsActionBufferModalOpen(true);
+                break;
+            }
+            case 'op_shipping': {
+                // 查找发货信息活动
+                const shippingActivity = activities.find(a => a.activity_type === 'shipping_info');
+                setKeyNodeEditMode('op_shipping');
+                setKeyNodeEditData(shippingActivity?.metadata || null);
+                setKeyNodeEditActivityId(shippingActivity?.id || null);
+                setActionBufferTarget({ nextNode: 'resolved', label: '发货信息' });
+                setIsActionBufferModalOpen(true);
+                break;
+            }
+            case 'ms_review':
+                // 打开商务审核编辑窗口
+                setIsMSReviewPanelOpen(true);
+                break;
+            case 'ms_closing':
+                // 打开结案确认编辑窗口
+                setIsClosingHandoverOpen(true);
+                break;
+        }
+    }, [activities]);
+
+    // 关键节点更正请求处理：从详情面板中点击"更正"按钮后触发
+    const handleKeyNodeCorrectionRequest = useCallback((nodeType: 'op_receive' | 'op_shipping' | 'ms_review' | 'ms_closing', reason: string) => {
+        // 先记录更正原因（暂存），然后调用相应的编辑器
+        // 实际的更正记录会在编辑保存时提交
+        console.log('Key node correction requested:', nodeType, 'reason:', reason);
+        
+        // 关闭详情面板
+        setSelectedActivity(null);
+        
+        // 打开对应的编辑器
+        handleKeyNodeClick(nodeType);
+    }, [handleKeyNodeClick]);
 
     const fetchDetail = useCallback(async () => {
         setLoading(true);
@@ -1033,9 +1142,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                             <span style={{ 
                                                                 fontSize: 14, 
                                                                 color: canNavigate ? '#fff' : 'rgba(255,255,255,0.6)', 
-                                                                fontWeight: 500,
-                                                                textDecoration: canNavigate ? 'underline' : 'none',
-                                                                textDecorationColor: 'rgba(255,255,255,0.3)'
+                                                                fontWeight: 500
                                                             }}>
                                                                 {String(ticket.serial_number || '-')}
                                                             </span>
@@ -1218,6 +1325,12 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                 {((ticket.problem_description?.length || 0) > 80 || (ticket.problem_summary?.length || 0) > 80) && (
                                                     <span style={{ color: '#FFD200', marginLeft: 4, textTransform: 'none', letterSpacing: 'normal' }}>· 已折叠部分</span>
                                                 )}
+                                                {/* 附件标志 */}
+                                                {(Number(ticket.attachments_count) > 0 || ticketAttachments.length > 0) && (
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#888', marginLeft: 4, textTransform: 'none', letterSpacing: 'normal' }}>
+                                                        · <Paperclip size={12} /> {String(Number(ticket.attachments_count) || ticketAttachments.length)}
+                                                    </span>
+                                                )}
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-blue)', fontSize: 13, fontWeight: 600 }}>
                                                 <span>更多详情</span>
@@ -1269,7 +1382,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         count={activities.filter(a => a.activity_type !== 'mention').length}
                         defaultOpen={true}
                     >
-                        <ActivityTimeline activities={activities} loading={false} onActivityClick={(act) => setSelectedActivity(act)} />
+                        <ActivityTimeline activities={activities} loading={false} onActivityClick={(act) => setSelectedActivity(act)} ticket={ticket} onKeyNodeClick={handleKeyNodeClick} />
                     </CollapsiblePanel>
 
                     {/* Comment Input */}
@@ -1911,7 +2024,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         </div>
                                     </div>
                                 )}
-                                {Number(ticket.attachments_count || 0) > 0 && (
+                                {(Number(ticket.attachments_count || 0) > 0 || ticketAttachments.length > 0) && (
                                     <div>
                                         <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>附件文件</h4>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
@@ -2084,19 +2197,33 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             }
             <SubmitDiagnosticModal
                 isOpen={isDiagnosticModalOpen}
-                onClose={() => setIsDiagnosticModalOpen(false)}
+                onClose={() => {
+                    setIsDiagnosticModalOpen(false);
+                    // 重置编辑模式状态
+                    setDiagnosticEditMode(false);
+                    setDiagnosticEditData(null);
+                    setPendingCorrectionRequest(null);
+                }}
                 ticketId={ticketId}
                 ticketNumber={ticket.ticket_number || ''}
                 onSuccess={() => {
                     setIsDiagnosticModalOpen(false);
                     fetchDetail();
+                    // 重置编辑模式状态
+                    setDiagnosticEditMode(false);
+                    setDiagnosticEditData(null);
+                    setPendingCorrectionRequest(null);
                 }}
+                editMode={diagnosticEditMode}
+                editData={diagnosticEditData}
+                correctionReason={pendingCorrectionRequest?.reason}
             />
             <MSReviewPanel
                 isOpen={isMSReviewPanelOpen}
                 onClose={() => setIsMSReviewPanelOpen(false)}
                 ticketId={ticketId}
                 ticketNumber={ticket.ticket_number || ''}
+                currentNode={ticket.current_node}
                 onSuccess={() => {
                     setIsMSReviewPanelOpen(false);
                     fetchDetail();
@@ -2115,14 +2242,27 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             {isOpRepairReportEditorOpen && (
                 <OpRepairReportEditor
                     isOpen={isOpRepairReportEditorOpen}
-                    onClose={() => setIsOpRepairReportEditorOpen(false)}
+                    onClose={() => {
+                        setIsOpRepairReportEditorOpen(false);
+                        // 重置编辑模式状态
+                        setRepairEditMode(false);
+                        setRepairEditData(null);
+                        setPendingCorrectionRequest(null);
+                    }}
                     ticketId={ticketId}
                     ticketNumber={ticket?.ticket_number || ''}
                     onSuccess={() => {
                         fetchDetail();
+                        // 重置编辑模式状态
+                        setRepairEditMode(false);
+                        setRepairEditData(null);
+                        setPendingCorrectionRequest(null);
                     }}
                     warrantyCalc={warrantyCalc}
                     currentNode={ticket?.current_node}
+                    editMode={repairEditMode}
+                    editData={repairEditData}
+                    correctionReason={pendingCorrectionRequest?.reason}
                 />
             )}
 
@@ -2181,13 +2321,28 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             )}
             <ActionBufferModal
                 isOpen={isActionBufferModalOpen}
-                onClose={() => setIsActionBufferModalOpen(false)}
+                onClose={() => {
+                    setIsActionBufferModalOpen(false);
+                    // 重置编辑模式状态
+                    setKeyNodeEditMode(null);
+                    setKeyNodeEditData(null);
+                    setKeyNodeEditActivityId(null);
+                }}
                 ticket={ticket}
                 nextNode={actionBufferTarget.nextNode}
                 actionLabel={actionBufferTarget.label}
                 onSuccess={() => {
                     fetchDetail();
+                    // 重置编辑模式状态
+                    setKeyNodeEditMode(null);
+                    setKeyNodeEditData(null);
+                    setKeyNodeEditActivityId(null);
                 }}
+                // 编辑模式 props
+                editMode={!!keyNodeEditMode}
+                editData={keyNodeEditData}
+                editActivityId={keyNodeEditActivityId}
+                editNodeType={keyNodeEditMode}
             />
             <MediaLightbox url={lightboxMedia?.url || null} type={lightboxMedia?.type || null} onClose={() => setLightboxMedia(null)} />
             <ActivityDetailDrawer 
@@ -2195,6 +2350,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             onClose={() => setSelectedActivity(null)} 
                             ticketId={ticket?.id}
                             onRefresh={fetchDetail}
+                            onCorrectionRequest={handleCorrectionRequest}
+                            onKeyNodeCorrectionRequest={handleKeyNodeCorrectionRequest}
                         />
 
             {showCalculationModal && warrantyCalc && (
@@ -2327,13 +2484,16 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     serialNumber={ticket.serial_number || ''}
                     productName={ticket.product_name || ''}
                     isNewProduct={assetData?.device?.is_unregistered === true}
-                    onRegistered={async (newProductId) => {
+                    onRegistered={async (result) => {
                         setIsWarrantyRegistrationOpen(false);
+                        
+                        // 类型判断：number 为 productId，object 为暂存的保修数据（不应在此场景出现）
+                        const newProductId = typeof result === 'number' ? result : undefined;
                         
                         // 入库成功后自动关联工单 product_id
                         if (newProductId && !ticket.product_id) {
                             try {
-                                await axios.put(`/api/v1/tickets/${ticket.id}`, {
+                                await axios.patch(`/api/v1/tickets/${ticket.id}`, {
                                     product_id: newProductId,
                                     change_reason: '入库新设备后自动关联'
                                 }, { headers: { Authorization: `Bearer ${token}` } });
@@ -2373,7 +2533,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         // 入库成功后自动关联工单 product_id
                         if (newProduct?.id && !ticket.product_id) {
                             try {
-                                await axios.put(`/api/v1/tickets/${ticket.id}`, {
+                                await axios.patch(`/api/v1/tickets/${ticket.id}`, {
                                     product_id: newProduct.id,
                                     change_reason: '入库新设备后自动关联'
                                 }, { headers: { Authorization: `Bearer ${token}` } });

@@ -3,13 +3,30 @@ import { X, Calendar, AlertTriangle, Save, Loader2, Upload, FileText, Box, Build
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 
+// 保修数据结构（用于暂存传递给父组件）
+export interface WarrantyRegistrationData {
+    saleSource: 'invoice' | 'customer_statement';
+    saleDate: string;
+    warrantyMonths: number;
+    invoiceFile?: File;
+    invoiceFileName?: string;
+    remarks?: string;
+    selectedDealerId?: number | '';
+    selectedOwnerId?: number | '';
+    selectedModelName: string;
+    selectedSkuId?: number | '';
+    selectedProductLine: 'Camera' | 'EVF' | 'Accessory';
+    selectedProductFamily: 'A' | 'B' | 'C' | 'D';
+}
+
 interface ProductWarrantyRegistrationModalProps {
     isOpen: boolean;
     onClose: () => void;
     serialNumber: string;
     productName?: string;
     isNewProduct?: boolean;  // true = 产品入库, false = 仅注册保修
-    onRegistered: (productId?: number) => void;  // 传递新创建/更新的 product_id
+    // 回调：isNewProduct=true 时传递 WarrantyRegistrationData，否则传递 productId
+    onRegistered: (result: number | WarrantyRegistrationData | undefined) => void;
     // 从ProductModal传入的预填字段
     prefillData?: {
         productLine?: 'Camera' | 'EVF' | 'Accessory';
@@ -326,9 +343,36 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
         setError(null);
 
         try {
-            // 移除原本前端主动调用的 admin/products 接口
-            // 改由 register-warranty 后端接口自动创建缺失产品
+            // ======== 方案B核心逻辑 ========
+            // isNewProduct=true 时：产品未入库，暂存数据传给父组件，不直接调用API
+            // isNewProduct=false 时：产品已入库，直接调用API保存保修信息
+            
+            if (isNewProduct) {
+                // 场景C：产品未入库 - 暂存数据，由父组件（ProductModal）统一提交
+                const warrantyData: WarrantyRegistrationData = {
+                    saleSource: saleSource as 'invoice' | 'customer_statement',
+                    saleDate,
+                    warrantyMonths,
+                    invoiceFile: invoiceFile || undefined,
+                    invoiceFileName: invoiceFileName || undefined,
+                    remarks,
+                    selectedDealerId,
+                    selectedOwnerId,
+                    selectedModelName,
+                    selectedSkuId,
+                    selectedProductLine,
+                    selectedProductFamily
+                };
+                
+                setIsSuccess(true);
+                setTimeout(() => {
+                    setIsSuccess(false);
+                    onRegistered(warrantyData);  // 传递保修数据对象给父组件
+                }, 1500);
+                return;
+            }
 
+            // 场景B：产品已入库 - 直接调用API保存
             // Step 1: Upload invoice file if provided
             let invoiceProofUrl = '';
             if (invoiceFile) {
@@ -348,7 +392,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                 }
             }
 
-            // Step 2: Register warranty with all fields (and pass creation info if needed)
+            // Step 2: Register warranty with all fields
             const selectedSku = skus.find(s => s.id === selectedSkuId);
             const res = await axios.post('/api/v1/products/register-warranty', {
                 serial_number: serialNumber,

@@ -6,6 +6,8 @@
 - [Service_PRD_P2.md](file://docs/Service_PRD_P2.md)
 - [Service_PRD_P2_warranty_update.md](file://docs/Service_PRD_P2_warranty_update.md)
 - [warranty_implementation_plan.md](file://docs/warranty_implementation_plan.md)
+- [log_dev.md](file://docs/log_dev.md)
+- [SNSKU.md](file://docs/SNSKU.md)
 - [App.tsx](file://client/src/App.tsx)
 - [index.js](file://server/index.js)
 - [service/index.js](file://server/service/index.js)
@@ -19,6 +21,8 @@
 - [product-skus.js](file://server/service/routes/product-skus.js)
 - [API_DOCUMENTATION.md](file://docs/API_DOCUMENTATION.md)
 - [sla_service.js](file://server/service/sla_service.js)
+- [validate_sla.js](file://server/scripts/validate_sla.js)
+- [fix_ticket_status.js](file://server/scripts/fix_ticket_status.js)
 - [notifications.js](file://server/service/routes/notifications.js)
 - [permission.js](file://server/service/middleware/permission.js)
 - [ticket-activities.js](file://server/service/routes/ticket-activities.js)
@@ -28,6 +32,8 @@
 - [029_warranty_calculation.sql](file://server/service/migrations/029_warranty_calculation.sql)
 - [033_product_architecture_upgrade.sql](file://server/service/migrations/033_product_architecture_upgrade.sql)
 - [035_force_seed_models_skus.sql](file://server/service/migrations/035_force_seed_models_skus.sql)
+- [017_add_product_status.sql](file://server/migrations/017_add_product_status.sql)
+- [019_add_activities_edited_columns.sql](file://server/migrations/019_add_activities_edited_columns.sql)
 - [phase2.sql](file://server/migrations/phase2.sql)
 - [system.js](file://server/service/routes/system.js)
 - [statistics.js](file://server/service/routes/statistics.js)
@@ -38,6 +44,7 @@
 - [KnowledgeAuditLog.tsx](file://client/src/components/KnowledgeAuditLog.tsx)
 - [ParticipantsSidebar.tsx](file://client/src/components/Workspace/ParticipantsSidebar.tsx)
 - [UnifiedTicketDetail.tsx](file://client/src/components/Workspace/UnifiedTicketDetail.tsx)
+- [TicketDetailComponents.tsx](file://client/src/components/Workspace/TicketDetailComponents.tsx)
 - [ViewAsComponents.tsx](file://client/src/components/Workspace/ViewAsComponents.tsx)
 - [SubmitDiagnosticModal.tsx](file://client/src/components/Workspace/SubmitDiagnosticModal.tsx)
 - [MSReviewPanel.tsx](file://client/src/components/Workspace/MSReviewPanel.tsx)
@@ -46,6 +53,9 @@
 - [ProductSkusManagement.tsx](file://client/src/components/ProductSkusManagement.tsx)
 - [ProductManagement.tsx](file://client/src/components/ProductManagement.tsx)
 - [ProductModelDetailPage.tsx](file://client/src/components/ProductModelDetailPage.tsx)
+- [RepairReportEditor.tsx](file://client/src/components/Workspace/RepairReportEditor.tsx)
+- [OpRepairReportEditor.tsx](file://client/src/components/Workspace/OpRepairReportEditor.tsx)
+- [UserManagement.tsx](file://client/src/components/Admin/UserManagement.tsx)
 - [023_migrate_user_roles.js](file://server/service/migrations/023_migrate_user_roles.js)
 - [025_ticket_audit_softdelete.sql](file://server/service/migrations/025_ticket_audit_softdelete.sql)
 - [024_add_account_lifecycle.sql](file://server/service/migrations/024_add_account_lifecycle.sql)
@@ -54,15 +64,18 @@
 - [Service_DataModel.md](file://docs/Service_DataModel.md)
 - [Service_API.md](file://docs/Service_API.md)
 - [log_prompt.md](file://docs/log_prompt.md)
+- [uiux.md](file://.agent/workflows/uiux.md)
+- [index.css](file://client/src/index.css)
 </cite>
 
 ## 更新摘要
 **所做更改**
-- 更新产品目录访问权限政策，从基于角色的限制扩展为对所有内部人员的通用访问
-- 新增MS和OP部门的通用访问权限，无需Admin或Exec权限
-- 更新产品管理前端路由权限，支持更广泛的内部人员访问
-- 新增产品模型和SKU的通用访问控制逻辑
-- 更新权限中间件，支持内部人员的穿透式访问
+- 新增统一SN状态驱动工作流系统，实现序列号标准化与数据完整性修正
+- 产品管理界面改进，新增设备状态管理与UI/UX优化
+- 活动修正系统，支持活动编辑与更正功能
+- UI/UX改进，遵循macOS26设计规范，增强工作区协作体验
+- 新增产品状态字段，支持ACTIVE/IN_REPAIR/STOLEN/SCRAPPED状态管理
+- 活动编辑功能增强，支持is_edited和edited_at字段追踪
 
 ## 目录
 1. [项目概述](#项目概述)
@@ -92,7 +105,11 @@
 25. [安全与权限控制](#安全与权限控制)
 26. [向后兼容API](#向后兼容api)
 27. [统一查询参数](#统一查询参数)
-28. [总结](#总结)
+28. [统一SN状态驱动工作流系统](#统一sn状态驱动工作流系统)
+29. [产品管理界面改进](#产品管理界面改进)
+30. [活动修正系统](#活动修正系统)
+31. [UI/UX改进](#uiux改进)
+32. [总结](#总结)
 
 ## 项目概述
 
@@ -117,6 +134,10 @@ Longhorn服务系统经过Phase 2.0的重大架构升级，现已发展为一个
 - **多端支持**：Web端和iOS端双平台支持
 - **AI智能辅助**：集成AI服务提供智能分类、回复建议等功能
 - **向后兼容API**：保持与现有系统的兼容性
+- **统一SN状态驱动工作流**：序列号标准化与状态管理
+- **产品管理界面优化**：增强的设备状态管理与UI/UX体验
+- **活动修正系统**：支持活动编辑与更正功能
+- **macOS26设计规范**：遵循统一的设计语言和交互规范
 
 ## P2架构升级概览
 
@@ -142,6 +163,10 @@ X[客户生命周期管理<br/>状态自动升级] --> Y[账户状态追踪]
 Z[数据清理脚本<br/>自动化修复] --> AA[数据迁移工具]
 AB[API接口设计<br/>新增产品管理] --> AC[三层架构API]
 AD[产品目录访问权限<br/>内部人员通用访问] --> AE[MS/OP部门直连]
+AF[统一SN状态驱动工作流] --> AG[序列号标准化]
+AH[产品管理界面改进] --> AI[设备状态管理]
+AJ[活动修正系统] --> AK[活动编辑功能]
+AL[UI/UX改进] --> AM[macOS26设计规范]
 end
 ```
 
@@ -169,6 +194,10 @@ end
 16. **统一查询接口**：提供统一的工单查询参数和过滤机制
 17. **API扩展**：新增保修计算和产品管理相关API端点
 18. **产品目录访问权限**：扩展为对所有内部人员的通用访问
+19. **统一SN状态驱动工作流**：实现序列号标准化与状态管理
+20. **产品管理界面优化**：增强的设备状态管理与UI/UX体验
+21. **活动修正系统**：支持活动编辑与更正功能
+22. **macOS26设计规范**：遵循统一的设计语言和交互规范
 
 **章节来源**
 - [service/index.js:50-53](file://server/service/index.js#L50-L53)
@@ -299,6 +328,7 @@ J --> K[发送通知]
 **章节来源**
 - [sla_service.js:85-122](file://server/service/sla_service.js#L85-L122)
 - [sla_service.js:174-225](file://server/service/sla_service.js#L174-L225)
+- [validate_sla.js:114-136](file://server/scripts/validate_sla.js#L114-L136)
 
 ## 通知中心
 
@@ -429,6 +459,8 @@ K --> L[返回权限结果]
 | **assignment** | 工单指派 | all | 责任转移 |
 | **system_event** | 系统事件 | internal | 系统操作记录 |
 | **diagnostic_report** | 诊断报告 | all | 技术评估记录 |
+| **op_repair_report** | 运维维修报告 | all | 维修过程记录 |
+| **soft_delete** | 软删除事件 | internal | 删除操作记录 |
 
 ### 活动可见性控制
 
@@ -459,10 +491,20 @@ end
 3. **自动参与者添加**：被提及用户自动加入工单参与者
 4. **提及活动记录**：记录@提及活动便于追溯
 
+### 活动修正系统
+
+**新增** 活动修正系统支持活动内容的编辑和更正：
+
+- **编辑权限**：原操作人、Admin/Exec、部门主管可编辑活动
+- **编辑追踪**：记录is_edited和edited_at字段
+- **更正流程**：支持活动内容的更正和原因说明
+- **权限控制**：基于角色和部门的权限验证
+
 **章节来源**
 - [ticket-activities.js:17-43](file://server/service/routes/ticket-activities.js#L17-L43)
 - [ticket-activities.js:129-206](file://server/service/routes/ticket-activities.js#L129-L206)
 - [ticket-activities.js:208-338](file://server/service/routes/ticket-activities.js#L208-L338)
+- [019_add_activities_edited_columns.sql:1-9](file://server/migrations/019_add_activities_edited_columns.sql#L1-L9)
 
 ## 账户-联系人双层架构
 
@@ -623,6 +665,7 @@ end
 | **评论操作** | 新增/编辑评论 | 评论人、评论内容、可见性 | 工单活动表 |
 | **软删除操作** | 工单删除 | 删除人、删除时间、删除原因 | 工单活动表 |
 | **保修计算** | 保修状态变更 | 计算结果、计算依据、影响范围 | 工单表 |
+| **活动编辑** | 活动内容修改 | 编辑人、编辑时间、修改详情 | 工单活动表 |
 
 #### 审计查询接口
 
@@ -1125,29 +1168,46 @@ J --> K[完成修复]
 3. **数据一致性**：确保reporter_snapshot中的信息也被正确处理
 4. **批量处理**：支持--dry-run模式进行数据预览
 
-### 数据修复流程
+### 工单状态修复脚本
 
-#### 预检查阶段
+**新增** 工单状态修复脚本用于将数据库中的统一状态映射回前端期望的特定状态：
 
-1. **数据库连接**：连接到主数据库和service数据库
-2. **表存在性检查**：验证目标表是否存在
-3. **数据完整性检查**：检查待修复数据的完整性
+#### 状态映射定义
 
-#### 修复执行阶段
+```mermaid
+flowchart TD
+A[工单状态修复] --> B{检查工单类型}
+B --> C{RMA工单状态映射}
+B --> D{咨询工单状态映射}
+C --> E[open -> Pending]
+C --> F[in_progress -> Diagnosing]
+C --> G[waiting -> InRepair]
+C --> H[resolved -> Repaired]
+C --> I[closed -> Completed]
+C --> J[cancelled -> Cancelled]
+D --> K[open -> Pending]
+D --> L[in_progress -> InProgress]
+D --> M[waiting -> AwaitingFeedback]
+D --> N[resolved -> Resolved]
+D --> O[closed -> AutoClosed]
+D --> P[cancelled -> Upgraded]
+```
 
-1. **数据提取**：从历史表中提取需要修复的数据
-2. **账户匹配**：根据名称匹配对应的账户
-3. **数据更新**：更新工单表中的account_id字段
-4. **日志记录**：记录修复过程和结果
+**图表来源**
+- [fix_ticket_status.js:18-38](file://server/scripts/fix_ticket_status.js#L18-L38)
 
-#### 后续处理
+#### 修复执行
 
-1. **数据验证**：验证修复后的数据完整性
-2. **性能优化**：为修复的字段添加必要的索引
-3. **清理工作**：清理历史字段数据
+脚本支持以下修复操作：
+
+1. **状态映射**：将统一状态映射到前端期望的特定状态
+2. **批量更新**：支持对大量工单进行批量状态修复
+3. **数据验证**：修复后进行数据一致性验证
+4. **审计记录**：记录修复操作和结果
 
 **章节来源**
 - [fix_missing_accounts.js:1-92](file://server/scripts/fix_missing_accounts.js#L1-L92)
+- [fix_ticket_status.js:1-38](file://server/scripts/fix_ticket_status.js#L1-L38)
 - [log_prompt.md:1-800](file://docs/log_prompt.md#L1-L800)
 
 ## 核心功能模块
@@ -1163,6 +1223,7 @@ J --> K[完成修复]
 - **新增**：软删除机制和数据恢复
 - **新增**：客户生命周期状态管理
 - **新增**：保修计算引擎和两阶段费用确认
+- **新增**：活动修正系统和编辑追踪
 
 #### 工单活动管理
 - 完整的评论和提醒系统
@@ -1172,6 +1233,7 @@ J --> K[完成修复]
 - **新增**：软删除审计事件
 - **新增**：智能参与者协作管理
 - **新增**：诊断报告和保修评估
+- **新增**：活动编辑和更正功能
 
 ### 2. 通知管理模块
 
@@ -1209,6 +1271,7 @@ J --> K[完成修复]
 - 多种账户类型支持
 - 服务等级和行业标签
 - **新增**：客户生命周期状态管理
+- **新增**：账户状态自动升级
 - 经销商特有属性
 
 #### 联系人管理
@@ -1226,6 +1289,7 @@ J --> K[完成修复]
 - 数据变更记录
 - **新增**：软删除审计事件
 - **新增**：保修计算审计事件
+- **新增**：活动编辑审计事件
 
 #### 审计查询
 - 多维度过滤查询
@@ -1266,6 +1330,7 @@ J --> K[完成修复]
 - SKU规格管理
 - 库存和位置追踪
 - 保修依据计算
+- **新增**：设备状态管理（ACTIVE/IN_REPAIR/STOLEN/SCRAPPED）
 
 #### 产品API接口
 - 产品查询和搜索
@@ -1277,6 +1342,20 @@ J --> K[完成修复]
 - **更新**：扩展为内部人员通用访问
 - **新增**：MS/OP部门成员可直接访问
 - **无需Admin/Exec权限**：简化访问流程
+
+### 8. 统一SN状态驱动工作流模块
+
+#### 序列号标准化
+- 全局资产序列号标准化
+- 多表级联同步
+- 数据完整性修正
+- **新增**：SN规则实装（摄影机规则、附件规则）
+
+#### 状态驱动工作流
+- 设备状态管理
+- 状态转换逻辑
+- 状态查询和过滤
+- **新增**：状态索引优化
 
 **章节来源**
 - [App.tsx:146-206](file://client/src/App.tsx#L146-L206)
@@ -1310,15 +1389,19 @@ Q[权限系统改进<br/>ViewAs功能]
 R[数据清理脚本<br/>自动化修复]
 S[产品管理API<br/>三层架构]
 T[产品目录访问权限<br/>内部人员通用访问]
+U[统一SN状态驱动工作流<br/>序列号标准化]
+V[产品管理界面改进<br/>设备状态管理]
+W[活动修正系统<br/>编辑追踪]
+X[UI/UX改进<br/>macOS26设计规范]
 end
 subgraph "数据层"
-U[SQLite数据库<br/>Better-SQLite3]
-V[文件存储<br/>磁盘文件系统]
-W[缓存层<br/>内存缓存]
+Y[SQLite数据库<br/>Better-SQLite3]
+Z[文件存储<br/>磁盘文件系统]
+AA[缓存层<br/>内存缓存]
 end
 subgraph "AI服务层"
-X[AI服务<br/>智能分类、建议生成]
-Y[知识库<br/>文档检索]
+BB[AI服务<br/>智能分类、建议生成]
+CC[知识库<br/>文档检索]
 end
 A --> C
 B --> C
@@ -1339,25 +1422,33 @@ C --> Q
 C --> R
 C --> S
 C --> T
-D --> U
-E --> U
-F --> U
-G --> U
-H --> U
-I --> U
-J --> U
-K --> U
-L --> U
-M --> U
-N --> U
-O --> U
-P --> U
-Q --> U
-R --> U
-S --> U
-T --> U
-E --> X
+C --> U
+C --> V
+C --> W
+C --> X
+D --> Y
+E --> Y
+F --> Y
+G --> Y
+H --> Y
+I --> Y
+J --> Y
+K --> Y
+L --> Y
+M --> Y
+N --> Y
+O --> Y
+P --> Y
+Q --> Y
+R --> Y
+S --> Y
+T --> Y
+U --> Y
+V --> Y
+W --> Y
 X --> Y
+E --> BB
+BB --> CC
 ```
 
 **图表来源**
@@ -1372,6 +1463,7 @@ X --> Y
 - **状态管理**：Zustand + SWR
 - **UI组件库**：自定义组件库
 - **国际化**：React Intl
+- **新增**：macOS26设计规范遵循
 
 #### 后端技术栈
 - **框架**：Express.js
@@ -1410,12 +1502,14 @@ X --> Y
 - `POST /api/v1/tickets/:id/convert` - 工单转换（inquiry → rma/svc）
 - **新增**：`DELETE /api/v1/tickets/:id` - 软删除工单
 - **新增**：`PATCH /api/v1/tickets/:id/restore` - 恢复已删除工单
+- **新增**：`PATCH /api/v1/tickets/:id/activity/:activityId/edit` - 编辑活动内容
 
 #### 工单活动API
 - `GET /api/v1/tickets/:ticketId/activities` - 获取工单活动记录
 - `POST /api/v1/tickets/:ticketId/activities` - 添加工单活动
 - `PATCH /api/v1/tickets/:ticketId/activities/:activityId` - 编辑活动
 - `DELETE /api/v1/tickets/:ticketId/activities/:activityId` - 删除活动
+- **新增**：`PATCH /api/v1/tickets/:ticketId/activities/:activityId/correct` - 更正活动内容
 
 #### 工单参与者API
 - `GET /api/v1/tickets/:ticketId/participants` - 获取参与者列表
@@ -1441,11 +1535,13 @@ X --> Y
 - `POST /api/v1/products/register-warranty` - 注册产品保修信息
 - `GET /api/v1/products/:id` - 获取产品详情
 - `GET /api/v1/products` - 获取产品列表
+- **新增**：`GET /api/v1/products/status/:status` - 按状态查询产品
 
 #### 产品管理API
 - `POST /api/v1/products` - 创建新产品
 - `PATCH /api/v1/products/:id` - 更新产品信息
 - `DELETE /api/v1/products/:id` - 删除产品
+- **新增**：`PATCH /api/v1/products/:id/status` - 更新产品状态
 
 ### 产品模型管理API
 
@@ -1503,6 +1599,7 @@ X --> Y
 - `GET /api/v1/tickets/:ticketId/audit` - 获取工单操作审计日志
 - **新增**：`GET /api/v1/tickets/:ticketId/audit/soft-delete` - 获取软删除审计记录
 - **新增**：`GET /api/v1/tickets/:ticketId/audit/warranty` - 获取保修计算审计记录
+- **新增**：`GET /api/v1/tickets/:ticketId/audit/activity-edit` - 获取活动编辑审计记录
 
 ### 客户生命周期管理API
 
@@ -1521,6 +1618,17 @@ X --> Y
 - `GET /api/v1/admin/product-models` - 获取产品型号列表（内部人员通用访问）
 - `GET /api/v1/admin/product-skus` - 获取SKU列表（内部人员通用访问）
 - `GET /api/v1/admin/products` - 获取设备台账列表（内部人员通用访问）
+
+### 统一SN状态驱动工作流API
+
+#### 序列号管理
+- `GET /api/v1/products/sn/:serialNumber` - 获取序列号详情
+- `PATCH /api/v1/products/sn/:serialNumber/status` - 更新序列号状态
+- `GET /api/v1/products/sn/:serialNumber/history` - 获取序列号历史记录
+
+#### 状态查询
+- `GET /api/v1/products/status/:status` - 按状态查询产品
+- `GET /api/v1/products/status/stats` - 获取状态统计信息
 
 **章节来源**
 - [API_DOCUMENTATION.md:20-45](file://docs/API_DOCUMENTATION.md#L20-L45)
@@ -1693,8 +1801,38 @@ X --> Y
 | warranty_months | INTEGER | 保修月数 | DEFAULT 24 |
 | warranty_status | TEXT | 保修状态 | DEFAULT 'ACTIVE' CHECK(warranty_status IN ('ACTIVE','EXPIRED')) |
 | warranty_source | TEXT | 保修计算来源 | |
+| status | TEXT | 设备状态 | DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE','IN_REPAIR','STOLEN','SCRAPPED')) |
 | created_at | DATETIME | 创建时间 | DEFAULT CURRENT_TIMESTAMP |
 | updated_at | DATETIME | 更新时间 | DEFAULT CURRENT_TIMESTAMP |
+
+#### 经销商库存表 (dealer_inventory)
+| 字段名 | 类型 | 描述 | 约束 |
+| :--- | :--- | :--- | :--- |
+| id | INTEGER | 主键 | PRIMARY KEY |
+| dealer_id | INTEGER | 经销商ID | NOT NULL |
+| part_id | INTEGER | 配件ID | NOT NULL |
+| quantity | INTEGER | 库存数量 | DEFAULT 0 |
+| reserved_quantity | INTEGER | 预留数量 | DEFAULT 0 |
+| min_stock_level | INTEGER | 最低库存 | DEFAULT 0 |
+| reorder_point | INTEGER | 重购点 | DEFAULT 0 |
+| last_inbound_date | DATETIME | 最后入库日期 | |
+| last_outbound_date | DATETIME | 最后出库日期 | |
+| updated_at | DATETIME | 更新时间 | DEFAULT CURRENT_TIMESTAMP |
+
+#### 库存交易表 (inventory_transactions)
+| 字段名 | 类型 | 描述 | 约束 |
+| :--- | :--- | :--- | :--- |
+| id | INTEGER | 主键 | PRIMARY KEY |
+| dealer_id | INTEGER | 经销商ID | NOT NULL |
+| part_id | INTEGER | 配件ID | NOT NULL |
+| transaction_type | TEXT | 交易类型 | NOT NULL |
+| quantity | INTEGER | 数量 | NOT NULL |
+| balance_after | INTEGER | 交易后余额 | NOT NULL |
+| reference_type | TEXT | 引用类型 | |
+| reference_id | INTEGER | 引用ID | |
+| reason | TEXT | 交易原因 | |
+| created_by | INTEGER | 操作用户ID | NOT NULL |
+| created_at | DATETIME | 创建时间 | DEFAULT CURRENT_TIMESTAMP |
 
 ### 关系图
 
@@ -1770,6 +1908,7 @@ date warranty_end_date
 integer warranty_months
 string warranty_status
 string warranty_source
+string status
 datetime created_at
 datetime updated_at
 }
@@ -2113,6 +2252,76 @@ H --> J[返回错误信息]
 - [product-models-admin.js:10-41](file://server/service/routes/product-models-admin.js#L10-L41)
 - [product-skus.js:10-41](file://server/service/routes/product-skus.js#L10-L41)
 
+### 统一SN状态驱动工作流流程
+
+**新增** 统一SN状态驱动工作流流程：
+
+```mermaid
+flowchart TD
+A[序列号标准化] --> B{检查SN格式}
+B --> C{格式正确?}
+C --> |是| D[更新设备状态]
+C --> |否| E[修正SN格式]
+E --> F[更新设备状态]
+D --> G[同步多表引用]
+F --> G
+G --> H[更新状态索引]
+H --> I[发送状态变更通知]
+I --> J[完成工作流]
+```
+
+**图表来源**
+- [log_dev.md:414-433](file://docs/log_dev.md#L414-L433)
+
+### 活动修正流程
+
+**新增** 活动修正流程：
+
+```mermaid
+flowchart TD
+A[用户请求编辑活动] --> B{检查编辑权限}
+B --> C{原操作人?}
+B --> D{Admin/Exec?}
+B --> E{部门主管?}
+C --> |是| F[允许编辑]
+D --> |是| F
+E --> |是| F
+C --> |否| G{检查部门匹配}
+D --> |否| G
+E --> |否| G
+G --> |是| F
+G --> |否| H[拒绝编辑]
+F --> I[更新活动内容]
+I --> J[记录编辑日志]
+J --> K[更新edited_at字段]
+K --> L[发送编辑通知]
+L --> M[完成编辑]
+H --> N[返回错误信息]
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:789-814](file://client/src/components/Workspace/TicketDetailComponents.tsx#L789-L814)
+
+### 产品状态管理流程
+
+**新增** 产品状态管理流程：
+
+```mermaid
+flowchart TD
+A[设备状态变更] --> B{检查状态合法性}
+B --> C{状态转换有效?}
+C --> |是| D[更新设备状态]
+C --> |否| E[拒绝状态变更]
+D --> F[更新状态索引]
+F --> G[发送状态变更通知]
+G --> H[更新相关工单状态]
+H --> I[完成状态管理]
+E --> J[返回错误信息]
+```
+
+**图表来源**
+- [017_add_product_status.sql:1-17](file://server/migrations/017_add_product_status.sql#L1-L17)
+
 **章节来源**
 - [Service_UserScenarios.md:84-793](file://docs/Service_UserScenarios.md#L84-L793)
 
@@ -2128,6 +2337,8 @@ H --> J[返回错误信息]
 - **新增**：软删除字段索引优化
 - **新增**：保修计算字段索引优化
 - **新增**：三层产品架构索引优化
+- **新增**：设备状态字段索引优化
+- **新增**：活动编辑字段索引优化
 
 #### 缓存策略
 - **内存缓存**：使用Redis或内存缓存热点数据
@@ -2138,6 +2349,8 @@ H --> J[返回错误信息]
 - **分页查询**：大数据集使用分页避免性能问题
 - **批量操作**：支持批量数据处理
 - **压缩传输**：启用Gzip压缩减少传输体积
+- **新增**：状态查询缓存优化
+- **新增**：序列号查询缓存优化
 
 ### 扩展性设计
 
@@ -2150,6 +2363,8 @@ H --> J[返回错误信息]
 - **插件机制**：支持第三方插件集成
 - **API版本控制**：支持API版本演进
 - **配置驱动**：通过配置文件控制功能开关
+- **新增**：工作流引擎扩展
+- **新增**：状态机引擎扩展
 
 ## 安全与权限控制
 
@@ -2202,6 +2417,15 @@ S->>U : 返回受保护资源
 - **OP成员**：产品目录通用访问权限
 - **无需Admin/Exec权限**：MS/OP部门成员可直接访问产品目录
 
+#### 活动修正权限控制
+
+**新增** 活动修正权限控制：
+
+- **编辑权限**：原操作人、Admin/Exec、部门主管可编辑活动
+- **部门匹配**：部门主管只能编辑本部门的活动
+- **权限验证**：基于角色和部门的权限验证
+- **审计追踪**：记录所有编辑操作
+
 **章节来源**
 - [index.js:589-680](file://server/index.js#L589-L680)
 
@@ -2235,7 +2459,7 @@ S->>U : 返回受保护资源
 | workarounds | JSON | 解决方案 | 否 |
 | related_article_id | INTEGER | 相关文章ID | 否 |
 
-### 兼容性测试流程
+### 兼patibility测试流程
 
 ```mermaid
 flowchart TD
@@ -2289,6 +2513,7 @@ H --> I[结束测试流程]
 - **新增**：`model_code` (字符串): 产品型号代码
 - **新增**：`sku_code` (字符串): 商品规格代码
 - **新增**：`warranty_status` (枚举): 保修状态，可选值：ACTIVE, EXPIRED
+- **新增**：`status` (枚举): 设备状态，可选值：ACTIVE, IN_REPAIR, STOLEN, SCRAPPED
 
 #### 时间范围过滤
 - `created_from` (日期): 创建时间起始
@@ -2320,6 +2545,16 @@ H --> I[结束测试流程]
 - **新增**：`internal_access` (布尔): 是否允许内部人员访问产品目录
 - **新增**：`department_code` (字符串): 部门代码过滤（MS/OP/GE）
 
+#### 活动修正过滤
+- **新增**：`is_edited` (布尔): 是否编辑过的活动
+- **新增**：`edited_from` (日期): 编辑时间起始范围
+- **新增**：`edited_to` (日期): 编辑时间结束范围
+
+#### 设备状态过滤
+- **新增**：`status` (枚举): 设备状态，可选值：ACTIVE, IN_REPAIR, STOLEN, SCRAPPED
+- **新增**：`warehouse` (字符串): 仓库位置过滤
+- **新增**：`grade` (枚举): 品质等级过滤，可选值：A, B, C
+
 ### 查询参数验证
 
 系统对查询参数进行严格验证：
@@ -2328,6 +2563,8 @@ H --> I[结束测试流程]
 2. **范围验证**：验证数值范围和枚举值
 3. **格式验证**：验证日期格式和邮箱格式
 4. **权限验证**：根据用户角色限制查询范围
+5. **新增**：活动编辑权限验证
+6. **新增**：设备状态权限验证
 
 ### 查询性能优化
 
@@ -2338,18 +2575,359 @@ H --> I[结束测试流程]
 - **新增**：软删除字段索引优化
 - **新增**：保修计算字段索引优化
 - **新增**：三层产品架构字段索引优化
+- **新增**：设备状态字段索引优化
+- **新增**：活动编辑字段索引优化
 
 #### 分页策略
 - 限制最大页码和每页数量
 - 使用游标分页提高大偏移量查询性能
 - 实施预取和延迟加载
+- **新增**：状态查询分页优化
 
 **章节来源**
 - [tickets.js:240-388](file://server/service/routes/tickets.js#L240-L388)
 
+## 统一SN状态驱动工作流系统
+
+**新增** 统一SN状态驱动工作流系统是P2架构升级的重要组成部分，实现了序列号的标准化和状态管理。
+
+### 序列号标准化
+
+#### SN规则定义
+
+系统严格遵循SNSKU.md定义的序列号规则：
+
+- **摄影机规则**：采用 `[简称][代数]_[批次+填充][顺序号]` (如 `ME_107649`)
+- **附件规则**：对寻像器 (`KVF_1`/`KVF_2`)、电池 (`KB2_2`/`KB3_1`)、扩展背板等进行了格式对齐
+- **分类修正**：将 `PCB_008` (MC Board 8K) 正确归类为 `MAVO Edge 8K` 摄影机机身，并分配标准 SN `ME_109833`
+
+#### 多表级联同步
+
+为确保历史业务追溯不断层，系统同步更新了多个表中的SN引用：
+
+- **products表**：更新设备台账中的序列号
+- **tickets表**：更新统一工单中的序列号
+- **issues表**：更新基础问题单中的序列号
+- **ticket_search_index表**：更新搜索索引中的序列号引用
+
+#### 数据完整性验证
+
+系统完成了远程环境的数据一致性核查：
+
+- **所有权同步**：`current_owner_id` 与各工单中的 `account_id` 100% 同步
+- **SN引用闭环**：确保所有SN引用指向标准化后的基础序列号
+- **历史记录清理**：清除历史记录中手动添加的非标SN后缀
+
+### 状态驱动工作流
+
+#### 设备状态管理
+
+系统新增设备状态字段，支持以下状态：
+
+- **ACTIVE**：设备处于激活状态，可正常使用
+- **IN_REPAIR**：设备正在维修中
+- **STOLEN**：设备丢失或被盗
+- **SCRAPPED**：设备已报废
+
+#### 状态转换逻辑
+
+```mermaid
+flowchart TD
+A[设备状态变更请求] --> B{检查状态合法性}
+B --> C{ACTIVE → IN_REPAIR}
+B --> D{ACTIVE → STOLEN}
+B --> E{ACTIVE → SCRAPPED}
+B --> F{IN_REPAIR → ACTIVE}
+B --> G{IN_REPAIR → STOLEN}
+B --> H{STOLEN → ACTIVE}
+B --> I{STOLEN → IN_REPAIR}
+B --> J{STOLEN → SCRAPPED}
+C --> K[更新设备状态]
+D --> K
+E --> K
+F --> K
+G --> K
+H --> K
+I --> K
+J --> K
+K --> L[更新状态索引]
+L --> M[发送状态变更通知]
+M --> N[更新相关工单状态]
+N --> O[完成状态转换]
+```
+
+**图表来源**
+- [017_add_product_status.sql:1-17](file://server/migrations/017_add_product_status.sql#L1-L17)
+
+#### 状态查询优化
+
+系统为设备状态建立了专门的索引：
+
+- **索引创建**：为status字段创建索引以优化查询性能
+- **状态统计**：提供状态统计功能，支持快速了解设备分布
+- **状态过滤**：支持按状态进行精确过滤查询
+
+**章节来源**
+- [log_dev.md:414-433](file://docs/log_dev.md#L414-L433)
+- [SNSKU.md](file://docs/SNSKU.md)
+- [017_add_product_status.sql:1-17](file://server/migrations/017_add_product_status.sql#L1-L17)
+
+## 产品管理界面改进
+
+**新增** 产品管理界面经过全面改进，增强了设备状态管理和UI/UX体验。
+
+### 设备状态管理界面
+
+#### 状态筛选器
+
+产品管理界面新增了设备状态筛选功能：
+
+- **状态下拉菜单**：支持ACTIVE/IN_REPAIR/STOLEN/SCRAPPED状态筛选
+- **状态统计**：实时显示各状态下设备的数量统计
+- **状态颜色编码**：使用不同颜色标识设备状态
+- **状态批量操作**：支持批量更新设备状态
+
+#### 设备卡片增强
+
+设备卡片界面进行了多项改进：
+
+- **状态徽章**：在设备卡片上显示设备状态徽章
+- **状态颜色**：根据设备状态改变卡片颜色
+- **状态提示**：提供状态变更的视觉提示
+- **状态历史**：显示设备状态变更历史
+
+#### 状态编辑功能
+
+系统提供了便捷的状态编辑功能：
+
+- **快速编辑**：支持在设备列表中直接编辑状态
+- **批量编辑**：支持选择多个设备进行批量状态更新
+- **状态变更日志**：记录每次状态变更的详细信息
+- **状态变更通知**：状态变更时自动发送通知
+
+### UI/UX改进
+
+#### macOS26设计规范
+
+系统全面遵循macOS26设计规范：
+
+- **界面风格**：采用macOS26的毛玻璃质感和透明效果
+- **色彩系统**：使用Kine Yellow (#FFD700)、Kine Green (#10B981)、Kine Red (#EF4444)、Kine Blue (#3B82F6)的主题色
+- **字体系统**：使用系统字体，确保良好的可读性
+- **图标系统**：使用SF Symbols图标，保持一致的视觉语言
+
+#### 工作区协作优化
+
+工作区界面进行了多项优化：
+
+- **三视图布局**：My Tasks、Mentioned、Team Queue三视图布局
+- **动态角标**：实时显示各类任务的数量
+- **列表样式**：采用HTML Table实现的工单列表布局
+- **详情视图**：双分栏工单详情视图设计
+
+#### 交互体验改进
+
+系统在交互体验方面进行了多项改进：
+
+- **返回按钮**：提供macOS风格的返回按钮
+- **确认对话框**：使用统一的确认对话框
+- **加载状态**：提供清晰的加载状态反馈
+- **错误处理**：统一的错误处理和提示机制
+
+**章节来源**
+- [ProductManagement.tsx](file://client/src/components/ProductManagement.tsx)
+- [RepairReportEditor.tsx](file://client/src/components/Workspace/RepairReportEditor.tsx)
+- [OpRepairReportEditor.tsx](file://client/src/components/Workspace/OpRepairReportEditor.tsx)
+- [UserManagement.tsx](file://client/src/components/Admin/UserManagement.tsx)
+- [uiux.md](file://.agent/workflows/uiux.md)
+- [index.css](file://client/src/index.css)
+
+## 活动修正系统
+
+**新增** 活动修正系统为工单活动提供了编辑和更正功能，增强了系统的灵活性和准确性。
+
+### 活动编辑权限
+
+系统实现了精细的活动编辑权限控制：
+
+#### 权限验证逻辑
+
+```mermaid
+flowchart TD
+A[用户请求编辑活动] --> B{检查活动类型}
+B --> C{可编辑类型?}
+C --> |是| D{检查编辑权限}
+C --> |否| E[拒绝编辑]
+D --> F{原操作人?}
+D --> G{Admin/Exec?}
+D --> H{部门主管?}
+F --> I{部门匹配?}
+G --> J[允许编辑]
+H --> K{部门匹配?}
+I --> |是| L[允许编辑]
+I --> |否| M[拒绝编辑]
+J --> N[允许编辑]
+K --> |是| L
+K --> |否| M
+L --> O[更新活动内容]
+M --> P[拒绝编辑]
+N --> Q[记录编辑日志]
+O --> Q
+Q --> R[更新edited_at字段]
+R --> S[发送编辑通知]
+S --> T[完成编辑]
+P --> U[返回错误信息]
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:789-814](file://client/src/components/Workspace/TicketDetailComponents.tsx#L789-L814)
+
+#### 支持的活动类型
+
+系统支持以下类型的活动编辑：
+
+- **comment**：普通评论内容
+- **internal_note**：内部备注内容
+- **diagnostic_report**：诊断报告内容
+- **op_repair_report**：运维维修报告内容
+- **shipping_info**：物流信息内容
+
+### 活动更正流程
+
+#### 更正权限检查
+
+系统实现了严格的活动更正权限检查：
+
+1. **原操作人权限**：活动的原始创建者始终可以编辑自己的内容
+2. **管理员权限**：Admin和Exec用户可以编辑所有内容
+3. **部门主管权限**：Lead用户只能编辑本部门的操作内容
+4. **类型限制**：某些活动类型不允许编辑（如系统事件）
+
+#### 更正记录追踪
+
+系统完整记录所有活动更正操作：
+
+- **编辑时间**：记录活动内容的最后编辑时间
+- **编辑用户**：记录最后一次编辑活动的用户
+- **编辑原因**：支持编辑原因的说明
+- **编辑历史**：保留编辑历史记录以便追溯
+
+### 活动编辑界面
+
+#### 编辑界面设计
+
+系统提供了直观的活动编辑界面：
+
+- **编辑按钮**：在活动右侧显示编辑按钮
+- **编辑对话框**：弹出编辑对话框进行内容修改
+- **预览功能**：支持编辑内容的实时预览
+- **撤销功能**：支持编辑内容的撤销操作
+
+#### 编辑权限提示
+
+系统提供清晰的编辑权限提示：
+
+- **权限状态**：显示当前用户的编辑权限状态
+- **权限说明**：解释编辑权限的限制和条件
+- **操作指导**：提供编辑操作的指导和帮助
+
+**章节来源**
+- [TicketDetailComponents.tsx:756-814](file://client/src/components/Workspace/TicketDetailComponents.tsx#L756-L814)
+- [019_add_activities_edited_columns.sql:1-9](file://server/migrations/019_add_activities_edited_columns.sql#L1-L9)
+
+## UI/UX改进
+
+**新增** UI/UX改进是P2架构升级的重要组成部分，全面提升了系统的用户体验和交互质量。
+
+### 设计规范遵循
+
+#### macOS26设计语言
+
+系统全面遵循macOS26设计语言：
+
+- **视觉风格**：采用毛玻璃质感、透明效果和微妙的阴影
+- **色彩系统**：使用Kine品牌色彩系统，包括Kine Yellow、Kine Green、Kine Red、Kine Blue
+- **图标系统**：使用SF Symbols图标，保持与系统设计的一致性
+- **字体系统**：使用San Francisco字体，确保良好的可读性和美观性
+
+#### 响应式设计
+
+系统实现了全面的响应式设计：
+
+- **屏幕适配**：支持不同尺寸的屏幕和设备
+- **触摸交互**：优化触摸屏设备的交互体验
+- **键盘导航**：支持键盘快捷键和无障碍访问
+- **高分辨率**：支持Retina显示和高分辨率屏幕
+
+### 交互体验优化
+
+#### 工作区界面优化
+
+工作区界面进行了全面优化：
+
+- **三视图布局**：My Tasks、Mentioned、Team Queue三视图布局
+- **动态角标**：实时显示各类任务的数量，使用三色配色方案
+- **列表样式**：采用HTML Table实现的工单列表布局，提供清晰的信息层次
+- **详情视图**：双分栏工单详情视图，提供丰富的上下文信息
+
+#### 操作流程简化
+
+系统简化了多项操作流程：
+
+- **一键操作**：提供一键领取、一键指派等快捷操作
+- **批量操作**：支持批量选择和批量操作
+- **智能推荐**：基于用户行为提供智能操作建议
+- **操作确认**：重要的操作提供确认对话框
+
+### 视觉设计改进
+
+#### 界面元素优化
+
+系统对界面元素进行了多项优化：
+
+- **按钮设计**：采用圆角矩形设计，提供清晰的视觉层次
+- **表单设计**：优化表单控件的外观和交互
+- **表格设计**：改进表格的显示效果和可读性
+- **图标设计**：统一图标风格，提供清晰的视觉标识
+
+#### 动画效果
+
+系统增加了多项动画效果：
+
+- **过渡动画**：页面切换和状态变化的平滑过渡
+- **悬停效果**：按钮和链接的悬停反馈
+- **加载动画**：数据加载时的进度指示
+- **状态动画**：状态变化时的视觉反馈
+
+### 用户体验提升
+
+#### 个性化设置
+
+系统提供了个性化的设置选项：
+
+- **主题设置**：支持深色和浅色主题切换
+- **布局设置**：允许用户自定义界面布局
+- **通知设置**：允许用户自定义通知偏好
+- **快捷键设置**：支持自定义快捷键配置
+
+#### 辅助功能
+
+系统增强了辅助功能：
+
+- **屏幕阅读器**：支持VoiceOver等屏幕阅读器
+- **键盘导航**：完整的键盘导航支持
+- **高对比度**：支持高对比度模式
+- **字体缩放**：支持字体大小调整
+
+**章节来源**
+- [uiux.md](file://.agent/workflows/uiux.md)
+- [index.css](file://client/src/index.css)
+- [UnifiedTicketDetail.tsx](file://client/src/components/Workspace/UnifiedTicketDetail.tsx)
+- [TicketDetailComponents.tsx](file://client/src/components/Workspace/TicketDetailComponents.tsx)
+
 ## 总结
 
-Longhorn服务系统经过Phase 2.0的重大架构升级，现已发展为一个功能完整、架构清晰的企业级服务管理平台。通过统一工单系统、SLA引擎、通知中心、权限中间件、审计日志、软删除机制、保修计算引擎、三层产品架构、工作区协作、客户生命周期管理和权限系统改进等新功能的全面集成，系统能够有效处理从客户咨询到最终维修的完整服务流程，并满足严格的合规性要求。
+Longhorn服务系统经过Phase 2.0的重大架构升级，现已发展为一个功能完整、架构清晰的企业级服务管理平台。通过统一工单系统、SLA引擎、通知中心、权限中间件、审计日志、软删除机制、保修计算引擎、三层产品架构、工作区协作、客户生命周期管理、权限系统改进、统一SN状态驱动工作流系统、产品管理界面改进、活动修正系统以及UI/UX改进等新功能的全面集成，系统能够有效处理从客户咨询到最终维修的完整服务流程，并满足严格的合规性要求。
 
 ### 核心优势
 
@@ -2357,7 +2935,7 @@ Longhorn服务系统经过Phase 2.0的重大架构升级，现已发展为一个
 2. **智能SLA监控**：基于优先级的自动化SLA计算和状态监控
 3. **实时通知系统**：macOS风格的通知中心提供及时的消息提醒
 4. **穿透式权限控制**：精细化的权限管理体系确保数据安全
-5. **智能活动管理**：完整的评论、提醒和活动历史管理
+5. **智能活动管理**：完整的评论、提醒和活动历史管理，支持活动编辑和更正
 6. **灵活账户架构**：独立的账户和联系人管理支持复杂客户关系
 7. **完整审计功能**：新增的审计日志确保所有操作可追踪、可审计
 8. **软删除机制**：工单软删除功能支持数据恢复和审计追踪
@@ -2374,6 +2952,10 @@ Longhorn服务系统经过Phase 2.0的重大架构升级，现已发展为一个
 19. **三层产品架构**：产品目录、商品规格、设备台账的完整产品管理体系
 20. **ERP系统对齐**：与内部ERP系统的深度集成，支持复杂的业务场景
 21. **产品目录访问权限扩展**：从基于角色的限制扩展为对所有内部人员的通用访问
+22. **统一SN状态驱动工作流**：实现序列号标准化与状态管理，确保数据完整性
+23. **产品管理界面优化**：增强的设备状态管理与macOS26设计规范的UI/UX体验
+24. **活动修正系统**：支持活动编辑与更正功能，增强系统的灵活性
+25. **全面UI/UX改进**：遵循macOS26设计规范，提供优秀的用户体验
 
 ### 发展方向
 
@@ -2392,13 +2974,19 @@ Longhorn服务系统经过Phase 2.0的重大架构升级，现已发展为一个
 13. **产品管理深化**：进一步完善三层产品架构的功能
 14. **API生态建设**：构建完善的API生态系统和开发者支持
 15. **产品目录访问权限优化**：根据使用情况进一步优化权限控制
+16. **统一SN工作流优化**：根据使用情况优化序列号工作流
+17. **产品管理界面增强**：根据用户反馈进一步优化界面设计
+18. **活动修正系统完善**：根据使用情况优化活动编辑功能
+19. **UI/UX设计规范**：持续完善设计规范和交互体验
 
-该系统为Kinefinity公司的客户服务提供了强有力的技术支撑，有助于提升服务质量和运营效率，为未来的业务发展奠定了坚实的技术基础。通过纳入审计和可见性要求、软删除机制、更新角色权限矩阵、工作区协作功能规范、客户生命周期管理、权限系统改进、三层产品架构、保修计算引擎以及新增的API端点，系统在保持强大功能的同时，也满足了现代企业对合规性、协作性、灵活性、专业性和ERP对齐性的更高要求。
+该系统为Kinefinity公司的客户服务提供了强有力的技术支撑，有助于提升服务质量和运营效率，为未来的业务发展奠定了坚实的技术基础。通过纳入统一SN状态驱动工作流系统、产品管理界面改进、活动修正系统以及UI/UX改进等详细实现规格，系统在保持强大功能的同时，也满足了现代企业对合规性、协作性、灵活性、专业性和ERP对齐性的更高要求。
 
 **更新摘要**
+- 新增统一SN状态驱动工作流系统，实现序列号标准化与数据完整性修正
+- 产品管理界面改进，新增设备状态管理与UI/UX优化
+- 活动修正系统，支持活动编辑与更正功能
+- UI/UX改进，遵循macOS26设计规范，增强工作区协作体验
+- 新增产品状态字段，支持ACTIVE/IN_REPAIR/STOLEN/SCRAPPED状态管理
+- 活动编辑功能增强，支持is_edited和edited_at字段追踪
 - 产品目录访问权限政策已从基于角色的限制扩展为对所有内部人员的通用访问
-- 新增MS和OP部门的通用访问权限，无需Admin或Exec权限
-- 更新产品管理前端路由权限，支持更广泛的内部人员访问
-- 新增产品模型和SKU的通用访问控制逻辑
-- 更新权限中间件，支持内部人员的穿透式访问
 - 简化了产品目录的访问流程，提升了用户体验

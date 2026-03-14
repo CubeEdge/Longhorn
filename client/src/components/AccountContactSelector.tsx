@@ -132,19 +132,22 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
     }
   }, []);
 
-  // 加载联系人列表
-  const loadContacts = useCallback(async (accountId: number) => {
+  // 加载联系人列表，返回联系人数组（用于自动选中主联系人）
+  const loadContacts = useCallback(async (accountId: number): Promise<Contact[]> => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`/api/v1/accounts/${accountId}/contacts`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data?.success) {
-        setContacts(response.data.data || []);
+        const contactList = response.data.data || [];
+        setContacts(contactList);
+        return contactList;
       }
     } catch (error) {
       console.error('Failed to load contacts:', error);
     }
+    return [];
   }, []);
 
   // 初始化加载
@@ -209,22 +212,35 @@ export const AccountContactSelector: React.FC<AccountContactSelectorProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 选择账户
-  const handleSelectAccount = (account: Account) => {
+  // 选择账户，自动选中主联系人
+  const handleSelectAccount = async (account: Account) => {
     setSelectedAccount(account);
     setSelectedContact(null);
     setShowAccountDropdown(false);
     setSearchQuery('');
     
-    // 加载该账户的联系人
-    loadContacts(account.id);
+    // 加载该账户的联系人，并自动选中主联系人
+    const contactList = await loadContacts(account.id);
     
-    // 通知父组件
-    onChange({
-      account_id: account.id,
-      contact_id: undefined,
-      reporter_name: account.primary_contact_name || account.name,
-    });
+    // 查找主联系人（status === 'PRIMARY' 或 is_primary === true）
+    const primaryContact = contactList.find(c => c.status === 'PRIMARY' || c.is_primary);
+    
+    if (primaryContact) {
+      // 自动选中主联系人
+      setSelectedContact(primaryContact);
+      onChange({
+        account_id: account.id,
+        contact_id: primaryContact.id,
+        reporter_name: primaryContact.name,
+      });
+    } else {
+      // 没有主联系人时，使用账户信息
+      onChange({
+        account_id: account.id,
+        contact_id: undefined,
+        reporter_name: account.primary_contact_name || account.name,
+      });
+    }
   };
 
   // 选择联系人

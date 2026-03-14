@@ -25,9 +25,16 @@ interface SubmitDiagnosticModalProps {
     ticketId: number;
     ticketNumber: string;
     onSuccess: () => void;
+    // 编辑模式相关 props（用于更正历史记录）
+    editMode?: boolean;
+    editData?: Record<string, unknown> | null;
+    correctionReason?: string;
 }
 
-export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ isOpen, onClose, ticketId, ticketNumber, onSuccess }) => {
+export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ 
+    isOpen, onClose, ticketId, ticketNumber, onSuccess,
+    editMode = false, editData = null, correctionReason: _correctionReason = ''
+}) => {
     const { token } = useAuthStore();
     const [submitting, setSubmitting] = useState(false);
 
@@ -43,6 +50,19 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ is
     const [estimatedParts, setEstimatedParts] = useState<EstimatedPart[]>([]);
     const [partSearchTerm, setPartSearchTerm] = useState('');
     const [partOptions, setPartOptions] = useState<PartOption[]>([]);
+
+    // 编辑模式：预填数据
+    React.useEffect(() => {
+        if (editMode && editData && isOpen) {
+            const data = editData as any;
+            if (data.diagnosis) setDiagnosis(data.diagnosis);
+            if (data.repair_advice) setRepairAdvice(data.repair_advice);
+            if (data.technical_damage_status) setDamageStatus(data.technical_damage_status);
+            if (data.technical_warranty_suggestion) setWarrantySuggestion(data.technical_warranty_suggestion);
+            if (data.estimated_labor_hours) setEstimatedLaborHours(data.estimated_labor_hours);
+            if (data.estimated_parts) setEstimatedParts(data.estimated_parts);
+        }
+    }, [editMode, editData, isOpen]);
 
     if (!isOpen) return null;
 

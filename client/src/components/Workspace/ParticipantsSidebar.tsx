@@ -115,7 +115,7 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
     const getRoleBadge = (role: string) => {
         const roles: Record<string, { color: string; label: string }> = {
             owner: { color: '#FFD700', label: '创建者' },
-            assignee: { color: '#10B981', label: '处理人' },
+            assignee: { color: '#10B981', label: '对接人' },
             mentioned: { color: '#3B82F6', label: '协作中' },
             follower: { color: '#8B5CF6', label: '关注者' }
         };
@@ -129,6 +129,12 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
             </span>
         );
     };
+    
+    // 协作成员列表最多显示4人
+    const MAX_VISIBLE_PARTICIPANTS = 4;
+    const [showAllParticipants, setShowAllParticipants] = useState(false);
+    const visibleParticipants = showAllParticipants ? participants : participants.slice(0, MAX_VISIBLE_PARTICIPANTS);
+    const hiddenCount = participants.length - MAX_VISIBLE_PARTICIPANTS;
 
     // Build grouped user list for invite dropdown
     const buildInviteGroups = () => {
@@ -332,7 +338,7 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                 {/* Participants List */}
                 <div style={{ padding: '8px 12px 12px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        {participants.map(p => (
+                        {visibleParticipants.map(p => (
                             <div
                                 key={p.user_id}
                                 title={`于 ${new Date(p.joined_at || p.added_at).toLocaleString('zh-CN')} 加入`}
@@ -386,6 +392,28 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                                 </button>
                             </div>
                         ))}
+                        
+                        {/* 展开/收起更多成员 */}
+                        {hiddenCount > 0 && (
+                            <button
+                                onClick={() => setShowAllParticipants(!showAllParticipants)}
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    gap: 4, padding: '6px 0', marginTop: 4,
+                                    background: 'none', border: 'none',
+                                    color: '#888', fontSize: 12,
+                                    cursor: 'pointer', transition: 'color 0.15s',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#FFD700'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#888'}
+                            >
+                                {showAllParticipants ? (
+                                    <>收起 <ChevronRight size={12} style={{ transform: 'rotate(-90deg)' }} /></>
+                                ) : (
+                                    <>查看全部 (+{hiddenCount}) <ChevronRight size={12} style={{ transform: 'rotate(90deg)' }} /></>
+                                )}
+                            </button>
+                        )}
                     </div>
 
                     {participants.length === 0 && (
