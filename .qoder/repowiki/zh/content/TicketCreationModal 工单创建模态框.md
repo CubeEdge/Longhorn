@@ -5,20 +5,23 @@
 - [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx)
 - [TicketAiWizard.tsx](file://client/src/components/TicketAiWizard.tsx)
 - [useTicketStore.ts](file://client/src/store/useTicketStore.ts)
+- [ProductWarrantyRegistrationModal.tsx](file://client/src/components/Service/ProductWarrantyRegistrationModal.tsx)
+- [ProductModal.tsx](file://client/src/components/Workspace/ProductModal.tsx)
 - [accounts.js](file://server/service/routes/accounts.js)
 - [contacts.js](file://server/service/routes/contacts.js)
+- [context.js](file://server/service/routes/context.js)
+- [products.js](file://server/service/routes/products.js)
 - [ai_service.js](file://server/service/ai_service.js)
 - [translations.ts](file://client/src/i18n/translations.ts)
 </cite>
 
 ## 更新摘要
 **变更内容**
-- 新增 CRM 集成功能，支持账户和联系人搜索
-- 增强 AI 辅助功能，支持多模态输入（OCR、PDF解析）
-- 集成智能字段填充能力，支持序列号自动检测和产品匹配
-- 新增 AI 沙盒功能，提供拖拽式智能解析体验
-- 增强的草稿状态管理，支持 AI 填充字段的视觉标识
-- 改进的附件处理功能，支持图片和PDF文件解析
+- 新增设备状态实时可视化功能，提供机器详情卡状态指示
+- 增强智能账户联系人解析，支持主联系人自动关联
+- 集成产品注册流程，支持未入库设备的保修注册
+- 新增机器详情卡功能，实时显示设备状态和保修信息
+- 改进序列号验证逻辑，支持设备状态检查和自动匹配
 
 ## 目录
 1. [简介](#简介)
@@ -26,33 +29,40 @@
 3. [核心组件](#核心组件)
 4. [架构概览](#架构概览)
 5. [详细组件分析](#详细组件分析)
-6. [CRM 集成功能](#crm-集成功能)
-7. [AI 辅助功能](#ai-辅助功能)
-8. [智能字段填充](#智能字段填充)
-9. [多模态输入支持](#多模态输入支持)
-10. [后端 AI 服务](#后端-ai-服务)
-11. [依赖关系分析](#依赖关系分析)
-12. [性能考虑](#性能考虑)
-13. [故障排除指南](#故障排除指南)
-14. [结论](#结论)
+6. [设备状态实时可视化](#设备状态实时可视化)
+7. [智能账户联系人解析](#智能账户联系人解析)
+8. [产品注册流程](#产品注册流程)
+9. [机器详情卡功能](#机器详情卡功能)
+10. [序列号验证增强](#序列号验证增强)
+11. [CRM 集成功能](#crm-集成功能)
+12. [AI 辅助功能](#ai-辅助功能)
+13. [智能字段填充](#智能字段填充)
+14. [多模态输入支持](#多模态输入支持)
+15. [后端 AI 服务](#后端-ai-服务)
+16. [依赖关系分析](#依赖关系分析)
+17. [性能考虑](#性能考虑)
+18. [故障排除指南](#故障排除指南)
+19. [结论](#结论)
 
 ## 简介
 
 TicketCreationModal 是 Longhorn 服务管理系统中的关键组件，提供统一的工单创建界面，支持三种类型的工单：咨询工单（Inquiry）、RMA 返厂单（RMA）和经销商维修单（DealerRepair）。该模态框采用现代化的设计风格，集成了 CRM 集成、AI 辅助功能、智能字段填充和多模态输入支持，为用户提供智能化的工单创建体验。
 
-**更新** 该组件现已深度集成了 CRM 功能，通过智能解析用户输入的自然语言内容，自动生成结构化的工单数据，显著提升了工单创建的智能化水平和用户体验。
+**更新** 该组件现已深度集成了设备状态实时可视化功能，通过智能解析用户输入的自然语言内容，自动生成结构化的工单数据，显著提升了工单创建的智能化水平和用户体验。
 
-**CRM 集成功能**：新增的 CRM 集成功能允许用户通过搜索企业或公司名称快速关联客户信息，系统支持账户和联系人的智能匹配，大幅减少了手动输入的工作量。
+**设备状态实时可视化**：新增的设备状态可视化功能能够实时显示设备的注册状态、保修状态和在保状态，通过颜色编码和状态指示器为用户提供直观的设备信息展示。
 
-**AI 辅助功能**：新增的 AI 工单向导功能允许用户通过粘贴邮件内容、聊天记录或问题描述，让 AI 自动提取关键信息并填充到工单表单中，支持多模态输入（图片OCR、PDF解析）。
+**智能账户联系人解析**：增强了 CRM 集成功能，能够自动识别和关联主联系人信息，支持多联系人的智能匹配和选择。
 
-**智能字段填充**：系统具备智能字段填充能力，能够自动检测序列号并匹配对应的产品型号，支持紧急工单的自动标记功能。
+**产品注册流程**：集成了完整的设备注册和保修注册流程，支持未入库设备的快速注册和保修信息的自动计算。
+
+**机器详情卡功能**：新增的机器详情卡能够实时显示设备的型号、配置、保修状态等关键信息，并提供相应的操作按钮。
 
 **Kine Yellow 视觉主题**：组件采用了全新的 Kine Yellow 主题设计，使用金色渐变色彩（#FFD700）作为主要视觉元素，营造专业而现代的品牌形象。
 
 ## 项目结构
 
-TicketCreationModal 作为全局组件被集成在应用的主要布局中，通过路由系统进行管理和控制，并与 CRM 集成和 AI 功能协同工作：
+TicketCreationModal 作为全局组件被集成在应用的主要布局中，通过路由系统进行管理和控制，并与 CRM 集成、AI 功能和设备状态可视化协同工作：
 
 ```mermaid
 graph TB
@@ -67,7 +77,9 @@ subgraph "数据层"
 useTicketStore[状态管理]
 AuthStore[认证状态]
 LanguageStore[国际化状态]
-CRMDb[CRM 数据库]
+ContextAPI[设备上下文 API]
+ProductsAPI[产品 API]
+WarrantyAPI[保修注册 API]
 end
 subgraph "业务页面"
 InquiryPage[咨询工单页面]
@@ -85,6 +97,12 @@ AccountsAPI[账户 API]
 ContactsAPI[联系人 API]
 SearchEngine[搜索引擎]
 end
+subgraph "设备状态可视化"
+DeviceCard[机器详情卡]
+StatusIndicator[状态指示器]
+WarrantyChecker[保修检查器]
+ProductRegistrar[产品注册器]
+end
 App --> MainLayout
 MainLayout --> TicketCreationModal
 MainLayout --> TicketAiWizard
@@ -101,16 +119,19 @@ CRMDb --> AccountsAPI
 CRMDb --> ContactsAPI
 AccountsAPI --> SearchEngine
 ContactsAPI --> SearchEngine
+ContextAPI --> DeviceCard
+ProductsAPI --> WarrantyChecker
+WarrantyAPI --> ProductRegistrar
 ServiceRoutes --> InquiryPage
 ServiceRoutes --> RMAPage
 ServiceRoutes --> DealerPage
 ```
 
 **图表来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L1-L901)
-- [TicketAiWizard.tsx](file://client/src/components/TicketAiWizard.tsx#L1-L269)
-- [accounts.js](file://server/service/routes/accounts.js#L1-L200)
-- [ai_service.js](file://server/service/ai_service.js#L1-L666)
+- [TicketCreationModal.tsx:1-1120](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1120)
+- [TicketAiWizard.tsx:1-269](file://client/src/components/TicketAiWizard.tsx#L1-L269)
+- [context.js:346-480](file://server/service/routes/context.js#L346-L480)
+- [products.js:32-120](file://server/service/routes/products.js#L32-L120)
 
 ## 核心组件
 
@@ -130,6 +151,9 @@ TicketCreationModal 是一个功能完整的工单创建组件，具有以下核
 - **双列布局**：全新的双列设计提升表单组织性和用户体验
 - **颜色编码区域**：不同工单类型使用独特的颜色主题，增强视觉识别
 - **动画效果**：流畅的模态框开合动画，提升用户体验
+- **设备状态可视化**：实时显示设备注册状态和保修状态
+- **智能账户解析**：自动关联主联系人信息
+- **产品注册流程**：支持未入库设备的快速注册
 
 #### 技术实现特点
 - 使用React Hooks进行状态管理
@@ -143,9 +167,12 @@ TicketCreationModal 是一个功能完整的工单创建组件，具有以下核
 - **新增** CRM 集成搜索功能
 - **新增** AI 沙盒多模态输入支持
 - **新增** 智能字段填充和序列号检测
+- **新增** 设备状态实时可视化
+- **新增** 智能账户联系人解析
+- **新增** 产品注册流程集成
 
 **章节来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L1-L901)
+- [TicketCreationModal.tsx:1-1120](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1120)
 
 ### TicketAiWizard 组件
 
@@ -167,11 +194,11 @@ TicketCreationModal 是一个功能完整的工单创建组件，具有以下核
 - 集成认证状态管理
 
 **章节来源**
-- [TicketAiWizard.tsx](file://client/src/components/TicketAiWizard.tsx#L1-L269)
+- [TicketAiWizard.tsx:1-269](file://client/src/components/TicketAiWizard.tsx#L1-L269)
 
 ## 架构概览
 
-TicketCreationModal 采用了清晰的分层架构设计，确保了组件间的松耦合和高内聚，并集成了 CRM 集成和 AI 功能：
+TicketCreationModal 采用了清晰的分层架构设计，确保了组件间的松耦合和高内聚，并集成了 CRM 集成、AI 功能和设备状态可视化：
 
 ```mermaid
 graph TD
@@ -183,18 +210,25 @@ Upload[文件上传区域]
 Preview[文件预览]
 CRMLookup[CRM 搜索组件]
 AISandbox[AI 沙盒]
+DeviceCard[设备详情卡]
+StatusIndicator[状态指示器]
+WarrantyModal[保修注册模态框]
+ProductModal[产品入库模态框]
 end
 subgraph "状态管理层"
 Store[zustand store]
 Draft[草稿状态]
 UIState[界面状态]
 GhostFields[AI 填充字段]
+DeviceState[设备状态]
+WarrantyState[保修状态]
 end
 subgraph "CRM 集成层"
 AccountsAPI[账户 API]
 ContactsAPI[联系人 API]
 SearchEngine[搜索引擎]
 PermissionFilter[权限过滤]
+PrimaryContact[主联系人解析]
 end
 subgraph "AI处理层"
 AIService[AI 解析服务]
@@ -203,12 +237,24 @@ Transformer[数据转换器]
 OCRService[OCR 识别]
 PDFParser[PDF 解析]
 BokehAssistant[Bokeh 智能助手]
+EndUserParser[终端用户解析器]
+EndUserResolver[联系人解析器]
+end
+subgraph "设备状态可视化层"
+ContextAPI[设备上下文 API]
+WarrantyAPI[保修检查 API]
+ProductAPI[产品注册 API]
+DeviceStatus[设备状态计算]
+WarrantyChecker[保修状态检查]
+ProductRegistrar[产品注册器]
 end
 subgraph "数据访问层"
 API[API客户端]
 Auth[认证管理]
 Cache[缓存策略]
 DB[CRM 数据库]
+DeviceDB[设备数据库]
+WarrantyDB[保修数据库]
 end
 subgraph "业务逻辑层"
 Validation[表单验证]
@@ -218,12 +264,17 @@ CRMIntegration[CRM 集成处理]
 AIIntegration[AI 集成处理]
 SmartFill[智能填充]
 MultiModal[多模态处理]
+DeviceVisualization[设备可视化]
+AccountResolution[账户解析]
+ProductRegistration[产品注册]
+WarrantyFlow[保修流程]
 end
 Modal --> Form
 Modal --> Upload
 Modal --> Preview
 Modal --> CRMLookup
 Modal --> AISandbox
+Modal --> DeviceCard
 Modal --> Store
 AiWizard --> AIService
 AiWizard --> Parser
@@ -234,16 +285,28 @@ CRMLookup --> AccountsAPI
 CRMLookup --> ContactsAPI
 CRMLookup --> SearchEngine
 CRMLookup --> PermissionFilter
+CRMLookup --> PrimaryContact
 AISandbox --> AIService
 AISandbox --> OCRService
 AISandbox --> PDFParser
+DeviceCard --> ContextAPI
+DeviceCard --> WarrantyAPI
+DeviceCard --> DeviceStatus
+DeviceCard --> WarrantyChecker
+DeviceCard --> ProductRegistrar
 Modal --> AIIntegration
 Modal --> CRMIntegration
 Modal --> SmartFill
 Modal --> MultiModal
+Modal --> DeviceVisualization
+Modal --> AccountResolution
+Modal --> ProductRegistration
+Modal --> WarrantyFlow
 Store --> Draft
 Store --> UIState
 Store --> GhostFields
+Store --> DeviceState
+Store --> WarrantyState
 Modal --> API
 API --> Auth
 API --> Cache
@@ -253,15 +316,17 @@ Modal --> ErrorHandling
 ```
 
 **图表来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L1-L901)
-- [TicketAiWizard.tsx](file://client/src/components/TicketAiWizard.tsx#L1-L269)
-- [useTicketStore.ts](file://client/src/store/useTicketStore.ts#L1-L68)
+- [TicketCreationModal.tsx:1-1120](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1120)
+- [TicketAiWizard.tsx:1-269](file://client/src/components/TicketAiWizard.tsx#L1-L269)
+- [useTicketStore.ts:1-68](file://client/src/store/useTicketStore.ts#L1-L68)
+- [context.js:346-480](file://server/service/routes/context.js#L346-L480)
+- [products.js:32-120](file://server/service/routes/products.js#L32-L120)
 
 ## 详细组件分析
 
 ### 状态管理架构
 
-TicketCreationModal 通过自定义的Zustand store实现状态管理，提供了完整的工单草稿管理功能，包括新增的 AI 填充字段状态：
+TicketCreationModal 通过自定义的Zustand store实现状态管理，提供了完整的工单草稿管理功能，包括新增的 AI 填充字段状态和设备状态：
 
 ```mermaid
 classDiagram
@@ -298,6 +363,13 @@ Inquiry
 RMA
 DealerRepair
 }
+class DeviceState {
++any machineInfo
++boolean snLoading
++string warrantyCheckStatus
++boolean showWarrantyModal
++boolean showProductModal
+}
 class CRMLookup {
 +string query
 +any[] results
@@ -313,15 +385,229 @@ class AISandbox {
 +handleAiParse() void
 +clearInput() void
 }
+class WarrantyState {
++'unchecked' | 'valid' | 'needs_registration' warrantyCheckStatus
++boolean showWarrantyModal
++boolean showProductModal
+}
 TicketStore --> TicketDraft : manages
 TicketStore --> CRMLookup : contains
 TicketStore --> AISandbox : contains
+TicketStore --> DeviceState : manages
+TicketStore --> WarrantyState : manages
 TicketDraft --> TicketType : uses
+DeviceState --> WarrantyState : controls
 ```
 
 **图表来源**
-- [useTicketStore.ts](file://client/src/store/useTicketStore.ts#L4-L67)
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L17-L196)
+- [useTicketStore.ts:4-67](file://client/src/store/useTicketStore.ts#L4-L67)
+- [TicketCreationModal.tsx:17-196](file://client/src/components/Service/TicketCreationModal.tsx#L17-L196)
+- [TicketCreationModal.tsx:203-242](file://client/src/components/Service/TicketCreationModal.tsx#L203-L242)
+
+### 设备状态实时可视化架构
+
+**新增** 设备状态可视化功能展现了完整的实时状态监控架构：
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant DeviceCard as 设备详情卡
+participant ContextAPI as 设备上下文 API
+participant WarrantyAPI as 保修检查 API
+participant DeviceDB as 设备数据库
+User->>DeviceCard : 输入序列号
+DeviceCard->>ContextAPI : GET /api/v1/context/by-serial-number
+ContextAPI->>DeviceDB : 查询设备信息
+DeviceDB-->>ContextAPI : 返回设备数据
+ContextAPI-->>DeviceCard : 设备上下文数据
+DeviceCard->>WarrantyAPI : GET /api/v1/products/check-warranty
+WarrantyAPI->>DeviceDB : 检查保修状态
+DeviceDB-->>WarrantyAPI : 返回保修信息
+WarrantyAPI-->>DeviceCard : 保修状态数据
+DeviceCard->>DeviceCard : 计算状态颜色
+DeviceCard->>User : 显示状态卡片
+User->>DeviceCard : 点击操作按钮
+DeviceCard->>User : 触发相应操作
+```
+
+**更新** 设备状态可视化系统包括：
+
+- **实时状态检查**：自动检查设备的注册状态和保修状态
+- **颜色编码系统**：未入库(红色)、需注册(黄色)、过保(橙色)、有效(绿色)
+- **状态指示器**：实时显示设备的当前状态和相关信息
+- **操作按钮**：根据状态提供相应的操作选项
+- **自动匹配**：根据设备状态自动匹配产品型号
+
+**图表来源**
+- [TicketCreationModal.tsx:818-916](file://client/src/components/Service/TicketCreationModal.tsx#L818-L916)
+- [context.js:346-480](file://server/service/routes/context.js#L346-L480)
+- [products.js:32-120](file://server/service/routes/products.js#L32-L120)
+
+### 智能账户联系人解析架构
+
+**新增** 智能账户联系人解析功能展现了完整的主联系人识别架构：
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant CRMLookup as CRM 搜索组件
+participant AccountsAPI as 账户 API
+participant ContactsAPI as 联系人 API
+participant DB as CRM 数据库
+User->>CRMLookup : 选择账户
+CRMLookup->>AccountsAPI : GET /api/v1/accounts/{id}
+AccountsAPI->>DB : 获取账户详情
+DB-->>AccountsAPI : 返回账户数据
+AccountsAPI-->>CRMLookup : 账户详情
+CRMLookup->>ContactsAPI : GET /api/v1/accounts/{id}/contacts
+ContactsAPI->>DB : 获取联系人列表
+DB-->>ContactsAPI : 返回联系人数据
+ContactsAPI-->>CRMLookup : 联系人列表
+CRMLookup->>CRMLookup : 查找主联系人
+CRMLookup->>User : 设置客户信息字段
+```
+
+**更新** 智能账户解析系统包括：
+
+- **主联系人识别**：自动识别账户的主联系人信息
+- **联系人关联**：支持多联系人的智能匹配和选择
+- **自动填充**：根据主联系人信息自动填充客户姓名和联系方式
+- **权限控制**：基于用户角色的联系人访问权限控制
+- **实时搜索**：支持联系人的实时搜索和过滤
+
+**图表来源**
+- [TicketCreationModal.tsx:697-734](file://client/src/components/Service/TicketCreationModal.tsx#L697-L734)
+- [accounts.js:51-186](file://server/service/routes/accounts.js#L51-L186)
+- [contacts.js:22-102](file://server/service/routes/contacts.js#L22-L102)
+
+### 产品注册流程架构
+
+**新增** 产品注册流程功能展现了完整的设备注册和保修注册架构：
+
+```mermaid
+flowchart TD
+ProductRegistration[产品注册流程] --> UnregisteredCheck[检查设备状态]
+UnregisteredCheck --> |未入库| ProductModal[产品入库模态框]
+UnregisteredCheck --> |已入库| WarrantyCheck[检查保修状态]
+ProductModal --> ProductRegistrar[产品注册器]
+ProductRegistrar --> WarrantyModal[保修注册模态框]
+WarrantyModal --> WarrantyChecker[保修检查器]
+WarrantyCheck --> |需要注册| WarrantyModal
+WarrantyCheck --> |有效| Valid[有效状态]
+WarrantyModal --> WarrantyAPI[保修注册 API]
+WarrantyAPI --> WarrantyDB[保修数据库]
+ProductRegistrar --> ProductDB[产品数据库]
+ProductDB --> DeviceCard[更新设备详情卡]
+WarrantyDB --> DeviceCard
+Valid --> DeviceCard
+DeviceCard --> Success[注册成功]
+```
+
+**更新** 产品注册流程包括：
+
+- **设备状态检查**：自动检查设备的注册状态
+- **产品入库**：支持未入库设备的快速产品信息录入
+- **保修注册**：支持设备的保修信息注册和计算
+- **状态更新**：自动更新设备的注册状态和保修状态
+- **操作引导**：根据状态提供相应的操作指导
+
+**图表来源**
+- [TicketCreationModal.tsx:1052-1100](file://client/src/components/Service/TicketCreationModal.tsx#L1052-L1100)
+- [ProductWarrantyRegistrationModal.tsx:324-443](file://client/src/components/Service/ProductWarrantyRegistrationModal.tsx#L324-L443)
+- [ProductModal.tsx:465-488](file://client/src/components/Workspace/ProductModal.tsx#L465-L488)
+
+### 机器详情卡功能架构
+
+**新增** 机器详情卡功能展现了完整的设备信息展示架构：
+
+```mermaid
+flowchart TD
+DeviceCard[机器详情卡] --> StatusIndicator[状态指示器]
+DeviceCard --> ModelName[型号显示]
+DeviceCard --> ConfigInfo[配置信息]
+DeviceCard --> WarrantyStatus[保修状态]
+DeviceCard --> ActionButtons[操作按钮]
+StatusIndicator --> ColorCode[颜色编码]
+StatusIndicator --> IconDisplay[图标显示]
+ModelName --> DisplayName[显示名称]
+ConfigInfo --> ConfigText[配置文本]
+WarrantyStatus --> StatusText[状态文本]
+ActionButtons --> RegisterButton[注册按钮]
+ActionButtons --> WarrantyButton[保修按钮]
+ColorCode --> Red[红色: 未入库]
+ColorCode --> Yellow[黄色: 需注册]
+ColorCode --> Orange[橙色: 过保]
+ColorCode --> Green[绿色: 有效]
+RegisterButton --> ProductModal[产品入库模态框]
+WarrantyButton --> WarrantyModal[保修注册模态框]
+```
+
+**更新** 机器详情卡功能包括：
+
+- **状态指示器**：实时显示设备的注册状态和保修状态
+- **型号显示**：显示设备的型号和配置信息
+- **颜色编码**：使用不同的颜色表示设备的不同状态
+- **操作按钮**：根据状态提供相应的操作选项
+- **自动更新**：根据设备状态自动更新显示内容
+
+**图表来源**
+- [TicketCreationModal.tsx:818-916](file://client/src/components/Service/TicketCreationModal.tsx#L818-L916)
+
+### 序列号验证增强机制
+
+**新增** 序列号验证增强功能展现了完整的设备状态检查机制：
+
+```mermaid
+flowchart TD
+SerialInput[序列号输入] --> Validation[长度验证]
+Validation --> |≥5字符| SNValidator[序列号验证]
+Validation --> |<5字符| ClearInfo[清空设备信息]
+SNValidator --> ContextAPI[设备上下文 API]
+SNValidator --> WarrantyAPI[保修检查 API]
+ContextAPI --> DeviceInfo[设备信息]
+WarrantyAPI --> WarrantyInfo[保修信息]
+DeviceInfo --> ProductMatch[产品匹配]
+WarrantyInfo --> StatusCheck[状态检查]
+ProductMatch --> AutoFill[自动填充]
+StatusCheck --> StatusCalc[状态计算]
+StatusCalc --> ColorAssign[颜色分配]
+DeviceInfo --> ShowCard[显示设备卡片]
+WarrantyInfo --> ShowCard
+ColorAssign --> ShowCard
+function handleFieldChange(field, value, isAi) {
+if (field === 'serial_number') {
+updateDraft(initialType, { [field]: value });
+if (value.length >= 5) {
+setSnLoading(true);
+// 异步验证序列号
+const device = await validateSN(value);
+if (device) {
+setMachineInfo(device);
+// 匹配产品型号
+const matched = products.find(p =>
+p.name.toLowerCase().includes(device.model_name.toLowerCase()) ||
+device.model_name.toLowerCase().includes(p.name.toLowerCase())
+);
+if (matched) {
+handleFieldChange('product_id', matched.id, true);
+}
+}
+}
+}
+}
+```
+
+**更新** 序列号验证增强系统包括：
+
+- **实时验证**：自动检测有效序列号并触发验证流程
+- **设备信息获取**：通过序列号查询设备详细信息
+- **保修状态检查**：自动检查设备的保修状态
+- **产品自动匹配**：基于设备型号自动匹配产品目录
+- **状态实时更新**：根据设备状态实时更新界面显示
+
+**图表来源**
+- [TicketCreationModal.tsx:257-293](file://client/src/components/Service/TicketCreationModal.tsx#L257-L293)
+- [TicketCreationModal.tsx:295-328](file://client/src/components/Service/TicketCreationModal.tsx#L295-L328)
 
 ### CRM 集成架构
 
@@ -354,9 +640,9 @@ CRMLookup->>User : 触发 onSelect 回调
 - **结果展示**：账户类型、地区、服务等级等信息的可视化展示
 
 **图表来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L17-L196)
-- [accounts.js](file://server/service/routes/accounts.js#L51-L186)
-- [contacts.js](file://server/service/routes/contacts.js#L22-L102)
+- [TicketCreationModal.tsx:17-196](file://client/src/components/Service/TicketCreationModal.tsx#L17-L196)
+- [accounts.js:51-186](file://server/service/routes/accounts.js#L51-L186)
+- [contacts.js:22-102](file://server/service/routes/contacts.js#L22-L102)
 
 ### AI 沙盒功能架构
 
@@ -398,8 +684,8 @@ Parsing --> Error[解析失败]
 - **紧急工单标记**：自动检测紧急程度并添加标记
 
 **图表来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L294-L370)
-- [TicketAiWizard.tsx](file://client/src/components/TicketAiWizard.tsx#L22-L44)
+- [TicketCreationModal.tsx:585-600](file://client/src/components/Service/TicketCreationModal.tsx#L585-L600)
+- [TicketAiWizard.tsx:22-44](file://client/src/components/TicketAiWizard.tsx#L22-L44)
 
 ### 智能字段填充机制
 
@@ -448,8 +734,8 @@ handleFieldChange('product_id', matched.id, true);
 - **紧急程度标记**：自动检测并标记紧急工单
 
 **图表来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L247-L281)
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L263-L268)
+- [TicketCreationModal.tsx:247-281](file://client/src/components/Service/TicketCreationModal.tsx#L247-L281)
+- [TicketCreationModal.tsx:263-268](file://client/src/components/Service/TicketCreationModal.tsx#L263-L268)
 
 ### 多模态输入处理
 
@@ -485,12 +771,12 @@ AutoFill --> FormFields[表单字段]
 - **字段映射**：将提取的信息映射到对应的表单字段
 
 **图表来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L585-L600)
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L515-L521)
+- [TicketCreationModal.tsx:515-521](file://client/src/components/Service/TicketCreationModal.tsx#L515-L521)
+- [TicketCreationModal.tsx:585-600](file://client/src/components/Service/TicketCreationModal.tsx#L585-L600)
 
 ### 视觉设计系统
 
-**新增** 组件实现了完整的视觉设计系统，包括 CRM 集成的视觉元素：
+**新增** 组件实现了完整的视觉设计系统，包括设备状态可视化和 CRM 集成的视觉元素：
 
 ```mermaid
 flowchart TD
@@ -512,6 +798,11 @@ ColorCoding --> DealerGreen[经销商 - 绿色主题]
 ColorCoding --> KineYellow[Kine Yellow - 金色主题]
 ColorCoding --> GhostField[AI 填充 - 蓝色高亮]
 ColorCoding --> SuccessGreen[成功状态 - 绿色高亮]
+ColorCoding --> DeviceStatus[设备状态 - 多色编码]
+DeviceStatus --> UnregisteredRed[未入库 - 红色]
+DeviceStatus --> NeedsRegistrationYellow[需注册 - 黄色]
+DeviceStatus --> ExpiredOrange[过保 - 橙色]
+DeviceStatus --> ValidGreen[有效 - 绿色]
 ```
 
 **更新** 视觉设计系统包括：
@@ -520,13 +811,15 @@ ColorCoding --> SuccessGreen[成功状态 - 绿色高亮]
 - **玻璃拟态**：使用半透明效果和模糊滤镜，营造现代感
 - **颜色编码**：每种工单类型都有独特的颜色标识
 - **Kine Yellow 主题**：新增的金色渐变色彩（#FFD700）作为主要视觉元素
+- **设备状态颜色**：未入库(红色)、需注册(黄色)、过保(橙色)、有效(绿色)
 - **AI 填充高亮**：蓝色边框和阴影效果标识AI填充的字段
 - **统一排版**：一致的字体大小、行高和间距
 - **动画效果**：0.2秒的开合动画，0.2秒的过渡效果
 
 **图表来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L427-L433)
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L649-L673)
+- [TicketCreationModal.tsx:427-433](file://client/src/components/Service/TicketCreationModal.tsx#L427-L433)
+- [TicketCreationModal.tsx:649-673](file://client/src/components/Service/TicketCreationModal.tsx#L649-L673)
+- [TicketCreationModal.tsx:833-842](file://client/src/components/Service/TicketCreationModal.tsx#L833-L842)
 
 ### 文件上传处理
 
@@ -558,12 +851,12 @@ FormData --> Upload[上传到服务器]
 - **多模态支持**：支持OCR和PDF解析功能
 
 **图表来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L283-L292)
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L800-L823)
+- [TicketCreationModal.tsx:283-292](file://client/src/components/Service/TicketCreationModal.tsx#L283-L292)
+- [TicketCreationModal.tsx:800-823](file://client/src/components/Service/TicketCreationModal.tsx#L800-L823)
 
 ### 草稿持久化机制
 
-**新增** 组件实现了完整的草稿持久化机制，包括 AI 填充字段的状态管理：
+**新增** 组件实现了完整的草稿持久化机制，包括 AI 填充字段的状态管理和设备状态：
 
 ```mermaid
 flowchart TD
@@ -581,6 +874,8 @@ Reload --> LoadDraft[加载草稿]
 LoadDraft --> RestoreForm[恢复表单]
 FieldChange --> MarkGhost[标记AI字段]
 MarkGhost --> GhostFields[高亮显示]
+FieldChange --> UpdateDevice[更新设备状态]
+UpdateDevice --> DeviceState[设备状态管理]
 ```
 
 **更新** 草稿持久化系统包括：
@@ -589,17 +884,459 @@ MarkGhost --> GhostFields[高亮显示]
 - **跨页面持久化**：页面刷新后仍能恢复草稿
 - **类型隔离**：不同工单类型的草稿独立存储
 - **AI 字段状态**：记录AI填充的字段状态
+- **设备状态持久化**：记录设备状态和保修状态
 - **状态指示**：底部显示"草稿已自动保存"状态
 - **清理机制**：工单创建成功后自动清理草稿
 
 **图表来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L234-L245)
-- [useTicketStore.ts](file://client/src/store/useTicketStore.ts#L40-L67)
+- [TicketCreationModal.tsx:234-245](file://client/src/components/Service/TicketCreationModal.tsx#L234-L245)
+- [useTicketStore.ts:40-67](file://client/src/store/useTicketStore.ts#L40-L67)
 
 **章节来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L1-L901)
-- [TicketAiWizard.tsx](file://client/src/components/TicketAiWizard.tsx#L1-L269)
-- [useTicketStore.ts](file://client/src/store/useTicketStore.ts#L1-L68)
+- [TicketCreationModal.tsx:1-1120](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1120)
+- [TicketAiWizard.tsx:1-269](file://client/src/components/TicketAiWizard.tsx#L1-L269)
+- [useTicketStore.ts:1-68](file://client/src/store/useTicketStore.ts#L1-L68)
+
+## 设备状态实时可视化
+
+**新增** 设备状态实时可视化功能是本次更新的重要创新，为工单创建提供了直观的设备状态展示：
+
+### 功能概述
+
+设备状态可视化能够实时显示设备的注册状态、保修状态和在保状态，通过颜色编码和状态指示器为用户提供直观的设备信息展示：
+
+- **实时状态检查**：自动检查设备的注册状态和保修状态
+- **颜色编码系统**：未入库(红色)、需注册(黄色)、过保(橙色)、有效(绿色)
+- **状态指示器**：实时显示设备的当前状态和相关信息
+- **操作按钮**：根据状态提供相应的操作选项
+- **自动匹配**：根据设备状态自动匹配产品型号
+
+### 技术架构
+
+```mermaid
+flowchart TD
+DeviceCard[设备详情卡] --> StatusIndicator[状态指示器]
+DeviceCard --> ModelName[型号显示]
+DeviceCard --> ConfigInfo[配置信息]
+DeviceCard --> WarrantyStatus[保修状态]
+DeviceCard --> ActionButtons[操作按钮]
+StatusIndicator --> ColorCode[颜色编码]
+StatusIndicator --> IconDisplay[图标显示]
+ModelName --> DisplayName[显示名称]
+ConfigInfo --> ConfigText[配置文本]
+WarrantyStatus --> StatusText[状态文本]
+ActionButtons --> RegisterButton[注册按钮]
+ActionButtons --> WarrantyButton[保修按钮]
+ColorCode --> Red[红色: 未入库]
+ColorCode --> Yellow[黄色: 需注册]
+ColorCode --> Orange[橙色: 过保]
+ColorCode --> Green[绿色: 有效]
+RegisterButton --> ProductModal[产品入库模态框]
+WarrantyButton --> WarrantyModal[保修注册模态框]
+```
+
+### 状态计算逻辑
+
+**新增** 设备状态的计算逻辑展现了完整的状态判断机制：
+
+```mermaid
+flowchart TD
+StatusCalc[状态计算] --> IsUnregistered{是否未入库}
+IsUnregistered --> |是| Unregistered[未入库状态]
+IsUnregistered --> |否| CheckWarranty{检查保修状态}
+CheckWarranty --> |需要注册| NeedsRegistration[需注册状态]
+CheckWarranty --> |有效| CheckExpiration{检查是否过期}
+CheckExpiration --> |已过期| Expired[过保状态]
+CheckExpiration --> |未过期| Valid[有效状态]
+Unregistered --> Red[红色: #E60000]
+NeedsRegistration --> Yellow[黄色: #FFD700]
+Expired --> Orange[橙色: #F97316]
+Valid --> Green[绿色: #10B981]
+```
+
+### 状态显示组件
+
+**新增** 设备状态显示组件展现了完整的状态展示架构：
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant DeviceCard as 设备详情卡
+participant ContextAPI as 设备上下文 API
+participant WarrantyAPI as 保修检查 API
+User->>DeviceCard : 输入序列号
+DeviceCard->>ContextAPI : 查询设备信息
+ContextAPI-->>DeviceCard : 返回设备数据
+DeviceCard->>WarrantyAPI : 检查保修状态
+WarrantyAPI-->>DeviceCard : 返回保修信息
+DeviceCard->>DeviceCard : 计算状态颜色
+DeviceCard->>User : 显示状态卡片
+User->>DeviceCard : 点击操作按钮
+DeviceCard->>User : 执行相应操作
+```
+
+### 错误处理机制
+
+设备状态可视化具备完善的错误处理能力：
+
+- **网络异常处理**：提供重试机制和错误提示
+- **设备未找到处理**：显示详细的错误信息和解决方案
+- **权限不足处理**：优雅降级并提示用户权限问题
+- **状态计算失败处理**：保持默认状态并提示用户重新输入
+- **数据验证**：确保设备状态的完整性和准确性
+
+**章节来源**
+- [TicketCreationModal.tsx:818-916](file://client/src/components/Service/TicketCreationModal.tsx#L818-L916)
+- [context.js:346-480](file://server/service/routes/context.js#L346-L480)
+- [products.js:32-120](file://server/service/routes/products.js#L32-L120)
+
+## 智能账户联系人解析
+
+**新增** 智能账户联系人解析功能是本次更新的重要特性，显著提升了 CRM 集成的智能化水平：
+
+### 功能概述
+
+智能账户解析能够自动识别和关联主联系人信息，支持多联系人的智能匹配和选择：
+
+- **主联系人识别**：自动识别账户的主联系人信息
+- **联系人关联**：支持多联系人的智能匹配和选择
+- **自动填充**：根据主联系人信息自动填充客户姓名和联系方式
+- **权限控制**：基于用户角色的联系人访问权限控制
+- **实时搜索**：支持联系人的实时搜索和过滤
+
+### 技术实现
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant CRMLookup as CRM 搜索组件
+participant AccountsAPI as 账户 API
+participant ContactsAPI as 联系人 API
+participant DB as CRM 数据库
+User->>CRMLookup : 选择账户
+CRMLookup->>AccountsAPI : 获取账户详情
+AccountsAPI->>DB : 查询账户信息
+DB-->>AccountsAPI : 返回账户数据
+AccountsAPI-->>CRMLookup : 账户详情
+CRMLookup->>ContactsAPI : 获取联系人列表
+ContactsAPI->>DB : 查询联系人信息
+DB-->>ContactsAPI : 返回联系人数据
+ContactsAPI-->>CRMLookup : 联系人列表
+CRMLookup->>CRMLookup : 查找主联系人
+CRMLookup->>User : 设置客户信息字段
+```
+
+### 主联系人识别算法
+
+**新增** 主联系人识别算法展现了智能的联系人匹配机制：
+
+```mermaid
+flowchart TD
+ContactSelection[联系人选择] --> PrimaryCheck{检查 PRIMARY 状态}
+PrimaryCheck --> |找到| PrimaryContact[主联系人]
+PrimaryCheck --> |未找到| ActiveCheck{检查 ACTIVE 状态}
+ActiveCheck --> |找到| ActiveContact[活跃联系人]
+ActiveCheck --> |未找到| FirstContact[第一个联系人]
+PrimaryContact --> AutoFill[自动填充]
+ActiveContact --> AutoFill
+FirstContact --> AutoFill
+AutoFill --> CustomerName[客户姓名]
+AutoFill --> CustomerContact[客户联系方式]
+```
+
+### 权限控制机制
+
+**新增** 智能账户解析具备完善的权限控制能力：
+
+- **全局访问**：管理员和高级用户可访问所有账户和联系人
+- **部门访问**：普通用户只能访问自己部门相关的账户和联系人
+- **经销商访问**：经销商用户只能访问自己管理的账户和联系人
+- **数据脱敏**：敏感信息在权限范围内进行脱敏处理
+- **联系人权限**：基于用户角色的联系人访问权限控制
+
+### 错误处理机制
+
+智能账户解析具备完善的错误处理能力：
+
+- **网络异常处理**：提供重试机制和错误提示
+- **账户搜索失败处理**：显示详细的错误信息和解决方案
+- **权限不足处理**：优雅降级并提示用户权限问题
+- **联系人数据验证**：确保联系人信息的完整性和准确性
+- **主联系人缺失处理**：提供备用联系人选择方案
+
+**章节来源**
+- [TicketCreationModal.tsx:697-734](file://client/src/components/Service/TicketCreationModal.tsx#L697-L734)
+- [accounts.js:51-186](file://server/service/routes/accounts.js#L51-L186)
+- [contacts.js:22-102](file://server/service/routes/contacts.js#L22-L102)
+
+## 产品注册流程
+
+**新增** 产品注册流程功能是本次更新的重要组成部分，为未入库设备提供了完整的注册解决方案：
+
+### 功能概述
+
+产品注册流程能够处理未入库设备的快速注册和保修信息的自动计算：
+
+- **设备状态检查**：自动检查设备的注册状态
+- **产品入库**：支持未入库设备的快速产品信息录入
+- **保修注册**：支持设备的保修信息注册和计算
+- **状态更新**：自动更新设备的注册状态和保修状态
+- **操作引导**：根据状态提供相应的操作指导
+
+### 技术架构
+
+```mermaid
+flowchart TD
+ProductRegistration[产品注册流程] --> UnregisteredCheck[检查设备状态]
+UnregisteredCheck --> |未入库| ProductModal[产品入库模态框]
+UnregisteredCheck --> |已入库| WarrantyCheck[检查保修状态]
+ProductModal --> ProductRegistrar[产品注册器]
+ProductRegistrar --> WarrantyModal[保修注册模态框]
+WarrantyModal --> WarrantyChecker[保修检查器]
+WarrantyCheck --> |需要注册| WarrantyModal
+WarrantyCheck --> |有效| Valid[有效状态]
+WarrantyModal --> WarrantyAPI[保修注册 API]
+WarrantyAPI --> WarrantyDB[保修数据库]
+ProductRegistrar --> ProductDB[产品数据库]
+ProductDB --> DeviceCard[更新设备详情卡]
+WarrantyDB --> DeviceCard
+Valid --> DeviceCard
+DeviceCard --> Success[注册成功]
+```
+
+### 产品入库流程
+
+**新增** 产品入库流程展现了完整的设备注册机制：
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant ProductModal as 产品入库模态框
+participant ProductRegistrar as 产品注册器
+participant ProductAPI as 产品注册 API
+participant ProductDB as 产品数据库
+User->>ProductModal : 点击立即入库
+ProductModal->>ProductRegistrar : 打开产品注册界面
+ProductRegistrar->>ProductAPI : 提交产品注册请求
+ProductAPI->>ProductDB : 插入产品信息
+ProductDB-->>ProductAPI : 返回注册结果
+ProductAPI-->>ProductRegistrar : 注册成功
+ProductRegistrar->>User : 显示注册成功
+ProductRegistrar->>DeviceCard : 更新设备状态
+```
+
+### 保修注册流程
+
+**新增** 保修注册流程展现了完整的保修信息注册机制：
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant WarrantyModal as 保修注册模态框
+participant WarrantyAPI as 保修注册 API
+participant WarrantyDB as 保修数据库
+User->>WarrantyModal : 点击注册保修
+WarrantyModal->>WarrantyAPI : 提交保修注册请求
+WarrantyAPI->>WarrantyDB : 插入保修信息
+WarrantyDB-->>WarrantyAPI : 返回注册结果
+WarrantyAPI-->>WarrantyModal : 注册成功
+WarrantyModal->>User : 显示注册成功
+WarrantyModal->>DeviceCard : 更新设备状态
+```
+
+### 错误处理机制
+
+产品注册流程具备完善的错误处理能力：
+
+- **网络异常处理**：提供重试机制和错误提示
+- **产品注册失败处理**：显示详细的错误信息和解决方案
+- **权限不足处理**：优雅降级并提示用户权限问题
+- **数据验证**：确保注册信息的完整性和准确性
+- **状态回滚**：注册失败时自动回滚状态变化
+
+**章节来源**
+- [TicketCreationModal.tsx:1052-1100](file://client/src/components/Service/TicketCreationModal.tsx#L1052-L1100)
+- [ProductWarrantyRegistrationModal.tsx:324-443](file://client/src/components/Service/ProductWarrantyRegistrationModal.tsx#L324-L443)
+- [ProductModal.tsx:465-488](file://client/src/components/Workspace/ProductModal.tsx#L465-L488)
+
+## 机器详情卡功能
+
+**新增** 机器详情卡功能是本次更新的重要创新，为工单创建提供了直观的设备信息展示：
+
+### 功能概述
+
+机器详情卡能够实时显示设备的型号、配置、保修状态等关键信息，并提供相应的操作按钮：
+
+- **状态指示器**：实时显示设备的注册状态和保修状态
+- **型号显示**：显示设备的型号和配置信息
+- **颜色编码**：使用不同的颜色表示设备的不同状态
+- **操作按钮**：根据状态提供相应的操作选项
+- **自动更新**：根据设备状态自动更新显示内容
+
+### 技术实现
+
+```mermaid
+flowchart TD
+DeviceCard[机器详情卡] --> StatusIndicator[状态指示器]
+DeviceCard --> ModelName[型号显示]
+DeviceCard --> ConfigInfo[配置信息]
+DeviceCard --> WarrantyStatus[保修状态]
+DeviceCard --> ActionButtons[操作按钮]
+StatusIndicator --> ColorCode[颜色编码]
+StatusIndicator --> IconDisplay[图标显示]
+ModelName --> DisplayName[显示名称]
+ConfigInfo --> ConfigText[配置文本]
+WarrantyStatus --> StatusText[状态文本]
+ActionButtons --> RegisterButton[注册按钮]
+ActionButtons --> WarrantyButton[保修按钮]
+ColorCode --> Red[红色: 未入库]
+ColorCode --> Yellow[黄色: 需注册]
+ColorCode --> Orange[橙色: 过保]
+ColorCode --> Green[绿色: 有效]
+RegisterButton --> ProductModal[产品入库模态框]
+WarrantyButton --> WarrantyModal[保修注册模态框]
+```
+
+### 状态颜色系统
+
+**新增** 状态颜色系统展现了完整的状态可视化机制：
+
+- **未入库状态**：红色(#E60000)，表示设备尚未录入产品台账
+- **需注册状态**：黄色(#FFD700)，表示设备已入库但未注册保修信息
+- **过保状态**：橙色(#F97316)，表示设备已过保修期
+- **有效状态**：绿色(#10B981)，表示设备在保修期内
+
+### 操作按钮功能
+
+**新增** 操作按钮功能展现了完整的用户交互机制：
+
+- **立即入库按钮**：用于未入库设备的产品信息录入
+- **注册保修按钮**：用于已入库设备的保修信息注册
+- **状态更新**：点击按钮后自动更新设备状态和显示内容
+- **模态框打开**：根据按钮类型打开相应的操作模态框
+
+### 错误处理机制
+
+机器详情卡具备完善的错误处理能力：
+
+- **设备信息获取失败**：显示错误提示并保持默认状态
+- **状态计算异常**：使用默认状态并提示用户重新输入
+- **网络连接问题**：提供重试机制和错误提示
+- **权限不足处理**：优雅降级并提示用户权限问题
+
+**章节来源**
+- [TicketCreationModal.tsx:818-916](file://client/src/components/Service/TicketCreationModal.tsx#L818-L916)
+
+## 序列号验证增强
+
+**新增** 序列号验证增强功能是本次更新的重要特性，显著提升了设备状态检查的效率和准确性：
+
+### 功能概述
+
+序列号验证增强能够自动检测和验证设备序列号，提供完整的设备状态检查和产品匹配功能：
+
+- **实时验证**：自动检测有效序列号并触发验证流程
+- **设备信息获取**：通过序列号查询设备详细信息
+- **保修状态检查**：自动检查设备的保修状态
+- **产品自动匹配**：基于设备型号自动匹配产品目录
+- **状态实时更新**：根据设备状态实时更新界面显示
+
+### 技术实现
+
+```mermaid
+flowchart TD
+SerialInput[序列号输入] --> LengthCheck[长度检查]
+LengthCheck --> |≥5字符| ValidateSN[验证序列号]
+LengthCheck --> |<5字符| ClearInfo[清空设备信息]
+ValidateSN --> ContextAPI[设备上下文 API]
+ValidateSN --> WarrantyAPI[保修检查 API]
+ContextAPI --> DeviceInfo[设备信息]
+WarrantyAPI --> WarrantyInfo[保修信息]
+DeviceInfo --> ProductMatch[产品匹配]
+WarrantyInfo --> StatusCheck[状态检查]
+ProductMatch --> AutoFill[自动填充]
+StatusCheck --> StatusCalc[状态计算]
+StatusCalc --> ColorAssign[颜色分配]
+DeviceInfo --> ShowCard[显示设备卡片]
+WarrantyInfo --> ShowCard
+ColorAssign --> ShowCard
+function handleFieldChange(field, value, isAi) {
+if (field === 'serial_number') {
+updateDraft(initialType, { [field]: value });
+if (value.length >= 5) {
+setSnLoading(true);
+// 异步验证序列号
+const device = await validateSN(value);
+if (device) {
+setMachineInfo(device);
+// 匹配产品型号
+const matched = products.find(p =>
+p.name.toLowerCase().includes(device.model_name.toLowerCase()) ||
+device.model_name.toLowerCase().includes(p.name.toLowerCase())
+);
+if (matched) {
+handleFieldChange('product_id', matched.id, true);
+}
+}
+}
+}
+} else {
+// 普通字段变更
+updateDraft(initialType, { [field]: value });
+if (isAi) {
+setGhostFields(prev => new Set(prev).add(field));
+} else {
+setGhostFields(prev => {
+const next = new Set(prev);
+next.delete(field);
+return next;
+});
+}
+}
+}
+```
+
+### 防抖机制
+
+**新增** 防抖机制展现了高效的序列号验证策略：
+
+- **1秒延迟**：防止频繁的API调用
+- **异步处理**：使用异步方式处理序列号验证
+- **状态管理**：实时显示加载状态和验证进度
+- **错误处理**：处理序列号验证失败的情况
+
+### 状态计算逻辑
+
+**新增** 状态计算逻辑展现了完整的设备状态判断机制：
+
+```mermaid
+flowchart TD
+StatusCalc[状态计算] --> IsUnregistered{是否未入库}
+IsUnregistered --> |是| Unregistered[未入库状态]
+IsUnregistered --> |否| CheckWarranty{检查保修状态}
+CheckWarranty --> |需要注册| NeedsRegistration[需注册状态]
+CheckWarranty --> |有效| CheckExpiration{检查是否过期}
+CheckExpiration --> |已过期| Expired[过保状态]
+CheckExpiration --> |未过期| Valid[有效状态]
+Unregistered --> Red[红色: #E60000]
+NeedsRegistration --> Yellow[黄色: #FFD700]
+Expired --> Orange[橙色: #F97316]
+Valid --> Green[绿色: #10B981]
+```
+
+### 错误处理机制
+
+序列号验证增强具备完善的错误处理能力：
+
+- **无效序列号处理**：显示错误提示并清空设备信息
+- **网络异常处理**：提供重试机制和降级方案
+- **匹配失败处理**：保持用户输入但不自动填充产品信息
+- **加载状态管理**：显示加载指示器提升用户体验
+- **状态清理**：序列号长度不足时自动清理设备状态
+
+**章节来源**
+- [TicketCreationModal.tsx:257-293](file://client/src/components/Service/TicketCreationModal.tsx#L257-L293)
+- [TicketCreationModal.tsx:295-328](file://client/src/components/Service/TicketCreationModal.tsx#L295-L328)
 
 ## CRM 集成功能
 
@@ -679,9 +1416,9 @@ CRM 集成具备完善的错误处理能力：
 - **数据验证**：确保搜索结果的完整性和准确性
 
 **章节来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L17-L196)
-- [accounts.js](file://server/service/routes/accounts.js#L51-L186)
-- [contacts.js](file://server/service/routes/contacts.js#L22-L102)
+- [TicketCreationModal.tsx:17-196](file://client/src/components/Service/TicketCreationModal.tsx#L17-L196)
+- [accounts.js:51-186](file://server/service/routes/accounts.js#L51-L186)
+- [contacts.js:22-102](file://server/service/routes/contacts.js#L22-L102)
 
 ## AI 辅助功能
 
@@ -744,7 +1481,7 @@ AI 向导具备完善的错误处理能力：
 - **数据验证**：确保提取的信息完整性
 
 **章节来源**
-- [TicketAiWizard.tsx](file://client/src/components/TicketAiWizard.tsx#L1-L269)
+- [TicketAiWizard.tsx:1-269](file://client/src/components/TicketAiWizard.tsx#L1-L269)
 
 ## 智能字段填充
 
@@ -827,8 +1564,8 @@ return next;
 - **加载状态管理**：显示加载指示器提升用户体验
 
 **章节来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L247-L281)
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L234-L245)
+- [TicketCreationModal.tsx:247-281](file://client/src/components/Service/TicketCreationModal.tsx#L247-L281)
+- [TicketCreationModal.tsx:234-245](file://client/src/components/Service/TicketCreationModal.tsx#L234-L245)
 
 ## 多模态输入支持
 
@@ -899,8 +1636,8 @@ FieldMapping --> AutoFill[自动填充]
 - **文件过大**：显示大小限制并提供压缩建议
 
 **章节来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L515-L521)
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L585-L600)
+- [TicketCreationModal.tsx:515-521](file://client/src/components/Service/TicketCreationModal.tsx#L515-L521)
+- [TicketCreationModal.tsx:585-600](file://client/src/components/Service/TicketCreationModal.tsx#L585-L600)
 
 ## 后端 AI 服务
 
@@ -970,15 +1707,15 @@ API --> Client
 这些接口都经过认证保护，确保只有授权用户可以使用AI功能。
 
 **章节来源**
-- [ai_service.js](file://server/service/ai_service.js#L149-L224)
-- [ai_service.js](file://server/service/ai_service.js#L226-L360)
-- [ai_service.js](file://server/service/ai_service.js#L362-L537)
+- [ai_service.js:149-224](file://server/service/ai_service.js#L149-L224)
+- [ai_service.js:226-360](file://server/service/ai_service.js#L226-L360)
+- [ai_service.js:362-537](file://server/service/ai_service.js#L362-L537)
 
 ## 依赖关系分析
 
 ### 组件间依赖关系
 
-TicketCreationModal 与应用其他组件形成了清晰的依赖关系，包括新增的 CRM 集成和 AI 功能：
+TicketCreationModal 与应用其他组件形成了清晰的依赖关系，包括新增的设备状态可视化和产品注册流程：
 
 ```mermaid
 graph LR
@@ -997,6 +1734,9 @@ useAuthStore[useAuthStore]
 useLanguage[useLanguage]
 CRMLookup[CRM 搜索组件]
 AISandbox[AI 沙盒]
+DeviceCard[设备详情卡]
+ProductModal[产品入库模态框]
+WarrantyModal[保修注册模态框]
 end
 subgraph "页面组件"
 InquiryPage[InquiryTicketCreatePage]
@@ -1008,11 +1748,42 @@ AIService[AI 解析服务]
 BokehAssistant[Bokeh 智能助手]
 OCRService[OCR 服务]
 PDFParser[PDF 解析器]
+EndUserParser[终端用户解析器]
+EndUserResolver[联系人解析器]
 end
 subgraph "CRM服务"
 AccountsAPI[账户 API]
 ContactsAPI[联系人 API]
 SearchEngine[搜索引擎]
+end
+subgraph "设备状态服务"
+ContextAPI[设备上下文 API]
+WarrantyAPI[保修检查 API]
+ProductAPI[产品注册 API]
+DeviceStatus[设备状态计算]
+WarrantyChecker[保修状态检查]
+ProductRegistrar[产品注册器]
+end
+subgraph "后端服务"
+ServerAPI[后端 API]
+Auth[认证管理]
+Cache[缓存策略]
+DB[CRM 数据库]
+DeviceDB[设备数据库]
+WarrantyDB[保修数据库]
+end
+subgraph "业务逻辑层"
+Validation[表单验证]
+Transform[数据转换]
+ErrorHandling[错误处理]
+CRMIntegration[CRM 集成处理]
+AIIntegration[AI 集成处理]
+SmartFill[智能填充]
+MultiModal[多模态处理]
+DeviceVisualization[设备可视化]
+AccountResolution[账户解析]
+ProductRegistration[产品注册]
+WarrantyFlow[保修流程]
 end
 React --> TicketCreationModal
 React --> TicketAiWizard
@@ -1020,6 +1791,9 @@ Axios --> TicketCreationModal
 Axios --> TicketAiWizard
 Axios --> AccountsAPI
 Axios --> ContactsAPI
+Axios --> ContextAPI
+Axios --> WarrantyAPI
+Axios --> ProductAPI
 Lucide --> TicketCreationModal
 Lucide --> TicketAiWizard
 Zustand --> useTicketStore
@@ -1030,13 +1804,25 @@ TicketCreationModal --> useLanguage
 TicketAiWizard --> useAuthStore
 TicketCreationModal --> CRMLookup
 TicketCreationModal --> AISandbox
+TicketCreationModal --> DeviceCard
+TicketCreationModal --> ProductModal
+TicketCreationModal --> WarrantyModal
 TicketAiWizard --> AIService
 CRMLookup --> AccountsAPI
 CRMLookup --> ContactsAPI
 CRMLookup --> SearchEngine
+CRMLookup --> EndUserParser
+CRMLookup --> EndUserResolver
 AISandbox --> AIService
 AISandbox --> OCRService
 AISandbox --> PDFParser
+DeviceCard --> ContextAPI
+DeviceCard --> WarrantyAPI
+DeviceCard --> DeviceStatus
+DeviceCard --> WarrantyChecker
+DeviceCard --> ProductRegistrar
+ProductModal --> ProductRegistrar
+WarrantyModal --> WarrantyChecker
 AIService --> BokehAssistant
 AIService --> OCRService
 AIService --> PDFParser
@@ -1046,9 +1832,11 @@ DealerPage --> TicketCreationModal
 ```
 
 **图表来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L1-L11)
-- [TicketAiWizard.tsx](file://client/src/components/TicketAiWizard.tsx#L1-L5)
-- [useTicketStore.ts](file://client/src/store/useTicketStore.ts#L1-L2)
+- [TicketCreationModal.tsx:1-11](file://client/src/components/Service/TicketCreationModal.tsx#L1-L11)
+- [TicketAiWizard.tsx:1-5](file://client/src/components/TicketAiWizard.tsx#L1-L5)
+- [useTicketStore.ts:1-2](file://client/src/store/useTicketStore.ts#L1-L2)
+- [context.js:346-480](file://server/service/routes/context.js#L346-L480)
+- [products.js:32-120](file://server/service/routes/products.js#L32-L120)
 
 ### 数据依赖分析
 
@@ -1063,14 +1851,17 @@ DealerPage --> TicketCreationModal
 | 路由 | react-router-dom | 页面导航 | ^6.0.0 |
 | AI服务 | OpenAI SDK | 智能文本处理 | ^4.0.0 |
 | CRM服务 | 自定义API | 客户关系管理 | 专用API |
+| 设备状态服务 | 自定义API | 设备状态检查 | 专用API |
+| 保修注册服务 | 自定义API | 保修信息注册 | 专用API |
+| 产品注册服务 | 自定义API | 产品信息注册 | 专用API |
 | 后端服务 | Node.js + OpenAI | AI模型推理 | 专用API |
 | OCR服务 | Tesseract.js | 图像文字识别 | ^4.0.0 |
 | PDF解析 | pdfjs-dist | PDF文档处理 | ^3.0.0 |
 
 **章节来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L1-L11)
-- [TicketAiWizard.tsx](file://client/src/components/TicketAiWizard.tsx#L1-L5)
-- [useTicketStore.ts](file://client/src/store/useTicketStore.ts#L1-L2)
+- [TicketCreationModal.tsx:1-11](file://client/src/components/Service/TicketCreationModal.tsx#L1-L11)
+- [TicketAiWizard.tsx:1-5](file://client/src/components/TicketAiWizard.tsx#L1-L5)
+- [useTicketStore.ts:1-2](file://client/src/store/useTicketStore.ts#L1-L2)
 
 ## 性能考虑
 
@@ -1087,17 +1878,21 @@ ParallelFetch --> Products[获取产品列表]
 ParallelFetch --> Dealers[获取经销商列表]
 ParallelFetch --> Accounts[获取账户信息]
 ParallelFetch --> Contacts[获取联系人信息]
+ParallelFetch --> DeviceInfo[获取设备信息]
+ParallelFetch --> WarrantyInfo[获取保修信息]
 Products --> Combine[合并数据]
 Dealers --> Combine
 Accounts --> Combine
 Contacts --> Combine
+DeviceInfo --> Combine
+WarrantyInfo --> Combine
 Combine --> Ready[准备就绪]
 Ready --> Render[渲染表单]
 Wait --> Render
 ```
 
 **图表来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L219-L232)
+- [TicketCreationModal.tsx:229-242](file://client/src/components/Service/TicketCreationModal.tsx#L229-L242)
 
 ### CRM 搜索性能优化
 
@@ -1120,6 +1915,16 @@ Wait --> Render
 - **模型选择**：根据任务复杂度选择合适的AI模型
 - **多模态优化**：针对不同文件格式优化解析算法
 
+### 设备状态可视化性能优化
+
+**新增** 设备状态可视化功能的性能优化策略：
+
+- **防抖处理**：1秒防抖延迟，避免频繁的状态检查
+- **状态缓存**：对设备状态进行缓存，提升重复查询性能
+- **异步加载**：使用异步方式处理设备状态检查
+- **状态更新优化**：只更新发生变化的状态信息
+- **错误处理**：提供状态检查失败的降级方案
+
 ### 内存管理策略
 
 组件采用了有效的内存管理策略来避免性能问题：
@@ -1132,6 +1937,8 @@ Wait --> Render
 - **新增** 草稿持久化优化，避免重复存储相同数据
 - **新增** AI 解析结果的内存管理，避免重复计算
 - **新增** CRM 搜索结果的缓存管理，提升搜索性能
+- **新增** 设备状态的缓存管理，提升状态检查性能
+- **新增** 产品注册状态的内存管理，避免重复注册
 
 ## 故障排除指南
 
@@ -1226,7 +2033,33 @@ Wait --> Render
 - 稍后重试解析操作
 - 查看AI服务状态
 
-#### 8. 双列布局显示异常
+#### 8. 设备状态显示异常
+**问题症状**：设备状态卡片显示不正确
+**可能原因**：
+- 设备状态检查API异常
+- 网络连接问题
+- 设备状态缓存失效
+
+**解决方案**：
+- 检查设备状态检查API的可用性
+- 确认网络连接状态
+- 刷新页面重新获取设备状态
+- 清除浏览器缓存后重试
+
+#### 9. 产品注册失败
+**问题症状**：产品入库或保修注册失败
+**可能原因**：
+- 产品信息不完整
+- 权限不足
+- 数据库连接异常
+
+**解决方案**：
+- 检查产品信息是否填写完整
+- 确认用户权限是否足够
+- 查看数据库连接状态
+- 联系系统管理员检查服务状态
+
+#### 10. 双列布局显示异常
 **问题症状**：双列布局在某些屏幕尺寸下显示不正确
 **可能原因**：
 - CSS媒体查询配置问题
@@ -1237,7 +2070,7 @@ Wait --> Render
 - 确认CSS媒体查询正常工作
 - 测试不同屏幕尺寸下的显示效果
 
-#### 9. 草稿持久化问题
+#### 11. 草稿持久化问题
 **问题症状**：草稿无法保存或恢复
 **可能原因**：
 - 本地存储空间不足
@@ -1249,7 +2082,7 @@ Wait --> Render
 - 确认允许第三方Cookie和存储
 - 清除浏览器缓存后重试
 
-#### 10. AI 服务集成问题
+#### 12. AI 服务集成问题
 **问题症状**：AI 解析接口调用失败
 **可能原因**：
 - 后端AI服务未启动
@@ -1262,7 +2095,7 @@ Wait --> Render
 - 确认网络连接稳定
 - 查看服务器日志获取详细错误信息
 
-#### 11. CRM 集成问题
+#### 13. CRM 集成问题
 **问题症状**：账户或联系人信息无法获取
 **可能原因**：
 - 权限不足
@@ -1275,7 +2108,20 @@ Wait --> Render
 - 查看API接口返回的错误信息
 - 联系系统管理员检查服务状态
 
-#### 12. Kine Yellow 主题显示问题
+#### 14. 设备状态可视化问题
+**问题症状**：设备状态卡片显示异常
+**可能原因**：
+- 设备状态检查API异常
+- 网络连接问题
+- 设备状态计算错误
+
+**解决方案**：
+- 检查设备状态检查API的可用性
+- 确认网络连接状态
+- 查看设备状态计算逻辑
+- 联系系统管理员检查服务状态
+
+#### 15. Kine Yellow 主题显示问题
 **问题症状**：金色主题颜色显示异常
 **可能原因**：
 - CSS变量未正确加载
@@ -1287,8 +2133,8 @@ Wait --> Render
 - 测试不同浏览器的显示效果
 
 **章节来源**
-- [TicketCreationModal.tsx](file://client/src/components/Service/TicketCreationModal.tsx#L93-L98)
-- [TicketAiWizard.tsx](file://client/src/components/TicketAiWizard.tsx#L38-L44)
+- [TicketCreationModal.tsx:93-98](file://client/src/components/Service/TicketCreationModal.tsx#L93-L98)
+- [TicketAiWizard.tsx:38-44](file://client/src/components/TicketAiWizard.tsx#L38-L44)
 
 ## 结论
 
@@ -1316,6 +2162,10 @@ TicketCreationModal 工单创建模态框是一个设计精良、功能完善的
 16. **紧急工单标记**：自动检测并标记紧急程度
 17. **权限控制机制**：基于角色的访问权限管理
 18. **Kine Yellow 主题**：专业的金色品牌视觉形象
+19. **设备状态实时可视化**：直观的设备状态展示
+20. **智能账户联系人解析**：主联系人自动关联功能
+21. **产品注册流程**：完整的设备注册和保修注册
+22. **机器详情卡功能**：实时显示设备状态和信息
 
 ### 技术亮点
 
@@ -1329,6 +2179,10 @@ TicketCreationModal 工单创建模态框是一个设计精良、功能完善的
 - **草稿持久化优化**：基于Zustand的本地存储机制
 - **AI 解析优化**：多模态输入和错误处理机制
 - **颜色编码系统**：不同工单类型使用独特的颜色主题
+- **设备状态可视化**：实时状态检查和颜色编码
+- **智能账户解析**：主联系人自动识别和关联
+- **产品注册集成**：完整的设备注册和保修流程
+- **机器详情卡**：直观的设备状态展示
 - **响应式双列布局**：在大屏幕上提供双列，在小屏幕上自动调整为单列
 - **统一交互设计**：跨工单类型的共享用户体验
 - **类型特定字段**：根据工单类型动态显示相应字段
@@ -1339,46 +2193,52 @@ TicketCreationModal 工单创建模态框是一个设计精良、功能完善的
 - **OCR 识别能力**：支持图片内容的智能识别
 - **PDF 解析能力**：支持PDF文档的内容提取
 
-### CRM 集成价值
+### 设备状态可视化价值
 
-**新增** CRM 集成功能为系统带来了显著的价值提升：
+**新增** 设备状态可视化功能为系统带来了显著的价值提升：
 
-- **客户关系管理**：完整的账户和联系人管理能力
-- **智能搜索**：多维度的客户信息搜索功能
-- **权限控制**：基于角色的访问权限管理
-- **数据关联**：自动关联客户信息到工单中
-- **效率提升**：大幅减少手动输入客户信息的时间
-- **准确性提高**：减少人工输入错误的可能性
+- **实时状态监控**：直观显示设备的注册状态和保修状态
+- **状态颜色编码**：通过颜色直观区分设备的不同状态
+- **操作指导**：根据设备状态提供相应的操作建议
+- **效率提升**：减少人工判断设备状态的时间
+- **准确性提高**：避免人工状态判断的错误可能性
 
-### AI 功能价值
+### 智能账户联系人解析价值
 
-**新增** AI 功能为系统带来了显著的价值提升：
+**新增** 智能账户联系人解析功能为系统带来了显著的价值提升：
 
-- **效率提升**：大幅减少手动输入工单数据的时间
-- **准确性提高**：AI 自动提取关键信息，减少人为错误
-- **用户体验优化**：提供更智能、更便捷的工单创建流程
-- **智能化转型**：推动传统工单系统向智能化方向发展
-- **学习成本降低**：新用户可以更快上手工单创建流程
-- **多模态支持**：支持图片OCR和PDF解析功能
-- **紧急工单识别**：自动检测并标记紧急程度
+- **主联系人自动识别**：减少手动选择联系人的工作量
+- **智能匹配算法**：提高联系人匹配的准确性和效率
+- **权限控制集成**：确保联系人信息的访问安全性
+- **用户体验优化**：提供更智能、更便捷的客户信息输入流程
+- **数据完整性**：确保客户信息的完整性和准确性
 
-### 后端 AI 服务价值
+### 产品注册流程价值
 
-**新增** 后端 AI 服务为系统提供了强大的技术支持：
+**新增** 产品注册流程功能为系统带来了显著的价值提升：
 
-- **专业解析能力**：专门针对工单解析优化的AI模型
-- **多模态处理**：支持文本、图片、PDF等多种格式的智能解析
-- **结构化输出**：确保解析结果的准确性和一致性
-- **安全可控**：严格的认证和访问控制机制
-- **性能优化**：智能的模型选择和资源管理
-- **监控统计**：完整的使用情况跟踪和分析
+- **未入库设备处理**：支持未入库设备的快速注册
+- **保修信息自动化**：自动计算和注册保修信息
+- **状态实时更新**：注册完成后自动更新设备状态
+- **操作流程简化**：提供简洁明了的注册操作流程
+- **数据一致性**：确保产品信息和保修信息的一致性
+
+### 机器详情卡功能价值
+
+**新增** 机器详情卡功能为系统带来了显著的价值提升：
+
+- **设备状态可视化**：直观显示设备的当前状态
+- **信息集中展示**：在一个卡片中展示设备的关键信息
+- **操作引导**：根据设备状态提供相应的操作建议
+- **用户体验提升**：提供更直观、更便捷的设备信息查看体验
+- **决策支持**：帮助用户快速了解设备状态并做出相应决策
 
 该组件为 Longhorn 服务管理系统提供了坚实的基础，为后续的功能扩展和维护奠定了良好的技术基础。其现代化的设计和优秀的用户体验使其成为企业级应用开发的优秀范例。
 
 **统一创建弹窗设计理念**的成功实施，标志着 Longhorn 服务管理系统在用户体验和开发效率方面达到了新的高度。通过标准化的工单创建流程，用户可以在不同工单类型之间无缝切换，同时享受一致的界面设计和交互体验。
 
-**CRM 集成功能**的深度集成和**AI 辅助功能**的全面增强，进一步提升了系统的智能化水平，为未来的功能扩展和技术升级奠定了坚实的基础。这些创新功能不仅改善了当前的用户体验，也为 Longhorn 系统的持续发展注入了新的活力。
+**设备状态实时可视化**、**智能账户联系人解析**、**产品注册流程**和**机器详情卡功能**的深度集成，进一步提升了系统的智能化水平，为未来的功能扩展和技术升级奠定了坚实的基础。这些创新功能不仅改善了当前的用户体验，也为 Longhorn 系统的持续发展注入了新的活力。
 
 **Kine Yellow 主题**的引入为系统增添了专业的品牌视觉形象，金色渐变色彩营造了高端、专业的品牌氛围，提升了用户的信任感和满意度。
 
-通过这次全面的 CRM 集成和 AI 功能增强，Longhorn 工单创建系统已经从传统的表单填写工具转变为智能化的工单创建助手，为用户提供了更加高效、准确和便捷的服务体验。这种转变不仅提升了工作效率，也为企业的数字化转型提供了强有力的技术支撑。
+通过这次全面的设备状态可视化和智能功能增强，Longhorn 工单创建系统已经从传统的表单填写工具转变为智能化的工单创建助手，为用户提供了更加高效、准确和便捷的服务体验。这种转变不仅提升了工作效率，也为企业的数字化转型提供了强有力的技术支撑。

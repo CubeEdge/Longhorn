@@ -790,7 +790,7 @@ const Sidebar: React.FC<{
           cursor: 'col-resize', zIndex: 10, background: 'transparent',
           transition: 'background 0.15s'
         }}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(59,130,246,0.4)')}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-blue-transparent)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       />
     </aside>
@@ -861,12 +861,12 @@ const UserStatsCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{t('browser.stats_files')}</div>
         <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{displayStats.uploadCount}</div>
       </div>
-      <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
+      <div style={{ width: '1px', height: '24px', background: 'var(--glass-border)' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{t('browser.stats_storage')}</div>
         <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{formatBytes(displayStats.storageUsed)}</div>
       </div>
-      <div style={{ width: '1px', height: '24px', background: 'rgba(255, 255, 255, 0.2)' }} />
+      <div style={{ width: '1px', height: '24px', background: 'var(--glass-border)' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{t('browser.stats_shares')}</div>
         <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-blue)' }}>{displayStats.shareCount || 0}</div>
@@ -1059,55 +1059,54 @@ const ServiceTopBarStats: React.FC = () => {
         opacity: loading ? 0.7 : 1
       }}
     >
-      {/* Status colors using Kine brand colors from context.md:
-          Kine Yellow: #FFD700, Kine Green: #10B981, Kine Red: #EF4444 */}
+      {/* Status colors using CSS variables for theme compatibility */}
       {context === 'inquiry' && (
         <>
-          {renderStatItem('all', '全部', '#6b7280')}
+          {renderStatItem('all', '全部', 'var(--text-tertiary)')}
           {divider}
-          {renderStatItem('Pending', '待处理', '#EF4444')}      {/* Kine Red */}
+          {renderStatItem('Pending', '待处理', 'var(--status-red)')}      {/* Red */}
           {divider}
-          {renderStatItem('InProgress', '处理中', '#3b82f6')}   {/* Blue */}
+          {renderStatItem('InProgress', '处理中', 'var(--status-blue)')}   {/* Blue */}
           {divider}
-          {renderStatItem('AwaitingFeedback', '待反馈', '#d946ef')} {/* Purple */}
+          {renderStatItem('AwaitingFeedback', '待反馈', 'var(--status-purple)')} {/* Purple */}
           {divider}
-          {renderStatItem('Resolved', '已解决', '#10B981')}     {/* Kine Green */}
+          {renderStatItem('Resolved', '已解决', 'var(--status-green)')}     {/* Green */}
           {divider}
-          {renderStatItem('AutoClosed', '已关闭', '#9ca3af')}   {/* Gray */}
+          {renderStatItem('AutoClosed', '已关闭', 'var(--text-secondary)')}   {/* Gray */}
           {divider}
-          {renderStatItem('Upgraded', '已升级', '#22d3ee')}     {/* Cyan */}
+          {renderStatItem('Upgraded', '已升级', 'var(--status-cyan)')}     {/* Cyan */}
         </>
       )}
 
       {context === 'rma' && (
         <>
-          {renderStatItem('all', '全部', '#6b7280')}
+          {renderStatItem('all', '全部', 'var(--text-tertiary)')}
           {divider}
           {renderStatItem('Pending', '已收货', 'var(--accent-blue)')}      {/* Kine Yellow */}
           {divider}
-          {renderStatItem('Confirming', '确认中', '#f59e0b')}   {/* Amber */}
+          {renderStatItem('Confirming', '确认中', 'var(--status-amber)')}   {/* Amber */}
           {divider}
-          {renderStatItem('Diagnosing', '检测中', '#8b5cf6')}   {/* Purple */}
+          {renderStatItem('Diagnosing', '检测中', 'var(--status-purple)')}   {/* Purple */}
           {divider}
-          {renderStatItem('InRepair', '维修中', '#3b82f6')}     {/* Blue */}
+          {renderStatItem('InRepair', '维修中', 'var(--status-blue)')}     {/* Blue */}
           {divider}
-          {renderStatItem('Completed', '已完成', '#10B981')}    {/* Kine Green - 使用Completed状态 */}
+          {renderStatItem('Completed', '已完成', 'var(--status-green)')}    {/* Kine Green */}
         </>
       )}
 
       {context === 'dealer' && (
         <>
-          {renderStatItem('all', '全部', '#6b7280')}
+          {renderStatItem('all', '全部', 'var(--text-tertiary)')}
           {divider}
           {renderStatItem('Received', '已收货', 'var(--accent-blue)')}     {/* Kine Yellow */}
           {divider}
-          {renderStatItem('Confirming', '确认中', '#f59e0b')}   {/* Amber */}
+          {renderStatItem('Confirming', '确认中', 'var(--status-amber)')}   {/* Amber */}
           {divider}
-          {renderStatItem('Diagnosing', '检测中', '#8b5cf6')}   {/* Purple */}
+          {renderStatItem('Diagnosing', '检测中', 'var(--status-purple)')}   {/* Purple */}
           {divider}
-          {renderStatItem('InRepair', '维修中', '#3b82f6')}     {/* Blue */}
+          {renderStatItem('InRepair', '维修中', 'var(--status-blue)')}     {/* Blue */}
           {divider}
-          {renderStatItem('Completed', '已完成', '#10B981')}    {/* Kine Green */}
+          {renderStatItem('Completed', '已完成', 'var(--status-green)')}    {/* Kine Green */}
         </>
       )}
     </div>
@@ -1235,8 +1234,8 @@ const TopBar: React.FC<{
                 style={{
                   width: 32, height: 32,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'var(--glass-bg-light)',
+                  border: '1px solid var(--glass-border)',
                   borderRadius: '8px',
                   color: 'var(--text-main)',
                   cursor: 'pointer',
@@ -1244,10 +1243,10 @@ const TopBar: React.FC<{
                   marginLeft: '8px'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.15)';
+                  e.currentTarget.style.background = 'var(--glass-bg-hover)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  e.currentTarget.style.background = 'var(--glass-bg-light)';
                 }}
               >
                 <Plus size={18} />
@@ -1309,7 +1308,7 @@ const TopBar: React.FC<{
           <div className="hidden-mobile">
             <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>{user.username}</span>
-              <span style={{ fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.45)', fontWeight: 500 }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', fontWeight: 500 }}>
                 {user.role === 'Admin' ? t('role.admin') : user.role === 'Exec' ? t('role.exec') : user.role === 'Lead' ? t('role.lead') : t('role.member')}
               </span>
             </div>
@@ -1319,27 +1318,27 @@ const TopBar: React.FC<{
             height: 36,
             borderRadius: '10px',
             background: 'var(--accent-blue)',
-            color: 'var(--bg-main)',
+            color: '#000',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '1.1rem',
             fontWeight: 800,
-            boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+            boxShadow: 'var(--shadow-sm)'
           }}>
             {user?.username?.substring(0, 1).toUpperCase() || '?'}
           </div>
 
           {/* Version Display - Client & Server (Two rows) */}
           <div className="hidden-mobile" style={{
-            color: '#10b981',
+            color: 'var(--status-green)',
             fontWeight: 700,
             fontSize: '0.75rem',
-            background: 'rgba(16, 185, 129, 0.08)',
+            background: 'var(--badge-success-bg)',
             padding: '2px 8px',
             borderRadius: '6px',
             marginRight: '12px',
-            border: '1px solid rgba(16, 185, 129, 0.15)',
+            border: '1px solid var(--glass-border)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'flex-end',
@@ -1358,12 +1357,12 @@ const TopBar: React.FC<{
               top: '100%',
               right: 0,
               marginTop: 8,
-              background: 'rgba(28, 28, 30, 0.95)',
+              background: 'var(--modal-bg)',
               border: '1px solid var(--glass-border)',
               borderRadius: '12px',
               padding: '6px',
               minWidth: '180px',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+              boxShadow: 'var(--glass-shadow-lg)',
               zIndex: 9999,
               backdropFilter: 'blur(20px)',
               overflow: 'hidden'
@@ -1386,7 +1385,7 @@ const TopBar: React.FC<{
                     }}
                     style={{
                       background: currentLanguage === lang ? 'var(--accent-blue)' : 'var(--glass-bg-hover)',
-                      color: currentLanguage === lang ? 'var(--bg-main)' : 'rgba(255,255,255,0.8)',
+                      color: currentLanguage === lang ? 'var(--bg-main)' : 'var(--text-secondary)',
                       border: 'none',
                       borderRadius: '4px',
                       cursor: 'pointer',
@@ -1415,7 +1414,7 @@ const TopBar: React.FC<{
                   background: 'transparent',
                   border: 'none',
                   borderRadius: '8px',
-                  color: 'rgba(255,255,255,0.9)',
+                  color: 'var(--text-main)',
                   fontSize: '0.9rem',
                   fontWeight: 500,
                   cursor: 'pointer',
@@ -1445,7 +1444,7 @@ const TopBar: React.FC<{
                     background: 'transparent',
                     border: 'none',
                     borderRadius: '8px',
-                    color: 'rgba(255,255,255,0.9)',
+                    color: 'var(--text-main)',
                     fontSize: '0.9rem',
                     fontWeight: 500,
                     cursor: 'pointer',
@@ -1455,7 +1454,7 @@ const TopBar: React.FC<{
                   onMouseEnter={(e) => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
-                  <Eye size={16} color="#FFD700" />
+                  <Eye size={16} color="var(--accent-gold)" />
                   预览视角
                 </button>
               )}
@@ -1475,7 +1474,7 @@ const TopBar: React.FC<{
                   background: 'transparent',
                   border: 'none',
                   borderRadius: '8px',
-                  color: 'rgba(255,255,255,0.9)',
+                  color: 'var(--text-main)',
                   fontSize: '0.9rem',
                   fontWeight: 500,
                   cursor: 'pointer',
@@ -1501,14 +1500,14 @@ const TopBar: React.FC<{
                   background: 'transparent',
                   border: 'none',
                   borderRadius: '8px',
-                  color: '#FF453A',
+                  color: 'var(--status-red)',
                   fontSize: '0.9rem',
                   fontWeight: 500,
                   cursor: 'pointer',
                   outline: 'none',
                   transition: 'all 0.2s'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 69, 58, 0.1)'}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--status-red-subtle)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
                 <LogOut size={16} />
@@ -1530,9 +1529,9 @@ const TopBar: React.FC<{
                 {/* @ts-ignore */}
                 <div style={{ opacity: 0.8 }}>Code: {window.__APP_COMMIT_TIME__ || '2026-02-04 22:20'}</div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--status-green)' }}></span>
                   {/* @ts-ignore */}
-                  <span style={{ color: '#10b981', fontWeight: 600 }}>v{window.__APP_VERSION__ || '1.1.7'}</span>
+                  <span style={{ color: 'var(--status-green)', fontWeight: 600 }}>v{window.__APP_VERSION__ || '1.1.7'}</span>
                 </div>
               </div>
             </div>

@@ -451,8 +451,8 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
             <div style={{
-                width: 600, maxHeight: '90vh', background: '#1c1c1e', borderRadius: '24px',
-                border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden',
+                width: 600, maxHeight: '90vh', background: 'var(--modal-bg)', borderRadius: '24px',
+                border: '1px solid var(--modal-border)', overflow: 'hidden',
                 boxShadow: '0 40px 100px rgba(0,0,0,0.8)',
                 display: 'flex', flexDirection: 'column', animation: 'modalScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
             }}>
@@ -479,7 +479,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 12 }}>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 12 }}>
                         <X size={28} />
                     </button>
                 </div>
@@ -707,7 +707,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                                 }}
                                                 style={{
                                                     position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
-                                                    background: 'none', border: 'none', color: '#666', cursor: 'pointer',
+                                                    background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer',
                                                     padding: 0, display: 'flex', alignItems: 'center'
                                                 }}
                                             >
@@ -719,17 +719,17 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                         {showOwnerDropdown && (
                                             <div style={{
                                                 position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
-                                                background: '#1c1c1e', border: '1px solid rgba(255,255,255,0.1)',
+                                                background: 'var(--modal-bg)', border: '1px solid var(--modal-border)',
                                                 borderRadius: 8, boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
                                                 maxHeight: 200, overflowY: 'auto', zIndex: 100
                                             }}>
                                                 {!ownerSearchQuery && (
-                                                    <div style={{ padding: 12, textAlign: 'center', color: '#666', fontSize: 12 }}>
+                                                    <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
                                                         输入客户名称开始搜索
                                                     </div>
                                                 )}
                                                 {ownerSearchQuery && customers.length === 0 && !searchingOwners && (
-                                                    <div style={{ padding: 12, textAlign: 'center', color: '#666', fontSize: 12 }}>
+                                                    <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
                                                         未找到匹配的客户
                                                     </div>
                                                 )}
@@ -847,7 +847,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                         />
                                         <Calendar size={20} style={{
                                             position: 'absolute', left: 20, top: '50%', transform: 'translateY(-50%)',
-                                            color: '#666', pointerEvents: 'none'
+                                            color: 'var(--text-tertiary)', pointerEvents: 'none'
                                         }} />
                                     </div>
                                     <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 8, letterSpacing: '-0.01em' }}>
@@ -888,8 +888,8 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                         ) : (
                                             <div>
                                                 <Upload size={24} color="#666" style={{ marginBottom: 8 }} />
-                                                <div style={{ fontSize: 13, color: '#888', letterSpacing: '-0.01em' }}>点击上传发票图片或PDF</div>
-                                                <div style={{ fontSize: 11, color: '#666', marginTop: 4, letterSpacing: '-0.01em' }}>支持 JPG、PNG、PDF，最大 5MB</div>
+                                                <div style={{ fontSize: 13, color: 'var(--text-secondary)', letterSpacing: '-0.01em' }}>点击上传发票图片或PDF</div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4, letterSpacing: '-0.01em' }}>支持 JPG、PNG、PDF，最大 5MB</div>
                                             </div>
                                         )}
                                     </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Check } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -52,23 +53,23 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
         }
     };
 
-    return (
+    return createPortal(
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
         }}>
             <div style={{
-                background: '#1E1E1E', width: 400, borderRadius: 12,
-                boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-                border: '1px solid rgba(255,255,255,0.1)'
+                background: 'var(--bg-secondary)', width: 400, borderRadius: 12,
+                boxShadow: '0 20px 40px var(--glass-shadow-lg)',
+                border: '1px solid var(--glass-border)'
             }}>
                 <div style={{
-                    padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)',
+                    padding: '16px 20px', borderBottom: '1px solid var(--glass-border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
-                    <h3 style={{ margin: 0, fontSize: 16, color: '#fff' }}>添加为新客户</h3>
-                    <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }}>
+                    <h3 style={{ margin: 0, fontSize: 16, color: 'var(--text-main)' }}>添加为新客户</h3>
+                    <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                         <X size={20} />
                     </button>
                 </div>
@@ -76,13 +77,13 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
                 <form onSubmit={handleSubmit} style={{ padding: 20 }}>
                     {/* 客户类型选择 */}
                     <div style={{ marginBottom: 16 }}>
-                        <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 8 }}>客户类型</label>
+                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>客户类型</label>
                         <div style={{ display: 'flex', gap: 12 }}>
                             <label style={{
                                 flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-                                background: formData.account_type === 'INDIVIDUAL' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0,0,0,0.2)',
-                                border: `1px solid ${formData.account_type === 'INDIVIDUAL' ? '#3B82F6' : 'rgba(255,255,255,0.1)'}`,
-                                borderRadius: 6, cursor: 'pointer', color: formData.account_type === 'INDIVIDUAL' ? '#fff' : '#aaa', fontSize: 13
+                                background: formData.account_type === 'INDIVIDUAL' ? 'rgba(59, 130, 246, 0.1)' : 'var(--glass-bg-hover)',
+                                border: `1px solid ${formData.account_type === 'INDIVIDUAL' ? '#3B82F6' : 'var(--glass-border)'}`,
+                                borderRadius: 6, cursor: 'pointer', color: formData.account_type === 'INDIVIDUAL' ? 'var(--text-main)' : 'var(--text-secondary)', fontSize: 13
                             }}>
                                 <input
                                     type="radio" name="account_type" value="INDIVIDUAL" checked={formData.account_type === 'INDIVIDUAL'}
@@ -93,9 +94,9 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
                             </label>
                             <label style={{
                                 flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-                                background: formData.account_type === 'ORGANIZATION' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0,0,0,0.2)',
-                                border: `1px solid ${formData.account_type === 'ORGANIZATION' ? '#3B82F6' : 'rgba(255,255,255,0.1)'}`,
-                                borderRadius: 6, cursor: 'pointer', color: formData.account_type === 'ORGANIZATION' ? '#fff' : '#aaa', fontSize: 13
+                                background: formData.account_type === 'ORGANIZATION' ? 'rgba(59, 130, 246, 0.1)' : 'var(--glass-bg-hover)',
+                                border: `1px solid ${formData.account_type === 'ORGANIZATION' ? '#3B82F6' : 'var(--glass-border)'}`,
+                                borderRadius: 6, cursor: 'pointer', color: formData.account_type === 'ORGANIZATION' ? 'var(--text-main)' : 'var(--text-secondary)', fontSize: 13
                             }}>
                                 <input
                                     type="radio" name="account_type" value="ORGANIZATION" checked={formData.account_type === 'ORGANIZATION'}
@@ -109,13 +110,13 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
 
                     {/* 生命周期选择 */}
                     <div style={{ marginBottom: 16 }}>
-                        <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 8 }}>客户身份</label>
+                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>客户身份</label>
                         <div style={{ display: 'flex', gap: 12 }}>
                             <label style={{
                                 flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-                                background: formData.lifecycle_stage === 'PROSPECT' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0,0,0,0.2)',
-                                border: `1px solid ${formData.lifecycle_stage === 'PROSPECT' ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
-                                borderRadius: 6, cursor: 'pointer', color: formData.lifecycle_stage === 'PROSPECT' ? '#fff' : '#aaa', fontSize: 13
+                                background: formData.lifecycle_stage === 'PROSPECT' ? 'rgba(16, 185, 129, 0.1)' : 'var(--glass-bg-hover)',
+                                border: `1px solid ${formData.lifecycle_stage === 'PROSPECT' ? '#10B981' : 'var(--glass-border)'}`,
+                                borderRadius: 6, cursor: 'pointer', color: formData.lifecycle_stage === 'PROSPECT' ? 'var(--text-main)' : 'var(--text-secondary)', fontSize: 13
                             }}>
                                 <input
                                     type="radio" name="lifecycle_stage" value="PROSPECT" checked={formData.lifecycle_stage === 'PROSPECT'}
@@ -126,9 +127,9 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
                             </label>
                             <label style={{
                                 flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-                                background: formData.lifecycle_stage === 'ACTIVE' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(0,0,0,0.2)',
-                                border: `1px solid ${formData.lifecycle_stage === 'ACTIVE' ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
-                                borderRadius: 6, cursor: 'pointer', color: formData.lifecycle_stage === 'ACTIVE' ? '#fff' : '#aaa', fontSize: 13
+                                background: formData.lifecycle_stage === 'ACTIVE' ? 'rgba(16, 185, 129, 0.1)' : 'var(--glass-bg-hover)',
+                                border: `1px solid ${formData.lifecycle_stage === 'ACTIVE' ? '#10B981' : 'var(--glass-border)'}`,
+                                borderRadius: 6, cursor: 'pointer', color: formData.lifecycle_stage === 'ACTIVE' ? 'var(--text-main)' : 'var(--text-secondary)', fontSize: 13
                             }}>
                                 <input
                                     type="radio" name="lifecycle_stage" value="ACTIVE" checked={formData.lifecycle_stage === 'ACTIVE'}
@@ -141,14 +142,14 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
-                        <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 6 }}>
+                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
                             {formData.account_type === 'ORGANIZATION' ? '机构/企业名称 *' : '姓名 *'}
                         </label>
                         <input
                             required
                             style={{
-                                width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)',
-                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 14
+                                width: '100%', padding: '8px 12px', background: 'var(--glass-bg-hover)',
+                                border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 14
                             }}
                             value={formData.name}
                             onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -156,11 +157,11 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
-                        <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 6 }}>电话</label>
+                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>电话</label>
                         <input
                             style={{
-                                width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)',
-                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 14
+                                width: '100%', padding: '8px 12px', background: 'var(--glass-bg-hover)',
+                                border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 14
                             }}
                             value={formData.phone}
                             onChange={e => setFormData({ ...formData, phone: e.target.value })}
@@ -168,13 +169,13 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
                     </div>
 
                     <div style={{ marginBottom: 16 }}>
-                        <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 6 }}>邮箱 / Email</label>
+                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>邮箱 / Email</label>
                         <input
                             placeholder="Email"
                             type="email"
                             style={{
-                                width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)',
-                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 14
+                                width: '100%', padding: '8px 12px', background: 'var(--glass-bg-hover)',
+                                border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 14
                             }}
                             value={formData.email}
                             onChange={e => setFormData({ ...formData, email: e.target.value })}
@@ -184,7 +185,7 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
                         <button type="button" onClick={onClose} style={{
                             padding: '8px 16px', background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, color: '#ccc', cursor: 'pointer'
+                            border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--text-main)', cursor: 'pointer'
                         }}>取消</button>
                         <button type="submit" disabled={loading} style={{
                             padding: '8px 16px', background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 6,
@@ -196,7 +197,8 @@ const ConvertIndividualModal: React.FC<ConvertIndividualModalProps> = ({
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

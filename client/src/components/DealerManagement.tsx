@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLanguage } from '../i18n/useLanguage';
 import { Search, Plus, MapPin, Edit2, Building, ChevronUp, ChevronDown, MoreHorizontal, RotateCcw, Trash2 } from 'lucide-react';
-import CustomerFormModal from './CustomerFormModal';
+import UnifiedCustomerModal from './Service/UnifiedCustomerModal';
 import PermanentDeleteModal from './PermanentDeleteModal';
 
 // Types
@@ -64,7 +64,6 @@ const DealerManagement: React.FC = () => {
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDealer, setEditingDealer] = useState<Dealer | null>(null);
-    const [saving, setSaving] = useState(false);
 
     // More dropdown state
     const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
@@ -170,114 +169,6 @@ const DealerManagement: React.FC = () => {
             });
         }
         setIsModalOpen(true);
-    };
-
-    const handleSubmit = async (e: React.FormEvent, formData: any) => {
-        e.preventDefault();
-        setSaving(true);
-        try {
-            // 转换表单数据为 accounts API 格式
-            const accountData = {
-                name: formData.name,
-                account_type: 'DEALER',
-                dealer_code: formData.dealer_code,
-                dealer_level: formData.dealer_level,
-                can_repair: !!formData.repair_level,
-                repair_level: formData.repair_level,
-                address: formData.address,
-                country: formData.country,
-                city: formData.city,
-                notes: formData.notes,
-                primary_contact: formData.contacts.find((c: any) => c.is_primary) || formData.contacts[0]
-            };
-
-            if (editingDealer) {
-                // 1. Update account basic info
-                await axios.patch(`/api/v1/accounts/${editingDealer.id}`, accountData, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                // 2. Sync contacts - Differential Sync
-                const existingContactsRes = await axios.get(`/api/v1/accounts/${editingDealer.id}/contacts`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const existingContacts = existingContactsRes.data.data || [];
-
-                const submittedContacts = formData.contacts;
-                const submittedIds = submittedContacts.map((c: any) => c.id).filter(Boolean);
-
-                const contactsToDelete = existingContacts.filter((ec: any) => !submittedIds.includes(ec.id));
-                const contactsToUpdate = submittedContacts.filter((sc: any) => sc.id);
-                const contactsToCreate = submittedContacts.filter((sc: any) => !sc.id);
-
-                // Sequential deletions
-                for (const contact of contactsToDelete) {
-                    try {
-                        await axios.delete(`/api/v1/contacts/${contact.id}`, { headers: { Authorization: `Bearer ${token}` } });
-                    } catch (err) { console.error('Failed to delete contact', err); }
-                }
-
-                // Sequential updates
-                for (const contact of contactsToUpdate) {
-                    try {
-                        await axios.patch(`/api/v1/contacts/${contact.id}`, {
-                            name: contact.name,
-                            email: contact.email,
-                            phone: contact.phone,
-                            job_title: contact.job_title,
-                            is_primary: contact.is_primary
-                        }, { headers: { Authorization: `Bearer ${token}` } });
-                    } catch (err) { console.error('Failed to update contact', err); }
-                }
-
-                // Sequential creations
-                for (const contact of contactsToCreate) {
-                    try {
-                        await axios.post(`/api/v1/accounts/${editingDealer.id}/contacts`, {
-                            name: contact.name,
-                            email: contact.email,
-                            phone: contact.phone,
-                            job_title: contact.job_title,
-                            is_primary: contact.is_primary
-                        }, { headers: { Authorization: `Bearer ${token}` } });
-                    } catch (err) { console.error('Failed to create contact', err); }
-                }
-            } else {
-                // 新增经销商
-                const createRes = await axios.post('/api/v1/accounts', accountData, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                // 如果有额外的联系人（除了主联系人），也需要创建
-                if (createRes.data.success && formData.contacts.length > 1) {
-                    const newAccountId = createRes.data.data.id;
-                    // 跳过第一个联系人（已通过 primary_contact 创建），创建其余联系人
-                    const additionalContacts = formData.contacts.slice(1);
-                    for (const contact of additionalContacts) {
-                        try {
-                            await axios.post(`/api/v1/accounts/${newAccountId}/contacts`, {
-                                name: contact.name,
-                                email: contact.email,
-                                phone: contact.phone,
-                                job_title: contact.job_title,
-                                is_primary: contact.is_primary
-                            }, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            });
-                        } catch (err) {
-                            console.error('Failed to create additional contact', err);
-                        }
-                    }
-                }
-            }
-            setIsModalOpen(false);
-            fetchDealers();
-        } catch (err) {
-            console.error('Failed to save dealer', err);
-            alert('Operation failed');
-        } finally {
-            setSaving(false);
-        }
     };
 
     // 恢复账户（从已删除/已停用状态恢复）
@@ -505,7 +396,7 @@ const DealerManagement: React.FC = () => {
             </div>
 
             {/* Table */}
-            <div style={{ flex: 1, overflow: 'auto', background: 'var(--glass-border)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+            <div style={{ flex: 1, overflow: 'auto', background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
@@ -720,15 +611,34 @@ const DealerManagement: React.FC = () => {
 
             {/* Modal */}
             {isModalOpen && (
-                <CustomerFormModal
+                <UnifiedCustomerModal
                     isOpen={isModalOpen}
-                    onClose={() => !saving && setIsModalOpen(false)}
-                    onSubmit={handleSubmit}
-                    initialData={editingDealer}
+                    onClose={() => setIsModalOpen(false)}
+                    onSuccess={() => {
+                        setIsModalOpen(false);
+                        setEditingDealer(null);
+                        fetchDealers();
+                    }}
+                    editData={editingDealer ? {
+                        id: editingDealer.id,
+                        name: editingDealer.customer_name,
+                        account_type: 'DEALER',
+                        lifecycle_stage: 'ACTIVE',
+                        service_tier: editingDealer.service_tier,
+                        address: editingDealer.notes || '',
+                        country: editingDealer.country || '',
+                        city: editingDealer.city || '',
+                        notes: editingDealer.notes || '',
+                        contacts: [{
+                            name: editingDealer.contact_person || '',
+                            email: editingDealer.email || '',
+                            phone: editingDealer.phone || '',
+                            job_title: '',
+                            is_primary: true
+                        }]
+                    } : undefined}
                     isEditing={!!editingDealer}
-                    _user={{}}
-                    mode="dealer"
-                    saving={saving}
+                    defaultMode="dealer"
                 />
             )}
 

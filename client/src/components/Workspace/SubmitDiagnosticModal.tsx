@@ -131,7 +131,7 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({
             // 1. Add Diagnostic Activity with attachments
             const formData = new FormData();
             formData.append('activity_type', 'diagnostic_report');
-            formData.append('content', '提交了详细诊断报告与故障确认。');
+            formData.append('content', '提交了诊断结果与故障确认。');
             formData.append('visibility', 'all');
 
             // Build metadata with new technical assessment fields

@@ -14,7 +14,7 @@ export const useUserSettingsStore = create<UserSettingsState>()(
     persist(
         (set) => ({
             showDailyWord: false, // Default off as per existing desc
-            notificationDuration: 0, // Default to 'until clicked' as per user request
+            notificationDuration: 15, // Default to 15 seconds as per user request
 
             setShowDailyWord: (show: boolean) => set({ showDailyWord: show }),
             setNotificationDuration: (duration: NotificationDuration) => set({ notificationDuration: duration }),

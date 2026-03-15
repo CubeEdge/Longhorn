@@ -206,7 +206,7 @@ const DealerInventoryListPage: React.FC = () => {
             {/* 统计卡片 */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
                 <div style={{
-                    background: 'var(--glass-border)',
+                    background: 'var(--glass-bg-light)',
                     borderRadius: 16,
                     padding: 20,
                     border: '1px solid var(--glass-border)'
@@ -227,7 +227,7 @@ const DealerInventoryListPage: React.FC = () => {
                 </div>
                 <div
                     style={{
-                        background: 'var(--glass-border)',
+                        background: 'var(--glass-bg-light)',
                         borderRadius: 16,
                         padding: 20,
                         border: '1px solid var(--glass-border)',
@@ -254,7 +254,7 @@ const DealerInventoryListPage: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
-                    background: 'var(--glass-border)',
+                    background: 'var(--glass-bg-light)',
                     padding: '8px 16px',
                     borderRadius: 30,
                     flex: 1,
@@ -317,7 +317,7 @@ const DealerInventoryListPage: React.FC = () => {
                 <div style={{
                     textAlign: 'center',
                     padding: 60,
-                    background: 'var(--glass-border)',
+                    background: 'var(--glass-bg-light)',
                     borderRadius: 16,
                     border: '1px solid var(--glass-border)'
                 }}>
@@ -326,14 +326,14 @@ const DealerInventoryListPage: React.FC = () => {
                 </div>
             ) : (
                 <div style={{
-                    background: 'var(--glass-border)',
+                    background: 'var(--glass-bg-light)',
                     borderRadius: 16,
                     border: '1px solid var(--glass-border)',
                     overflow: 'hidden'
                 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
-                            <tr style={{ background: 'var(--glass-border)' }}>
+                            <tr style={{ background: 'var(--glass-bg-light)' }}>
                                 <th style={{ padding: '14px 20px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, opacity: 0.6 }}>
                                     {t('inventory.part') || '配件'}
                                 </th>

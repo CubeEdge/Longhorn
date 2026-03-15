@@ -1110,8 +1110,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     {/* Row 1: Product Model (left) + Serial Number + History (right) */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 32px', alignItems: 'center' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 60 }}>产品型号</span>
-                                            <span style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>{String(ticket.product_name || '-')}</span>
+                                            <span style={{ color: 'var(--text-secondary)', fontSize: 13, minWidth: 60 }}>产品型号</span>
+                                            <span style={{ fontSize: 14, color: 'var(--text-main)', fontWeight: 500 }}>{String(ticket.product_name || '-')}</span>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                                             {/* SN 链接：使用 assetData 查询结果的 device.id，而非工单存储的 product_id */}
@@ -1138,10 +1138,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                             title={isUnregistered ? '设备未入库，无法查看详情' : undefined}
                                                         >
                                                             {/* 序列号标签颜色与销售渠道一致 */}
-                                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>序列号</span>
+                                                            <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>序列号</span>
                                                             <span style={{ 
                                                                 fontSize: 14, 
-                                                                color: canNavigate ? '#fff' : 'rgba(255,255,255,0.6)', 
+                                                                color: canNavigate ? 'var(--text-main)' : 'var(--text-secondary)', 
                                                                 fontWeight: 500
                                                             }}>
                                                                 {String(ticket.serial_number || '-')}
@@ -1256,7 +1256,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 32px', alignItems: 'start' }}>
                                         {/* Row 3 Col 1: Customer */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 60 }}>{t('ticket.customer') || '客户'}</span>
+                                            <span style={{ color: 'var(--text-secondary)', fontSize: 13, minWidth: 60 }}>{t('ticket.customer') || '客户'}</span>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 600 }}>
                                                 {(() => {
                                                     const acc = String(ticket.account_name || '--') || '';
@@ -1281,21 +1281,21 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         </div>
                                         {/* Row 3 Col 2: Channel */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>销售渠道</span>
-                                            <span style={{ fontSize: 14, color: '#ccc' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>销售渠道</span>
+                                            <span style={{ fontSize: 14, color: 'var(--text-main)' }}>
                                                 {ticket.dealer_name ? `${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}` : '直销'}
                                             </span>
                                         </div>
 
                                         {/* Row 4 Col 1: Created Time */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, minWidth: 60 }}>{t('ticket.created_at') || '创建时间'}</span>
-                                            <span style={{ fontSize: 14, color: '#ccc' }}>{formatDateMinute(ticket.created_at)}</span>
+                                            <span style={{ color: 'var(--text-secondary)', fontSize: 13, minWidth: 60 }}>{t('ticket.created_at') || '创建时间'}</span>
+                                            <span style={{ fontSize: 14, color: 'var(--text-main)' }}>{formatDateMinute(ticket.created_at)}</span>
                                         </div>
                                         {/* Row 4 Col 2: Submitter */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>{t('ticket.submitted_by') || '提交者'}</span>
-                                            <span style={{ fontSize: 14, color: '#ccc' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{t('ticket.submitted_by') || '提交者'}</span>
+                                            <span style={{ fontSize: 14, color: 'var(--text-main)' }}>
                                                 {ticket.submitted_name ? (
                                                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                         {ticket.submitted_dept && <span style={{ color: '#666', fontSize: 11 }}>[{ticket.submitted_dept}]</span>}
@@ -1311,15 +1311,15 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 {(ticket.problem_summary || ticket.problem_description) && (
                                     <div style={{
                                         marginTop: 14, padding: '14px 16px', borderRadius: 8,
-                                        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)',
+                                        background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
                                         cursor: 'pointer', transition: 'background 0.2s', position: 'relative'
                                     }}
                                         onClick={() => setIsDescriptionDrawerOpen(true)}
-                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg)'}
                                     >
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                                 <FileText size={14} />
                                                 问题概要
                                                 {((ticket.problem_description?.length || 0) > 80 || (ticket.problem_summary?.length || 0) > 80) && (
@@ -1338,7 +1338,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             </div>
                                         </div>
                                         <div style={{
-                                            fontSize: 14, color: '#ccc', lineHeight: 1.7,
+                                            fontSize: 14, color: 'var(--text-main)', lineHeight: 1.7,
                                             display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                                             fontWeight: 500
                                         }}>
@@ -1402,10 +1402,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             bottom: 0,
                             margin: '24px 0 -24px 0',
                             padding: '12px 24px',
-                            background: 'rgba(28, 28, 30, 0.8)',
+                            background: 'var(--glass-bg)',
                             backdropFilter: 'blur(20px)',
-                            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                            boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
+                            borderTop: '1px solid var(--glass-border)',
+                            boxShadow: 'var(--glass-shadow-lg)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -1416,8 +1416,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3B82F6', boxShadow: '0 0 10px rgba(59,130,246,0.6)' }} />
                                 <div>
-                                    <div style={{ fontSize: 11, color: '#666', textTransform: 'uppercase', letterSpacing: 1 }}>当前节点</div>
-                                    <div style={{ fontSize: 14, fontWeight: 600, color: '#e0e0e0' }}>
+                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1 }}>当前节点</div>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-main)' }}>
                                         {({
                                             draft: '草稿', submitted: '已提交', ms_review: '商务审核',
                                             op_receiving: '待收货', op_diagnosing: '诊断中', op_repairing: '维修中',
@@ -1497,7 +1497,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     {/* Service Document Center - Consolidated Card (macOS26 Style) - Hidden for inquiry tickets */}
                     {ticket.type !== 'inquiry' && (
                     <div style={{
-                        background: 'var(--glass-border)',
+                        background: 'var(--glass-bg-light)',
                         borderRadius: '12px',
                         padding: keyDeliverablesCollapsed ? '16px' : '16px',
                         border: '1px solid var(--glass-border)',
@@ -1510,7 +1510,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 fontSize: '0.8rem',
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.08em',
-                                color: '#fff',
+                                color: 'var(--text-main)',
                                 marginBottom: keyDeliverablesCollapsed ? 0 : '16px',
                                 fontWeight: 700,
                                 display: 'flex',
@@ -1522,11 +1522,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Wrench size={12} color="#fff" /> {language === 'zh' ? '关键交付内容' : 'Key Deliverables'}
+                                <Wrench size={12} color="var(--text-main)" /> {language === 'zh' ? '关键交付内容' : 'Key Deliverables'}
                             </div>
                             <ChevronRight
                                 size={16}
-                                color="#888"
+                                color="var(--text-secondary)"
                                 style={{
                                     transform: keyDeliverablesCollapsed ? 'rotate(90deg)' : 'rotate(0deg)',
                                     transition: 'transform 0.2s'
@@ -1547,15 +1547,15 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             onClick={() => diagActivity && setSelectedActivity(diagActivity)}
                                             style={{
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px',
-                                                background: 'rgba(255,255,255,0.02)',
-                                                border: '1px solid rgba(255,255,255,0.05)',
+                                                background: 'var(--glass-bg)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '10px', transition: 'all 0.2s',
                                                 cursor: diagActivity ? 'pointer' : 'not-allowed',
                                                 opacity: diagActivity ? 1 : 0.6
                                             }}
                                         >
-                                            <Search size={14} color={diagActivity ? '#888' : '#666'} />
-                                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: diagActivity ? '#ddd' : '#666' }}>
+                                            <Search size={14} color={diagActivity ? 'var(--text-secondary)' : 'var(--text-tertiary)'} />
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: diagActivity ? 'var(--text-main)' : 'var(--text-tertiary)' }}>
                                                 {language === 'zh' ? '诊断结果' : 'Diagnostics'}
                                             </span>
                                         </button>
@@ -1579,15 +1579,15 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             onClick={() => hasPassedRepair && setIsOpRepairReportEditorOpen(true)}
                                             style={{
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px',
-                                                background: 'rgba(255,255,255,0.02)',
-                                                border: '1px solid rgba(255,255,255,0.05)',
+                                                background: 'var(--glass-bg)',
+                                                border: '1px solid var(--glass-border)',
                                                 borderRadius: '10px', transition: 'all 0.2s',
                                                 cursor: hasPassedRepair ? 'pointer' : 'not-allowed',
                                                 opacity: hasPassedRepair ? 1 : 0.6
                                             }}
                                         >
-                                            <Wrench size={14} color={hasPassedRepair ? '#888' : '#666'} />
-                                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: hasPassedRepair ? '#ddd' : '#666' }}>
+                                            <Wrench size={14} color={hasPassedRepair ? 'var(--text-secondary)' : 'var(--text-tertiary)'} />
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: hasPassedRepair ? 'var(--text-main)' : 'var(--text-tertiary)' }}>
                                                 {language === 'zh' ? '维修记录' : 'Repair Record'}
                                             </span>
                                         </button>
@@ -1748,20 +1748,20 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         />
                         <div style={{
                             position: 'fixed', top: 60, right: 0, bottom: 0, width: 400,
-                            background: 'rgba(20,20,20,0.95)', backdropFilter: 'blur(20px)',
-                            borderLeft: '1px solid rgba(255,255,255,0.1)',
+                            background: 'var(--drawer-bg)', backdropFilter: 'blur(20px)',
+                            borderLeft: '1px solid var(--drawer-border)',
                             zIndex: 200, display: 'flex', flexDirection: 'column',
-                            boxShadow: '-10px 0 30px rgba(0,0,0,0.5)'
+                            boxShadow: 'var(--glass-shadow-lg)'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.2)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--drawer-border)', background: 'var(--drawer-header-bg)' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <ShieldAlert size={18} color="#FFD200" />
+                                    <ShieldAlert size={18} color="var(--accent-blue)" />
                                     <div>
-                                        <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>编辑工单信息</h3>
-                                        <p style={{ margin: 0, fontSize: 11, color: '#888', marginTop: 2 }}>操作受审计保护，核心变更需提供理由</p>
+                                        <h3 style={{ margin: 0, fontSize: 16, color: 'var(--text-main)', fontWeight: 600 }}>编辑工单信息</h3>
+                                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>操作受审计保护，核心变更需提供理由</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setIsEditing(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
+                                <button onClick={() => setIsEditing(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}>
                                     <X size={20} />
                                 </button>
                             </div>
@@ -1964,33 +1964,33 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         />
                         <div style={{
                             position: 'fixed', top: 60, right: 0, bottom: 0, width: 400, zIndex: 300,
-                            background: 'rgba(28,28,30,0.98)', backdropFilter: 'blur(20px)',
-                            borderLeft: '1px solid rgba(255,255,255,0.1)',
-                            boxShadow: '-10px 0 40px rgba(0,0,0,0.5)',
+                            background: 'var(--drawer-bg)', backdropFilter: 'blur(20px)',
+                            borderLeft: '1px solid var(--drawer-border)',
+                            boxShadow: 'var(--glass-shadow-lg)',
                             display: 'flex', flexDirection: 'column',
                             animation: 'drawerSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
                         }}>
-                            <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)' }}>
+                            <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--drawer-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--drawer-header-bg)' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                     <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <FileText size={16} color="#FFD200" />
                                     </div>
                                     <div>
-                                        <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>问题与诊断全景</h3>
-                                        <p style={{ margin: 0, fontSize: 11, color: '#888', marginTop: 2 }}>{ticket.ticket_number}</p>
+                                        <h3 style={{ margin: 0, fontSize: 16, color: 'var(--text-main)', fontWeight: 600 }}>问题与诊断全景</h3>
+                                        <p style={{ margin: 0, fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>{ticket.ticket_number}</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setIsDescriptionDrawerOpen(false)} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
+                                <button onClick={() => setIsDescriptionDrawerOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 4 }}>
                                     <X size={20} />
                                 </button>
                             </div>
                             <div style={{ padding: 24, flex: 1, overflowY: 'auto' }}>
                                 {ticket.problem_summary && (
                                     <div style={{ marginBottom: 24 }}>
-                                        <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>摘要</h4>
+                                        <h4 style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>摘要</h4>
                                         <div style={{
                                             fontSize: 16,
-                                            color: '#fff',
+                                            color: 'var(--text-main)',
                                             lineHeight: 1.6,
                                             whiteSpace: 'pre-wrap',
                                             wordBreak: 'break-word',
@@ -2002,10 +2002,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 )}
                                 {ticket.problem_description && (
                                     <div style={{ marginBottom: 24 }}>
-                                        <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>详细描述</h4>
+                                        <h4 style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>详细描述</h4>
                                         <div style={{
                                             fontSize: 16,
-                                            color: (ticket.problem_summary) ? 'rgba(255,255,255,0.7)' : '#fff',
+                                            color: 'var(--text-main)',
                                             lineHeight: 1.6,
                                             whiteSpace: 'pre-wrap',
                                             wordBreak: 'break-word',
@@ -2018,15 +2018,15 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 )}
                                 {ticket.resolution && (
                                     <div style={{ marginBottom: 24 }}>
-                                        <h4 style={{ fontSize: 12, color: '#10B981', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>处理记录</h4>
-                                        <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'rgba(16,185,129,0.05)', padding: 12, borderRadius: 8, border: '1px solid rgba(16,185,129,0.1)' }}>
+                                        <h4 style={{ fontSize: 12, color: 'var(--status-green)', marginBottom: 10, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>处理记录</h4>
+                                        <div style={{ fontSize: 13, color: 'var(--text-main)', lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'rgba(16,185,129,0.05)', padding: 12, borderRadius: 8, border: '1px solid rgba(16,185,129,0.1)' }}>
                                             {ticket.resolution}
                                         </div>
                                     </div>
                                 )}
                                 {(Number(ticket.attachments_count || 0) > 0 || ticketAttachments.length > 0) && (
                                     <div>
-                                        <h4 style={{ fontSize: 12, color: '#555', marginBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: 6 }}>附件文件</h4>
+                                        <h4 style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>附件文件</h4>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
                                             {ticketAttachments.map(att => (
                                                 <a
@@ -2096,7 +2096,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
                         <div style={{
-                            width: 440, background: '#1c1c1e', borderRadius: 16,
+                            width: 440, background: 'var(--bg-secondary)', borderRadius: 16,
                             border: '1px solid #EF4444', overflow: 'hidden',
                             boxShadow: '0 20px 40px rgba(239, 68, 68, 0.15)'
                         }}>
@@ -2104,8 +2104,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                                     <Trash2 size={24} color="#EF4444" />
                                 </div>
-                                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 8 }}>危险操作：废弃工单</h3>
-                                <p style={{ margin: 0, fontSize: 14, color: '#aaa', lineHeight: 1.5 }}>
+                                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-main)', marginBottom: 8 }}>危险操作：废弃工单</h3>
+                                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                                     此操作将导致工单 <b>{ticket.ticket_number}</b> 被逻辑删除并打上墓碑标记，不再显示在任何普通列表内。<br />为确保安全，必须强制输入废弃理由，并等待 {deleteCountdown > 0 ? <span style={{ color: '#EF4444', fontWeight: 600 }}>{deleteCountdown}秒</span> : '解锁'}。
                                 </p>
                             </div>
@@ -2114,15 +2114,15 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     value={deleteReason}
                                     onChange={e => setDeleteReason(e.target.value)}
                                     placeholder="输入废弃理由（必填，至少 5 个字符）..."
-                                    style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 8, minHeight: 80, fontSize: 14 }}
+                                    style={{ width: '100%', padding: '12px', background: 'var(--bg-main)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: 8, minHeight: 80, fontSize: 14 }}
                                 />
                             </div>
-                            <div style={{ display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ display: 'flex', borderTop: '1px solid var(--glass-border)' }}>
                                 <button
                                     onClick={() => { setIsDeleteModalOpen(false); setDeleteReason(''); }}
-                                    style={{ flex: 1, padding: 16, background: 'transparent', border: 'none', color: '#fff', fontSize: 15, cursor: 'pointer' }}
+                                    style={{ flex: 1, padding: 16, background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: 15, cursor: 'pointer' }}
                                 >取消操作</button>
-                                <div style={{ width: 1, background: 'rgba(255,255,255,0.1)' }} />
+                                <div style={{ width: 1, background: 'var(--glass-border)' }} />
                                 <button
                                     onClick={handleDelete}
                                     disabled={deleteCountdown > 0 || deleteReason.trim().length < 5 || isDeleting}
@@ -2151,7 +2151,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
                         <div style={{
-                            width: 440, background: '#1c1c1e', borderRadius: 16,
+                            width: 440, background: 'var(--bg-secondary)', borderRadius: 16,
                             border: '1px solid #10B981', overflow: 'hidden',
                             boxShadow: '0 20px 40px rgba(16, 185, 129, 0.15)'
                         }}>
@@ -2159,8 +2159,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
                                     <ExternalLink size={24} color="#10B981" />
                                 </div>
-                                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 8 }}>恢复工单</h3>
-                                <p style={{ margin: 0, fontSize: 14, color: '#aaa', lineHeight: 1.5 }}>
+                                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-main)', marginBottom: 8 }}>恢复工单</h3>
+                                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                                     将工单 <b>{ticket.ticket_number}</b> 从回收站移回活跃列表。
                                 </p>
                             </div>
@@ -2169,15 +2169,15 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     value={restoreReason}
                                     onChange={e => setRestoreReason(e.target.value)}
                                     placeholder="输入恢复理由（必填）..."
-                                    style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 8, minHeight: 80, fontSize: 14 }}
+                                    style={{ width: '100%', padding: '12px', background: 'var(--bg-main)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: 8, minHeight: 80, fontSize: 14 }}
                                 />
                             </div>
-                            <div style={{ display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ display: 'flex', borderTop: '1px solid var(--glass-border)' }}>
                                 <button
                                     onClick={() => { setIsRestoreModalOpen(false); setRestoreReason(''); }}
-                                    style={{ flex: 1, padding: 16, background: 'transparent', border: 'none', color: '#fff', fontSize: 15, cursor: 'pointer' }}
+                                    style={{ flex: 1, padding: 16, background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: 15, cursor: 'pointer' }}
                                 >取消</button>
-                                <div style={{ width: 1, background: 'rgba(255,255,255,0.1)' }} />
+                                <div style={{ width: 1, background: 'var(--glass-border)' }} />
                                 <button
                                     onClick={handleRestore}
                                     disabled={!restoreReason.trim() || isRestoring}

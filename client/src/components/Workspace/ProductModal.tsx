@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { X, Save, Plus, Edit2, Shield, ChevronDown, ChevronRight, Package, Tag, Settings, Calendar, Check } from 'lucide-react';
+import { X, Save, Plus, Edit2, Shield, Package, Tag, Settings, Calendar, Check } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import ProductWarrantyRegistrationModal from '../Service/ProductWarrantyRegistrationModal';
 import type { WarrantyRegistrationData } from '../Service/ProductWarrantyRegistrationModal';
@@ -70,7 +70,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     const [models, setModels] = useState<ProductModel[]>([]);
     const [skus, setSkus] = useState<ProductSku[]>([]);
     const [showWarrantyModal, setShowWarrantyModal] = useState(false);
-    const [showOptional, setShowOptional] = useState(false);
+    // 补充信息字段现在始终展开显示在右侧栏
     // 暂存的保修数据（方案B：产品未入库时暂存，入库时一并提交）
     const [pendingWarrantyData, setPendingWarrantyData] = useState<WarrantyRegistrationData | null>(null);
     // 传递给保修注册窗口的预填数据
@@ -226,8 +226,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
     // 通用输入框样式
     const inputStyle = {
         width: '100%', padding: '10px 12px', borderRadius: 8,
-        border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)',
-        color: '#fff', fontSize: '0.9rem', outline: 'none'
+        border: '1px solid var(--glass-border)', background: 'var(--glass-bg-light)',
+        color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none'
     };
 
     const selectStyle = {
@@ -238,17 +238,23 @@ const ProductModal: React.FC<ProductModalProps> = ({
         backgroundPosition: 'right 12px center'
     };
 
-    const labelStyle = { fontSize: '0.8rem', color: '#888', fontWeight: 600 as const, marginBottom: 6 };
+    const labelStyle = { fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 as const, marginBottom: 6 };
 
     const sectionStyle = {
-        background: 'rgba(255,255,255,0.02)', borderRadius: 10,
-        border: '1px solid rgba(255,255,255,0.06)', padding: 16, marginBottom: 16
+        background: 'var(--glass-bg-light)', borderRadius: 10,
+        border: '1px solid var(--glass-border)', padding: 16, marginBottom: 16
     };
 
     const sectionHeaderStyle = {
         display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14,
-        fontSize: '0.75rem', fontWeight: 700 as const, color: 'rgba(255,255,255,0.4)',
+        fontSize: '0.75rem', fontWeight: 700 as const, color: 'var(--text-tertiary)',
         textTransform: 'uppercase' as const, letterSpacing: 1
+    };
+
+    // 右侧补充信息区域样式
+    const rightSectionStyle = {
+        background: 'rgba(255,255,255,0.03)', borderRadius: 10,
+        border: '1px solid rgba(255,255,255,0.08)', padding: 16, marginBottom: 16
     };
 
     return (
@@ -262,7 +268,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             />
             <div style={{
                 position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                width: 600, maxHeight: '90vh', background: '#1c1c1e', borderRadius: '24px',
+                width: 900, maxHeight: '90vh', background: '#1c1c1e', borderRadius: '24px',
                 border: '1px solid rgba(255,255,255,0.1)', zIndex: 1001,
                 display: 'flex', flexDirection: 'column', boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
                 overflow: 'hidden'
@@ -281,245 +287,242 @@ const ProductModal: React.FC<ProductModalProps> = ({
                             {editingProduct ? <Edit2 size={22} color="#3B82F6" /> : <Plus size={22} color="#10B981" />}
                         </div>
                         <div>
-                            <div style={{ fontWeight: 600, fontSize: 18, color: '#fff', letterSpacing: '-0.01em' }}>
+                            <div style={{ fontWeight: 600, fontSize: 18, color: 'var(--text-main)', letterSpacing: '-0.01em' }}>
                                 {editingProduct ? '编辑产品' : '产品入库'}
                             </div>
-                            <div style={{ fontSize: 13, color: '#888', marginTop: 3, letterSpacing: '-0.01em' }}>
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3, letterSpacing: '-0.01em' }}>
                                 {editingProduct ? '修改设备台账信息' : '录入新设备到台账'}
                             </div>
                         </div>
                     </div>
-                    <button onClick={onClose} style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <button onClick={onClose} style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--glass-bg-light)', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <X size={22} />
                     </button>
                 </div>
 
-                {/* Body - 单页滚动 */}
+                {/* Body - 左右分栏布局 */}
                 <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
-                    
-                    {/* 产品信息 */}
-                    <div style={sectionStyle}>
-                        <div style={sectionHeaderStyle}>
-                            <Package size={14} /> 产品信息
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                            <div>
-                                <label style={labelStyle}>序列号 <span style={{ color: '#EF4444' }}>*</span></label>
-                                <input
-                                    type="text"
-                                    value={formData.serial_number || ''}
-                                    onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
-                                    style={inputStyle}
-                                    placeholder="例如: KVF_123121"
-                                />
-                            </div>
-                            <div>
-                                <label style={labelStyle}>型号名称 <span style={{ color: '#EF4444' }}>*</span></label>
-                                <select
-                                    value={formData.model_name || ''}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, model_name: e.target.value, product_sku: '', sku_id: undefined }))}
-                                    style={selectStyle}
-                                >
-                                    <option value="" disabled>请选择型号</option>
-                                    {models.map(m => <option key={m.id} value={m.name_zh}>{m.name_zh}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>产品SKU</label>
-                                <select
-                                    value={formData.sku_id || ''}
-                                    onChange={(e) => {
-                                        const sku = skus.find(s => s.id.toString() === e.target.value);
-                                        setFormData(prev => ({ ...prev, sku_id: sku ? sku.id : undefined, product_sku: sku ? sku.sku_code : '' }));
-                                    }}
-                                    disabled={!formData.model_name}
-                                    style={{ ...selectStyle, opacity: !formData.model_name ? 0.5 : 1 }}
-                                >
-                                    <option value="">{formData.model_name ? '选择适用的 SKU' : '请先选择型号'}</option>
-                                    {skus.filter(s => {
-                                        const model = models.find(m => m.name_zh === formData.model_name);
-                                        return model && s.model_id === model.id;
-                                    }).map(s => <option key={s.id} value={s.id}>{s.display_name} ({s.sku_code})</option>)}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 产品分类 */}
-                    <div style={sectionStyle}>
-                        <div style={sectionHeaderStyle}>
-                            <Tag size={14} /> 产品分类
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                            <div>
-                                <label style={labelStyle}>产品线 <span style={{ color: '#EF4444' }}>*</span></label>
-                                <select
-                                    value={formData.product_line || 'Camera'}
-                                    onChange={(e) => setFormData({ ...formData, product_line: e.target.value as Product['product_line'] })}
-                                    style={selectStyle}
-                                >
-                                    <option value="Camera">Camera（相机）</option>
-                                    <option value="EVF">EVF（电子寻像器）</option>
-                                    <option value="Accessory">Accessory（配件）</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={labelStyle}>产品族群 <span style={{ color: '#EF4444' }}>*</span></label>
-                                <select
-                                    value={formData.product_family || 'A'}
-                                    onChange={(e) => setFormData({ ...formData, product_family: e.target.value as Product['product_family'] })}
-                                    style={selectStyle}
-                                >
-                                    <option value="A">A - 在售电影机</option>
-                                    <option value="B">B - 历史机型</option>
-                                    <option value="C">C - 电子寻像器</option>
-                                    <option value="D">D - 通用配件</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 补充信息（可折叠） */}
-                    <div style={{ ...sectionStyle, padding: showOptional ? 16 : '12px 16px' }}>
-                        <div 
-                            onClick={() => setShowOptional(!showOptional)}
-                            style={{ 
-                                ...sectionHeaderStyle, marginBottom: showOptional ? 14 : 0,
-                                cursor: 'pointer', userSelect: 'none'
-                            }}
-                        >
-                            {showOptional ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                            <Settings size={14} /> 补充信息（可选）
-                        </div>
-                        {showOptional && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                                <div>
-                                    <label style={labelStyle}>生产日期</label>
-                                    <input
-                                        type="date"
-                                        value={formData.production_date || ''}
-                                        onChange={(e) => setFormData({ ...formData, production_date: e.target.value })}
-                                        style={inputStyle}
-                                    />
+                    <div style={{ display: 'flex', gap: 20, height: '100%' }}>
+                        {/* 左侧：产品信息和分类 */}
+                        <div style={{ flex: 1 }}>
+                            {/* 产品信息 */}
+                            <div style={sectionStyle}>
+                                <div style={sectionHeaderStyle}>
+                                    <Package size={14} /> 产品信息
                                 </div>
-                                <div>
-                                    <label style={labelStyle}>固件版本</label>
-                                    <input
-                                        type="text"
-                                        value={formData.firmware_version || ''}
-                                        onChange={(e) => setFormData({ ...formData, firmware_version: e.target.value })}
-                                        style={inputStyle}
-                                        placeholder="例如: 1.2.3"
-                                    />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    <div>
+                                        <label style={labelStyle}>序列号 <span style={{ color: '#EF4444' }}>*</span></label>
+                                        <input
+                                            type="text"
+                                            value={formData.serial_number || ''}
+                                            onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
+                                            style={inputStyle}
+                                            placeholder="例如: KVF_123121"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={labelStyle}>型号名称 <span style={{ color: '#EF4444' }}>*</span></label>
+                                        <select
+                                            value={formData.model_name || ''}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, model_name: e.target.value, product_sku: '', sku_id: undefined }))}
+                                            style={selectStyle}
+                                        >
+                                            <option value="" disabled>请选择型号</option>
+                                            {models.map(m => <option key={m.id} value={m.name_zh}>{m.name_zh}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={labelStyle}>产品SKU</label>
+                                        <select
+                                            value={formData.sku_id || ''}
+                                            onChange={(e) => {
+                                                const sku = skus.find(s => s.id.toString() === e.target.value);
+                                                setFormData(prev => ({ ...prev, sku_id: sku ? sku.id : undefined, product_sku: sku ? sku.sku_code : '' }));
+                                            }}
+                                            disabled={!formData.model_name}
+                                            style={{ ...selectStyle, opacity: !formData.model_name ? 0.5 : 1 }}
+                                        >
+                                            <option value="">{formData.model_name ? '选择适用的 SKU' : '请先选择型号'}</option>
+                                            {skus.filter(s => {
+                                                const model = models.find(m => m.name_zh === formData.model_name);
+                                                return model && s.model_id === model.id;
+                                            }).map(s => <option key={s.id} value={s.id}>{s.display_name} ({s.sku_code})</option>)}
+                                        </select>
+                                    </div>
                                 </div>
-                                <div>
-                                    <label style={labelStyle}>设备状态</label>
-                                    <select
-                                        value={formData.status || 'ACTIVE'}
-                                        onChange={(e) => setFormData({ ...formData, status: e.target.value as Product['status'] })}
-                                        style={selectStyle}
+                            </div>
+
+                            {/* 产品分类 */}
+                            <div style={sectionStyle}>
+                                <div style={sectionHeaderStyle}>
+                                    <Tag size={14} /> 产品分类
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                                    <div>
+                                        <label style={labelStyle}>产品线 <span style={{ color: '#EF4444' }}>*</span></label>
+                                        <select
+                                            value={formData.product_line || 'Camera'}
+                                            onChange={(e) => setFormData({ ...formData, product_line: e.target.value as Product['product_line'] })}
+                                            style={selectStyle}
+                                        >
+                                            <option value="Camera">Camera（相机）</option>
+                                            <option value="EVF">EVF（电子寻像器）</option>
+                                            <option value="Accessory">Accessory（配件）</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={labelStyle}>产品族群 <span style={{ color: '#EF4444' }}>*</span></label>
+                                        <select
+                                            value={formData.product_family || 'A'}
+                                            onChange={(e) => setFormData({ ...formData, product_family: e.target.value as Product['product_family'] })}
+                                            style={selectStyle}
+                                        >
+                                            <option value="A">A - 在售电影机</option>
+                                            <option value="B">B - 历史机型</option>
+                                            <option value="C">C - 电子寻像器</option>
+                                            <option value="D">D - 通用配件</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        {/* 右侧：保修信息 */}
+                        <div style={{ width: 380 }}>
+                            <div style={rightSectionStyle}>
+                                <div style={{...sectionHeaderStyle, color: 'rgba(255,215,0,0.6)'}}>
+                                    <Shield size={14} /> 保修信息
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    <div style={{ 
+                                        padding: '12px', borderRadius: 8, 
+                                        border: pendingWarrantyData 
+                                            ? '1px solid rgba(16,185,129,0.3)' 
+                                            : '1px solid rgba(255,255,255,0.08)', 
+                                        background: pendingWarrantyData 
+                                            ? 'rgba(16,185,129,0.08)' 
+                                            : 'rgba(255,255,255,0.02)', 
+                                        color: pendingWarrantyData ? '#10B981' : '#666', 
+                                        fontSize: '0.85rem',
+                                        display: 'flex', alignItems: 'center', gap: 8,
+                                        marginBottom: 8
+                                    }}>
+                                        {pendingWarrantyData ? (
+                                            <>
+                                                <Check size={16} />
+                                                已填写（{pendingWarrantyData.saleDate}，{pendingWarrantyData.warrantyMonths}个月）
+                                            </>
+                                        ) : (
+                                            formData.warranty_start_date || '未设置（系统自动计算）'
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setWarrantyPrefillData({
+                                                productLine: formData.product_line,
+                                                productFamily: formData.product_family,
+                                                skuId: formData.sku_id || undefined,
+                                                salesChannel: formData.sales_channel
+                                            });
+                                            setShowWarrantyModal(true);
+                                        }}
+                                        disabled={!formData.serial_number}
+                                        style={{
+                                            width: '100%', padding: '10px 14px', borderRadius: 8,
+                                            background: pendingWarrantyData 
+                                                ? 'rgba(16,185,129,0.1)' 
+                                                : 'rgba(59,130,246,0.1)', 
+                                            border: pendingWarrantyData 
+                                                ? '1px solid rgba(16,185,129,0.3)' 
+                                                : '1px solid rgba(59,130,246,0.3)',
+                                            color: pendingWarrantyData ? '#10B981' : '#3B82F6', 
+                                            fontSize: '0.8rem', fontWeight: 600,
+                                            cursor: formData.serial_number ? 'pointer' : 'not-allowed',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                            transition: 'all 0.2s',
+                                            opacity: formData.serial_number ? 1 : 0.5
+                                        }}
+                                        onMouseEnter={e => { 
+                                            if (formData.serial_number) {
+                                                e.currentTarget.style.background = pendingWarrantyData 
+                                                    ? 'rgba(16,185,129,0.2)' 
+                                                    : 'rgba(59,130,246,0.2)';
+                                            }
+                                        }}
+                                        onMouseLeave={e => { 
+                                            e.currentTarget.style.background = pendingWarrantyData 
+                                                ? 'rgba(16,185,129,0.1)' 
+                                                : 'rgba(59,130,246,0.1)'; 
+                                        }}
                                     >
-                                        <option value="ACTIVE">在役</option>
-                                        <option value="IN_REPAIR">维修中</option>
-                                        <option value="STOLEN">失窃</option>
-                                        <option value="SCRAPPED">报废</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={labelStyle}>销售渠道</label>
-                                    <select
-                                        value={formData.sales_channel || 'DIRECT'}
-                                        onChange={(e) => setFormData({ ...formData, sales_channel: e.target.value as 'DIRECT' | 'DEALER' })}
-                                        style={selectStyle}
-                                    >
-                                        <option value="DIRECT">直销</option>
-                                        <option value="DEALER">经销商</option>
-                                    </select>
+                                        <Calendar size={14} />
+                                        {pendingWarrantyData ? '修改保修' : '注册保修'}
+                                    </button>
+                                    <div style={{ fontSize: '0.7rem', color: '#555', marginTop: 4 }}>
+                                        {pendingWarrantyData 
+                                            ? '* 保修信息已暂存，将在保存入库时一并提交'
+                                            : '* 保修日期由系统根据销售信息自动计算'
+                                        }
+                                    </div>
                                 </div>
                             </div>
-                        )}
-                    </div>
-
-                    {/* 保修信息 */}
-                    <div style={sectionStyle}>
-                        <div style={sectionHeaderStyle}>
-                            <Shield size={14} /> 保修信息
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ 
-                                flex: 1, padding: '10px 12px', borderRadius: 8, 
-                                border: pendingWarrantyData 
-                                    ? '1px solid rgba(16,185,129,0.3)' 
-                                    : '1px solid rgba(255,255,255,0.08)', 
-                                background: pendingWarrantyData 
-                                    ? 'rgba(16,185,129,0.08)' 
-                                    : 'rgba(255,255,255,0.02)', 
-                                color: pendingWarrantyData ? '#10B981' : '#666', 
-                                fontSize: '0.85rem',
-                                display: 'flex', alignItems: 'center', gap: 8
-                            }}>
-                                {pendingWarrantyData ? (
-                                    <>
-                                        <Check size={16} />
-                                        已填写保修信息（{pendingWarrantyData.saleDate}，{pendingWarrantyData.warrantyMonths}个月）
-                                    </>
-                                ) : (
-                                    formData.warranty_start_date || '未设置（系统自动计算）'
-                                )}
+                            
+                            {/* 补充信息 */}
+                            <div style={rightSectionStyle}>
+                                <div style={{...sectionHeaderStyle, color: 'rgba(255,255,255,0.4)'}}>
+                                    <Settings size={14} /> 补充信息
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    <div>
+                                        <label style={labelStyle}>生产日期</label>
+                                        <input
+                                            type="date"
+                                            value={formData.production_date || ''}
+                                            onChange={(e) => setFormData({ ...formData, production_date: e.target.value })}
+                                            style={inputStyle}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={labelStyle}>固件版本</label>
+                                        <input
+                                            type="text"
+                                            value={formData.firmware_version || ''}
+                                            onChange={(e) => setFormData({ ...formData, firmware_version: e.target.value })}
+                                            style={inputStyle}
+                                            placeholder="例如: 1.2.3"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={labelStyle}>设备状态</label>
+                                        <select
+                                            value={formData.status || 'ACTIVE'}
+                                            onChange={(e) => setFormData({ ...formData, status: e.target.value as Product['status'] })}
+                                            style={selectStyle}
+                                        >
+                                            <option value="ACTIVE">在役</option>
+                                            <option value="IN_REPAIR">维修中</option>
+                                            <option value="STOLEN">失窃</option>
+                                            <option value="SCRAPPED">报废</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={labelStyle}>销售渠道</label>
+                                        <select
+                                            value={formData.sales_channel || 'DIRECT'}
+                                            onChange={(e) => setFormData({ ...formData, sales_channel: e.target.value as 'DIRECT' | 'DEALER' })}
+                                            style={selectStyle}
+                                        >
+                                            <option value="DIRECT">直销</option>
+                                            <option value="DEALER">经销商</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    // 设置预填数据并打开保修注册窗口
-                                    setWarrantyPrefillData({
-                                        productLine: formData.product_line,
-                                        productFamily: formData.product_family,
-                                        skuId: formData.sku_id || undefined,
-                                        salesChannel: formData.sales_channel
-                                    });
-                                    setShowWarrantyModal(true);
-                                }}
-                                disabled={!formData.serial_number}
-                                style={{
-                                    padding: '10px 14px', borderRadius: 8,
-                                    background: pendingWarrantyData 
-                                        ? 'rgba(16,185,129,0.1)' 
-                                        : 'rgba(59,130,246,0.1)', 
-                                    border: pendingWarrantyData 
-                                        ? '1px solid rgba(16,185,129,0.3)' 
-                                        : '1px solid rgba(59,130,246,0.3)',
-                                    color: pendingWarrantyData ? '#10B981' : '#3B82F6', 
-                                    fontSize: '0.8rem', fontWeight: 600,
-                                    cursor: formData.serial_number ? 'pointer' : 'not-allowed',
-                                    display: 'flex', alignItems: 'center', gap: 6,
-                                    transition: 'all 0.2s',
-                                    opacity: formData.serial_number ? 1 : 0.5
-                                }}
-                                onMouseEnter={e => { 
-                                    if (formData.serial_number) {
-                                        e.currentTarget.style.background = pendingWarrantyData 
-                                            ? 'rgba(16,185,129,0.2)' 
-                                            : 'rgba(59,130,246,0.2)';
-                                    }
-                                }}
-                                onMouseLeave={e => { 
-                                    e.currentTarget.style.background = pendingWarrantyData 
-                                        ? 'rgba(16,185,129,0.1)' 
-                                        : 'rgba(59,130,246,0.1)'; 
-                                }}
-                            >
-                                <Calendar size={14} />
-                                {pendingWarrantyData ? '修改保修' : '注册保修'}
-                            </button>
-                        </div>
-                        <div style={{ fontSize: '0.7rem', color: '#555', marginTop: 8 }}>
-                            {pendingWarrantyData 
-                                ? '* 保修信息已暂存，将在保存入库时一并提交'
-                                : '* 保修日期由系统根据销售信息自动计算，点击"注册保修"录入销售日期'
-                            }
                         </div>
                     </div>
-
                 </div>
 
                 {/* Footer - 双按钮布局匹配图2 */}
@@ -532,12 +535,12 @@ const ProductModal: React.FC<ProductModalProps> = ({
                         onClick={onClose}
                         style={{
                             flex: 1, padding: '14px', borderRadius: 12, fontWeight: 600,
-                            background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.2)',
+                            background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--glass-border)',
                             cursor: 'pointer', fontSize: '0.95rem',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             transition: 'all 0.2s'
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--glass-bg-hover)'; }}
                         onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
                         取消

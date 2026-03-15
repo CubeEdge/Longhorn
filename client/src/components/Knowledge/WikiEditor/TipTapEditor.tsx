@@ -286,7 +286,7 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                     padding: 24px;
                     font-size: 15px;
                     line-height: 1.8;
-                    color: rgba(255,255,255,0.9);
+                    color: var(--text-main);
                 `,
                 class: 'tiptap-editor-content'
             },

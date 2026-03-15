@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, AlertTriangle } from 'lucide-react';
 
 interface ConfirmModalProps {
@@ -44,31 +45,31 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     }, [countdown]);
 
     const isCountdownActive = countdown > 0 && remainingSeconds > 0;
-    return (
+    return createPortal(
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
         }}>
             <div style={{
-                background: '#1E1E1E', width: 400, borderRadius: 12,
-                boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
-                border: '1px solid rgba(255,255,255,0.1)'
+                background: 'var(--bg-secondary)', width: 400, borderRadius: 12,
+                boxShadow: '0 20px 40px var(--glass-shadow-lg)',
+                border: '1px solid var(--glass-border)'
             }}>
                 <div style={{
-                    padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)',
+                    padding: '16px 20px', borderBottom: '1px solid var(--glass-border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between'
                 }}>
-                    <h3 style={{ margin: 0, fontSize: 16, color: isDanger ? '#EF4444' : '#fff', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h3 style={{ margin: 0, fontSize: 16, color: isDanger ? '#EF4444' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
                         {isDanger && <AlertTriangle size={18} />}
                         {title}
                     </h3>
-                    <button onClick={onCancel} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer' }}>
+                    <button onClick={onCancel} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                         <X size={20} />
                     </button>
                 </div>
 
-                <div style={{ padding: '24px 20px', color: '#ddd', fontSize: 14, lineHeight: 1.6 }}>
+                <div style={{ padding: '24px 20px', color: 'var(--text-main)', fontSize: 14, lineHeight: 1.6 }}>
                     {message}
                 </div>
 
@@ -88,7 +89,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                         style={{
                             padding: '8px 16px',
                             background: isDanger ? 'var(--accent-red, #EF4444)' : 'var(--accent-blue)',
-                            border: 'none', borderRadius: 6, color: '#fff',
+                            border: 'none', borderRadius: 6, color: '#000',
                             cursor: (loading || isCountdownActive) ? 'not-allowed' : 'pointer', 
                             fontWeight: 600,
                             opacity: isCountdownActive ? 0.6 : 1,
@@ -99,7 +100,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

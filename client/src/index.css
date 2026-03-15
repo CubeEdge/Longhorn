@@ -13,6 +13,16 @@
   --accent-rgb: 255, 210, 0;
   --accent-hover: #E6BD00;
   --accent-subtle: rgba(var(--accent-rgb), 0.15);
+  
+  /* Accent Color Variants */
+  --accent-gold: #FFD200;
+  --accent-gold-subtle: rgba(255, 210, 0, 0.15);
+  --accent-gold-muted: rgba(255, 210, 0, 0.3);
+  --accent-green: #10B981;
+  --accent-green-subtle: rgba(16, 185, 129, 0.1);
+  --accent-green-border: rgba(16, 185, 129, 0.4);
+  --accent-blue-subtle: rgba(59, 130, 246, 0.1);
+  --accent-blue-border: rgba(59, 130, 246, 0.2);
 
   /* Text Colors */
   --text-main: #FFFFFF;
@@ -64,12 +74,29 @@
   --input-border: rgba(255, 255, 255, 0.1);
   
   --modal-bg: #1C1C1E;
+  --modal-border: rgba(255, 255, 255, 0.1);
   --modal-overlay: rgba(0, 0, 0, 0.8);
+  
+  --drawer-bg: rgba(28, 28, 30, 0.98);
+  --drawer-border: rgba(255, 255, 255, 0.1);
+  --drawer-header-bg: rgba(0, 0, 0, 0.2);
   
   --badge-warning-bg: rgba(255, 210, 0, 0.15);
   --badge-warning-text: #FFD200;
   --badge-success-bg: rgba(16, 185, 129, 0.15);
   --badge-success-text: #10B981;
+  
+  /* Status Colors */
+  --status-red: #EF4444;
+  --status-red-subtle: rgba(239, 68, 68, 0.1);
+  --status-blue: #3B82F6;
+  --status-purple: #D946EF;
+  --status-green: #10B981;
+  --status-cyan: #22D3EE;
+  --status-amber: #F59E0B;
+  
+  /* Accent Transparent */
+  --accent-blue-transparent: rgba(59, 130, 246, 0.4);
 }
 
 [data-theme="light"] {
@@ -87,12 +114,22 @@
   /* Slightly darker gold for readability on light auth */
   --accent-hover: #CCA800;
   --accent-subtle: rgba(var(--accent-rgb), 0.15);
+  
+  /* Accent Color Variants (Light Mode) */
+  --accent-gold: #E6BD00;
+  --accent-gold-subtle: rgba(230, 189, 0, 0.15);
+  --accent-gold-muted: rgba(230, 189, 0, 0.3);
+  --accent-green: #059669;
+  --accent-green-subtle: rgba(5, 150, 105, 0.1);
+  --accent-green-border: rgba(5, 150, 105, 0.4);
+  --accent-blue-subtle: rgba(37, 99, 235, 0.1);
+  --accent-blue-border: rgba(37, 99, 235, 0.2);
 
   /* Text Colors */
   --text-main: #1C1C1E;
   /* Dark gray, almost black for best readability */
   --text-secondary: #4B5563;
-  --text-tertiary: #9CA3AF;
+  --text-tertiary: #6B7280;
 
   /* Text Highlights */
   --text-success: #059669;
@@ -102,8 +139,8 @@
 
   /* Glassmorphism - Light Version */
   --glass-bg: rgba(255, 255, 255, 0.75);
-  --glass-bg-light: rgba(0, 0, 0, 0.04);
-  --glass-bg-hover: rgba(0, 0, 0, 0.08);
+  --glass-bg-light: rgba(0, 0, 0, 0.08);
+  --glass-bg-hover: rgba(0, 0, 0, 0.12);
   --glass-blur: blur(24px);
   --glass-border: rgba(0, 0, 0, 0.1);
   --glass-border-accent: rgba(230, 189, 0, 0.3);
@@ -126,12 +163,29 @@
   --input-border: #D1D5DB;
   
   --modal-bg: #FFFFFF;
+  --modal-border: rgba(0, 0, 0, 0.1);
   --modal-overlay: rgba(0, 0, 0, 0.4);
+  
+  --drawer-bg: #FFFFFF;
+  --drawer-border: rgba(0, 0, 0, 0.1);
+  --drawer-header-bg: rgba(0, 0, 0, 0.04);
   
   --badge-warning-bg: #FEF3C7;
   --badge-warning-text: #B45309;
   --badge-success-bg: #D1FAE5;
   --badge-success-text: #047857;
+  
+  /* Status Colors (Light Mode) */
+  --status-red: #DC2626;
+  --status-red-subtle: rgba(220, 38, 38, 0.1);
+  --status-blue: #2563EB;
+  --status-purple: #C026D3;
+  --status-green: #059669;
+  --status-cyan: #0891B2;
+  --status-amber: #D97706;
+  
+  /* Accent Transparent */
+  --accent-blue-transparent: rgba(37, 99, 235, 0.4);
 }
 
 * {
@@ -1780,9 +1834,9 @@ select.form-control option {
 
 /* macOS26 Ticket Detail Card Styles */
 .ticket-card {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--glass-bg-light);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
   padding: 24px;
   margin-bottom: 20px;
 }
@@ -1790,7 +1844,7 @@ select.form-control option {
 .ticket-card-title {
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 16px;
@@ -1813,7 +1867,7 @@ select.form-control option {
 
 .ticket-info-label {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -1821,7 +1875,7 @@ select.form-control option {
 .ticket-info-value {
   font-size: 1rem;
   font-weight: 500;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .ticket-section-title {
@@ -1829,24 +1883,24 @@ select.form-control option {
   font-weight: 600;
   line-height: 1.4;
   margin-bottom: 16px;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .ticket-content-box {
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--glass-bg-light);
   border-radius: 12px;
   padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
 }
 
 .ticket-textarea {
   width: 100%;
   min-height: 120px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
   border-radius: 12px;
   padding: 16px;
-  color: #fff;
+  color: var(--text-main);
   font-size: 0.95rem;
   line-height: 1.6;
   resize: vertical;
@@ -1855,24 +1909,24 @@ select.form-control option {
 
 .ticket-textarea:focus {
   outline: none;
-  border-color: rgba(255, 210, 0, 0.3);
+  border-color: var(--accent-blue);
 }
 
 /* Knowledge Base Content */
 .markdown-content h1 {
   font-size: 28px;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-main);
   margin-top: 32px;
   margin-bottom: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--glass-border);
   padding-bottom: 12px;
 }
 
 .markdown-content h2 {
   font-size: 24px;
   font-weight: 600;
-  color: #fff;
+  color: var(--text-main);
   margin-top: 28px;
   margin-bottom: 14px;
 }
@@ -1880,7 +1934,7 @@ select.form-control option {
 .markdown-content h3 {
   font-size: 20px;
   font-weight: 600;
-  color: #FFD700;
+  color: var(--accent-blue);
   margin-top: 24px;
   margin-bottom: 12px;
 }
@@ -1888,7 +1942,7 @@ select.form-control option {
 .markdown-content h4 {
   font-size: 17px;
   font-weight: 500;
-  color: #FFD700;
+  color: var(--accent-blue);
   margin-top: 20px;
   margin-bottom: 10px;
 }
@@ -1915,21 +1969,21 @@ select.form-control option {
 }
 
 .markdown-content code {
-  background: rgba(255, 215, 0, 0.1);
+  background: var(--accent-subtle);
   padding: 2px 6px;
   border-radius: 6px;
   font-size: 13px;
-  color: #FFD700;
+  color: var(--accent-blue);
 }
 
 .markdown-content pre code {
   display: block;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--glass-bg-light);
   padding: 16px;
   border-radius: 10px;
   overflow: auto;
   margin-bottom: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
 }
 
 .markdown-content img {
@@ -1938,7 +1992,7 @@ select.form-control option {
   border-radius: 12px;
   margin-top: 20px;
   margin-bottom: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
   display: block;
 }
 
@@ -1947,15 +2001,15 @@ select.form-control option {
   border-collapse: collapse;
   margin-bottom: 20px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
   overflow: auto;
   display: block;
 }
 
 .markdown-content th {
   padding: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg-light);
+  border-bottom: 1px solid var(--glass-border);
   text-align: left;
   font-weight: 600;
   font-size: 13px;
@@ -1963,16 +2017,16 @@ select.form-control option {
 
 .markdown-content td {
   padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--glass-border);
   font-size: 13px;
 }
 
 .markdown-content blockquote {
-  border-left: 3px solid #FFD700;
+  border-left: 3px solid var(--accent-blue);
   padding-left: 20px;
   margin-left: 0;
   margin-bottom: 20px;
-  color: #999;
+  color: var(--text-secondary);
   font-style: italic;
 }
 
@@ -2020,6 +2074,295 @@ select.form-control option {
   [style*="color: rgb(255, 210, 0)"],
   [style*="color: #FFD200"] {
      color: var(--accent-blue) !important;
+  }
+
+  /* ============================================
+     COMPONENT CLASS OVERRIDES FOR LIGHT MODE
+     ============================================ */
+  
+  /* Ticket Card Component */
+  .ticket-card {
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+  }
+  
+  .ticket-card-title {
+    color: var(--text-tertiary);
+  }
+  
+  .ticket-info-label {
+    color: var(--text-tertiary);
+  }
+  
+  .ticket-info-value {
+    color: var(--text-main);
+  }
+  
+  .ticket-section-title {
+    color: var(--text-main);
+  }
+  
+  .ticket-content-box {
+    background: var(--glass-bg-light);
+    border: 1px solid var(--glass-border);
+  }
+  
+  .ticket-textarea {
+    background: var(--glass-bg-light);
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+  }
+  
+  /* Markdown Content */
+  .markdown-content h1 {
+    color: var(--text-main);
+    border-bottom: 1px solid var(--glass-border);
+  }
+  
+  .markdown-content h2 {
+    color: var(--text-main);
+  }
+  
+  .markdown-content h3,
+  .markdown-content h4 {
+    color: var(--accent-blue);
+  }
+  
+  .markdown-content code {
+    background: var(--accent-subtle);
+    color: var(--accent-blue);
+  }
+  
+  .markdown-content pre code {
+    background: var(--glass-bg-light);
+    border: 1px solid var(--glass-border);
+  }
+  
+  .markdown-content blockquote {
+    border-left: 3px solid var(--accent-blue);
+    color: var(--text-secondary);
+  }
+  
+  .markdown-content a {
+    color: var(--accent-blue);
+    border-bottom: 1px solid var(--accent-subtle);
+  }
+  
+  .markdown-content table {
+    border: 1px solid var(--glass-border);
+  }
+  
+  .markdown-content th {
+    background: var(--glass-bg-light);
+    border-bottom: 1px solid var(--glass-border);
+  }
+  
+  .markdown-content td {
+    border-bottom: 1px solid var(--glass-border);
+  }
+  
+  .markdown-content hr {
+    border-top: 1px solid var(--glass-border);
+  }
+  
+  /* Toast Notifications */
+  .toast-item {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  }
+  
+  .toast-close {
+    color: var(--text-tertiary);
+  }
+  
+  .toast-close:hover {
+    background: var(--glass-bg-light);
+    color: var(--text-main);
+  }
+  
+  /* Preview Overlay */
+  .preview-overlay {
+    background: rgba(255, 255, 255, 0.95);
+  }
+  
+  .preview-header {
+    background: var(--glass-bg);
+    color: var(--text-main);
+  }
+  
+  /* Document Preview */
+  .doc-preview-container {
+    background: var(--card-bg);
+    color: var(--text-main);
+  }
+  
+  /* Excel Preview */
+  .excel-preview-container {
+    background: var(--card-bg);
+  }
+  
+  .excel-table {
+    color: var(--text-main);
+  }
+  
+  .excel-table th {
+    background: var(--glass-bg);
+    color: var(--accent-blue);
+  }
+  
+  .excel-table td {
+    border: 1px solid var(--glass-border);
+  }
+  
+  /* Context Menu */
+  .context-menu {
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  }
+  
+  .context-menu-item {
+    color: var(--text-main);
+  }
+  
+  .context-menu-item:hover {
+    background: var(--glass-bg-light);
+  }
+  
+  .context-menu-separator {
+    background: var(--glass-border);
+  }
+  
+  /* Modal */
+  .modal-overlay {
+    background: var(--modal-overlay);
+  }
+  
+  .modal-content {
+    background: var(--modal-bg);
+    border: 1px solid var(--glass-border);
+  }
+  
+  /* Modal Close Button */
+  .modal-close-btn {
+    background: var(--glass-bg-light);
+    color: var(--text-secondary);
+  }
+  
+  .modal-close-btn:hover {
+    background: var(--glass-bg-hover);
+    color: var(--text-main);
+  }
+  
+  /* More Button */
+  .more-btn {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+  }
+  
+  /* Insight Card */
+  .insight-card-hover {
+    background: var(--glass-bg-light);
+    border: 1px solid var(--glass-border);
+  }
+  
+  .insight-card-hover:hover {
+    background: var(--accent-subtle);
+    border-color: var(--glass-border-accent);
+  }
+  
+  /* Low-key Kine Button */
+  .btn-kine-lowkey {
+    background: var(--accent-subtle);
+    border: 1px solid var(--glass-border-accent);
+    color: var(--accent-blue);
+  }
+  
+  /* Tab Active Lowkey */
+  .tab-active-lowkey {
+    background: var(--glass-bg-hover) !important;
+    color: var(--text-main) !important;
+  }
+  
+  /* Status Colors - Adjusted for light mode */
+  .status-success {
+    background: rgba(52, 199, 89, 0.1);
+    border-color: rgba(52, 199, 89, 0.2);
+    color: #059669;
+  }
+  
+  .status-warning {
+    background: rgba(255, 159, 10, 0.1);
+    border-color: rgba(255, 159, 10, 0.2);
+    color: #D97706;
+  }
+  
+  .status-error {
+    background: rgba(255, 69, 58, 0.1);
+    border-color: rgba(255, 69, 58, 0.2);
+    color: #DC2626;
+  }
+  
+  .status-info {
+    background: rgba(10, 132, 255, 0.1);
+    border-color: rgba(10, 132, 255, 0.2);
+    color: #2563EB;
+  }
+  
+  /* Badge Gold */
+  .badge-gold {
+    background: var(--accent-subtle);
+    color: var(--accent-blue);
+    border: 1px solid var(--glass-border-accent);
+  }
+  
+  /* Sidebar Item Hover/Active */
+  .sidebar-item:hover {
+    background: var(--accent-subtle);
+  }
+  
+  .sidebar-item.active {
+    background: var(--accent-subtle);
+    color: var(--accent-blue);
+  }
+  
+  /* File Item */
+  .file-item:hover {
+    background: var(--glass-bg-light);
+  }
+  
+  /* File List Row */
+  .file-list-row:hover {
+    background: var(--glass-bg-light);
+  }
+  
+  /* Upload Zone */
+  .upload-zone {
+    background: var(--glass-bg-light);
+    border-color: var(--glass-border);
+  }
+  
+  .upload-zone:hover {
+    background: var(--accent-subtle);
+    border-color: var(--accent-blue);
+  }
+  
+  /* List More Button */
+  .list-more-btn:hover {
+    background: var(--glass-bg-light);
+  }
+  
+  /* Stats History */
+  .stats-history-item {
+    background: var(--glass-bg-light);
+  }
+  
+  /* Admin Menu */
+  .admin-menu-item.active {
+    background: var(--accent-subtle);
+    color: var(--text-main);
   }
 }
 

@@ -70,18 +70,18 @@ export const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
   return (
     <div style={{
       borderRadius: 12, marginBottom: 16,
-      background: 'rgba(30,30,30,0.5)', backdropFilter: 'blur(12px)',
-      border: '1px solid rgba(255,255,255,0.06)',
+      background: 'var(--glass-bg)', backdropFilter: 'blur(12px)',
+      border: '1px solid var(--glass-border)',
       // Remove overflow: hidden to prevent clipping of absolute children like AssigneeSelector or @mentions
     }}>
       <button
         onClick={() => setOpen(!open)}
         style={{
           width: '100%', padding: '14px 20px',
-          borderBottom: open ? '1px solid rgba(255,255,255,0.06)' : 'none',
+          borderBottom: open ? '1px solid var(--glass-border)' : 'none',
           display: 'flex', alignItems: 'center', gap: 8,
           background: 'none', border: 'none', cursor: 'pointer',
-          color: '#fff', textAlign: 'left',
+          color: 'var(--text-main)', textAlign: 'left',
         }}
       >
         {icon}
@@ -89,11 +89,11 @@ export const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
           {headerRight}
           {count !== undefined && (
-            <span style={{ fontSize: 12, color: '#666', marginRight: 8 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', marginRight: 8 }}>
               {count}
             </span>
           )}
-          {open ? <ChevronDown size={14} color="#888" /> : <ChevronRight size={14} color="#888" />}
+          {open ? <ChevronDown size={14} color="var(--text-secondary)" /> : <ChevronRight size={14} color="var(--text-secondary)" />}
         </div>
       </button>
       {open && <div>{children}</div>}
@@ -139,21 +139,21 @@ const FieldUpdateContent: React.FC<FieldUpdateContentProps> = ({ metadata }) => 
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 6px' }}>
-      <span style={{ color: '#888' }}>修改了</span>
-      <span style={{ color: '#FFD700', fontWeight: 600, background: 'rgba(255,215,0,0.1)', padding: '0 4px', borderRadius: '4px' }}>
+      <span style={{ color: 'var(--text-secondary)' }}>修改了</span>
+      <span style={{ color: 'var(--accent-blue)', fontWeight: 600, background: 'var(--accent-subtle)', padding: '0 4px', borderRadius: '4px' }}>
         {fieldLabel}
       </span>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ccc' }}>
-        <span style={{ color: '#EF4444', textDecoration: 'line-through', fontSize: 12, opacity: 0.7 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)' }}>
+        <span style={{ color: 'var(--status-red)', textDecoration: 'line-through', fontSize: 12, opacity: 0.7 }}>
           {formatValue(metadata.old_value)}
         </span>
-        <ArrowRight size={10} color="#666" />
-        <span style={{ color: '#10B981', fontWeight: 500, fontSize: 12 }}>
+        <ArrowRight size={10} color="var(--text-tertiary)" />
+        <span style={{ color: 'var(--status-green)', fontWeight: 500, fontSize: 12 }}>
           {formatValue(metadata.new_value)}
         </span>
       </div>
       {metadata.change_reason && (
-        <span style={{ fontSize: 12, color: '#666', fontStyle: 'italic', marginLeft: 4 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontStyle: 'italic', marginLeft: 4 }}>
           [{metadata.change_reason}]
         </span>
       )}
@@ -164,15 +164,15 @@ const FieldUpdateContent: React.FC<FieldUpdateContentProps> = ({ metadata }) => 
 const DiagnosticReportContent: React.FC<{ metadata: any }> = ({ metadata }) => {
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px' }}>
-      <span style={{ color: '#10B981', fontWeight: 600 }}>提交了详细诊断报告</span>
-      <span style={{ color: '#666', fontSize: 12 }}>
+      <span style={{ color: 'var(--status-green)', fontWeight: 600 }}>提交了诊断结果</span>
+      <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>
         [故障判定: {metadata.diagnosis?.substring(0, 20)}{metadata.diagnosis?.length > 20 ? '...' : ''}]
       </span>
       <span style={{
         fontSize: 10, padding: '1px 6px', borderRadius: 4,
-        background: metadata.is_warranty ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-        color: metadata.is_warranty ? '#10B981' : '#FFD200',
-        border: `1px solid ${metadata.is_warranty ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}`
+        background: metadata.is_warranty ? 'var(--badge-success-bg)' : 'var(--badge-warning-bg)',
+        color: metadata.is_warranty ? 'var(--badge-success-text)' : 'var(--badge-warning-text)',
+        border: `1px solid var(--glass-border)`
       }}>
         {metadata.is_warranty ? '保修免费' : '付费/拒保'}
       </span>
@@ -189,15 +189,15 @@ const OpRepairReportContent: React.FC<{ metadata: any }> = ({ metadata }) => {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px' }}>
-      <span style={{ color: '#FFD200', fontWeight: 600 }}>提交了维修记录</span>
+      <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>提交了维修记录</span>
       {partsCount > 0 && (
-        <span style={{ color: '#666', fontSize: 12 }}>[更换零件: {partsCount}件]</span>
+        <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>[更换零件: {partsCount}件]</span>
       )}
       {actionsCount > 0 && (
-        <span style={{ color: '#666', fontSize: 12 }}>[维修操作: {actionsCount}项]</span>
+        <span style={{ color: 'var(--text-tertiary)', fontSize: 12 }}>[维修操作: {actionsCount}项]</span>
       )}
       {shortConclusion && (
-        <span style={{ color: '#888', fontSize: 12, fontStyle: 'italic' }}>{shortConclusion}</span>
+        <span style={{ color: 'var(--text-secondary)', fontSize: 12, fontStyle: 'italic' }}>{shortConclusion}</span>
       )}
     </div>
   );
@@ -287,7 +287,7 @@ export const MediaLightbox: React.FC<MediaLightboxProps> = ({ url, type = 'image
               background: 'rgba(255,255,255,0.08)',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '50%', width: 44, height: 44,
-              color: '#fff', cursor: 'pointer',
+              color: 'var(--text-main)', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.2s',
               zIndex: 2001
@@ -542,9 +542,19 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
     isCreationEvent(a)  // 创建工单事件显示在关键节点
   ).filter(a => !isSystemOperationComment(a));
   
-  // 合并关键节点活动到评论活动中，按时间排序
+  // 辅助函数：安全解析日期字符串（支持 ISO 和 SQLite 格式）
+  const parseDate = (dateStr: string): number => {
+    if (!dateStr) return 0;
+    // 处理 SQLite 格式 "YYYY-MM-DD HH:MM:SS"
+    const isoStr = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T');
+    const finalStr = (isoStr.endsWith('Z') || isoStr.includes('+')) ? isoStr : isoStr + 'Z';
+    const d = new Date(finalStr);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  };
+  
+  // 合并关键节点活动到评论活动中，按时间严格倒序排序
   const commentActivities = [...regularCommentActivities, ...keyNodeActivities]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    .sort((a, b) => parseDate(b.created_at) - parseDate(a.created_at));
   
   const systemActivities = filteredActivities.filter(a => 
     (SYSTEM_TYPES.includes(a.activity_type) && !isCreationEvent(a)) ||  // 排除创建工单事件
@@ -606,7 +616,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   };
 
   if (loading) {
-    return <div style={{ padding: 20, textAlign: 'center', color: '#666' }}>加载中...</div>;
+    return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)' }}>加载中...</div>;
   }
 
   const renderActivityItem = (activity: Activity) => {
@@ -730,7 +740,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
         >
           {/* Meta: Time & Kine Yellow ring (无icon) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '20px' }}>
-            <span style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-mono, monospace)', minWidth: '80px', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono, monospace)', minWidth: '80px', whiteSpace: 'nowrap' }}>
               {formattedDate}
             </span>
             {/* Kine Yellow 圆环标记 - 只显示圆环，不显示icon */}
@@ -754,7 +764,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
             </span>
             {/* 详细内容说明 */}
             {detailSummary && (
-              <span style={{ fontSize: 12, color: '#888' }}>
+              <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                 [{detailSummary}]
               </span>
             )}
@@ -783,7 +793,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       >
         {/* Meta: Time & Icon */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '20px' }}>
-          <span style={{ fontSize: '12px', color: '#555', fontFamily: 'var(--font-mono, monospace)', minWidth: '80px', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono, monospace)', minWidth: '80px', whiteSpace: 'nowrap' }}>
             {formattedDate}
           </span>
           {/* 重要节点（维修记录、诊断报告）显示 Kine Yellow 空心圆环标记 */}
@@ -821,7 +831,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                 <OpRepairReportContent metadata={activity.metadata as any} />
               ) : (
                 <div
-                  style={{ color: isSystemEvent ? '#666' : '#888', wordBreak: 'break-word', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 13 }}
+                  style={{ color: isSystemEvent ? 'var(--text-tertiary)' : 'var(--text-secondary)', wordBreak: 'break-word', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 13 }}
                   dangerouslySetInnerHTML={{
                     __html: (activity.content_html || activity.content || '').replace(/<[^>]+>/g, ' ')
                   }}
@@ -832,7 +842,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
               {activity.attachments && activity.attachments.length > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto', flexShrink: 0 }}>
                   <Paperclip size={12} color="#666" />
-                  <span style={{ fontSize: '11px', color: '#555' }}>{activity.attachments.length}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{activity.attachments.length}</span>
                 </div>
               )}
             </div>
@@ -847,7 +857,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   return (
     <div style={{ padding: '8px 4px 16px' }}>
       {filteredActivities.length === 0 ? (
-        <div style={{ padding: 16, textAlign: 'center', color: '#666', fontSize: 13 }}>暂无活动记录</div>
+        <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>暂无活动记录</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {/* Comments Section - Always shown and expanded */}
@@ -883,7 +893,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                   padding: '6px 12px',
                   fontSize: '11px',
                   fontWeight: 600,
-                  color: '#666',
+                  color: 'var(--text-tertiary)',
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
                   background: 'transparent',
@@ -942,7 +952,7 @@ export const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({
       mentioned: { color: '#3B82F6', label: '协作中' },
       follower: { color: '#8B5CF6', label: '关注者' }
     };
-    const r = roles[role] || { color: '#888', label: role };
+    const r = roles[role] || { color: 'var(--text-tertiary)', label: role };
     return (
       <span style={{
         fontSize: 10,
@@ -979,7 +989,7 @@ export const ParticipantsPanel: React.FC<ParticipantsPanelProps> = ({
   return (
     <div style={{ padding: '12px 16px' }}>
       <div style={{
-        fontSize: 14, fontWeight: 600, color: '#fff',
+        fontSize: 14, fontWeight: 600, color: 'var(--text-main)',
         display: 'flex', alignItems: 'center', gap: 8,
         marginBottom: 12,
       }}>
@@ -1054,7 +1064,7 @@ export const TicketInfoCard: React.FC<TicketInfoCardProps> = ({ ticket }) => {
       marginBottom: 16,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: '#fff' }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: 'var(--text-main)' }}>
           {ticket.ticket_number}
         </span>
         <span style={{
@@ -1067,10 +1077,10 @@ export const TicketInfoCard: React.FC<TicketInfoCardProps> = ({ ticket }) => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
-        <div style={{ color: '#888' }}>客户: <span style={{ color: '#ccc' }}>{ticket.account_name || '-'}</span></div>
-        <div style={{ color: '#888' }}>产品: <span style={{ color: '#ccc' }}>{ticket.product_name || '-'}</span></div>
-        <div style={{ color: '#888' }}>SN: <span style={{ color: '#ccc' }}>{ticket.serial_number || '-'}</span></div>
-        <div style={{ color: '#888' }}>创建: <span style={{ color: '#ccc' }}>{formatDate(ticket.created_at)}</span></div>
+        <div style={{ color: 'var(--text-tertiary)' }}>客户: <span style={{ color: '#ccc' }}>{ticket.account_name || '-'}</span></div>
+        <div style={{ color: 'var(--text-tertiary)' }}>产品: <span style={{ color: '#ccc' }}>{ticket.product_name || '-'}</span></div>
+        <div style={{ color: 'var(--text-tertiary)' }}>SN: <span style={{ color: '#ccc' }}>{ticket.serial_number || '-'}</span></div>
+        <div style={{ color: 'var(--text-tertiary)' }}>创建: <span style={{ color: '#ccc' }}>{formatDate(ticket.created_at)}</span></div>
       </div>
     </div>
   );
@@ -1320,19 +1330,19 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
       <div style={{
         position: 'fixed',
         top: 60, right: 0, bottom: 0, width: 400,
-        background: 'rgba(30,30,30,0.95)',
+        background: 'var(--drawer-bg)',
         backdropFilter: 'blur(20px)',
-        boxShadow: '-10px 0 40px rgba(0,0,0,0.5)',
-        borderLeft: '1px solid rgba(255,255,255,0.1)',
+        boxShadow: 'var(--glass-shadow-lg)',
+        borderLeft: '1px solid var(--drawer-border)',
         zIndex: 999,
         display: 'flex', flexDirection: 'column',
         transform: 'translateX(0)',
         transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
       }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>详情</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--drawer-border)' }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--text-main)' }}>详情</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }}>
             <X size={20} />
           </button>
         </div>
@@ -1349,8 +1359,8 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   S
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#888' }}>系统</div>
-                  <div style={{ fontSize: 12, color: '#888' }}>{new Date(activity.created_at).toLocaleString('zh-CN')}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-tertiary)' }}>系统</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{new Date(activity.created_at).toLocaleString('zh-CN')}</div>
                 </div>
               </div>
             ) : (
@@ -1359,8 +1369,8 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   {activity.actor?.name?.[0]?.toUpperCase() || '?'}
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{activity.actor?.name || 'System'}</div>
-                  <div style={{ fontSize: 12, color: '#888' }}>{new Date(activity.created_at).toLocaleString('zh-CN')}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-main)' }}>{activity.actor?.name || 'System'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{new Date(activity.created_at).toLocaleString('zh-CN')}</div>
                 </div>
               </div>
             );
@@ -1369,9 +1379,9 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
           {/* 通用更正入口 - 针对可更正但没有专门渲染区域的活动类型（如comment、internal_note） */}
           {['comment', 'internal_note'].includes(activity.activity_type) && canCorrectActivity(activity) && (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,165,0,0.03)', borderRadius: 6, border: '1px solid rgba(255,165,0,0.1)' }}>
-              <div style={{ fontSize: 12, color: '#888' }}>
+              <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
                 {(activity.metadata as any)?._correction_count > 0 && (
-                  <span style={{ color: '#FFA500' }}>已更正 {(activity.metadata as any)._correction_count}次 · </span>
+                  <span style={{ color: 'var(--accent-orange, #FFA500)' }}>已更正 {(activity.metadata as any)._correction_count}次 · </span>
                 )}
                 发现数据错误？可申请更正
               </div>
@@ -1380,7 +1390,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 style={{
                   display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 11,
                   background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)',
-                  borderRadius: 4, color: '#FFA500', cursor: 'pointer', transition: 'all 0.2s'
+                  borderRadius: 4, color: 'var(--accent-orange, #FFA500)', cursor: 'pointer', transition: 'all 0.2s'
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,165,0,0.2)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,165,0,0.1)'}
@@ -1429,7 +1439,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                         display: 'flex', alignItems: 'center', gap: 4,
                         padding: '4px 8px', fontSize: 11,
                         background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)',
-                        borderRadius: 4, color: '#FFA500', cursor: 'pointer', transition: 'all 0.2s'
+                        borderRadius: 4, color: 'var(--accent-orange, #FFA500)', cursor: 'pointer', transition: 'all 0.2s'
                       }}
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,165,0,0.2)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,165,0,0.1)'}
@@ -1447,13 +1457,13 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {meta.at_receipt_sn && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: '#888' }}>修正序列号</span>
+                          <span style={{ color: 'var(--text-tertiary)' }}>修正序列号</span>
                           <span style={{ color: '#F59E0B', fontFamily: 'monospace' }}>{meta.at_receipt_sn}</span>
                         </div>
                       )}
                       {receiptNotes && (
                         <div style={{ fontSize: 13 }}>
-                          <div style={{ color: '#888', marginBottom: 4 }}>收货备注:</div>
+                          <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>收货备注:</div>
                           <div style={{ color: '#ddd' }}>{receiptNotes}</div>
                         </div>
                       )}
@@ -1479,54 +1489,54 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {meta.shipping_method && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: '#888' }}>发货方式</span>
+                          <span style={{ color: 'var(--text-tertiary)' }}>发货方式</span>
                           <span style={{ color: '#10B981' }}>{methodMap[meta.shipping_method] || meta.shipping_method}</span>
                         </div>
                       )}
                       {/* 快递直发 */}
                       {meta.shipping_method === 'express' && carrier && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: '#888' }}>快递公司</span>
+                          <span style={{ color: 'var(--text-tertiary)' }}>快递公司</span>
                           <span style={{ color: '#ddd' }}>{carrier}</span>
                         </div>
                       )}
                       {meta.shipping_method === 'express' && meta.tracking_number && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: '#888' }}>快递单号</span>
+                          <span style={{ color: 'var(--text-tertiary)' }}>快递单号</span>
                           <span style={{ color: '#10B981', fontFamily: 'monospace' }}>{meta.tracking_number}</span>
                         </div>
                       )}
                       {/* 货代中转 */}
                       {meta.shipping_method === 'forwarder' && meta.forwarder_name && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: '#888' }}>货代名称</span>
+                          <span style={{ color: 'var(--text-tertiary)' }}>货代名称</span>
                           <span style={{ color: '#ddd' }}>{meta.forwarder_name}</span>
                         </div>
                       )}
                       {meta.shipping_method === 'forwarder' && meta.forwarder_domestic_tracking && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: '#888' }}>国内转运单号</span>
+                          <span style={{ color: 'var(--text-tertiary)' }}>国内转运单号</span>
                           <span style={{ color: '#10B981', fontFamily: 'monospace' }}>{meta.forwarder_domestic_tracking}</span>
                         </div>
                       )}
                       {/* 客户自提 */}
                       {meta.shipping_method === 'pickup' && meta.pickup_person && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: '#888' }}>提货人</span>
+                          <span style={{ color: 'var(--text-tertiary)' }}>提货人</span>
                           <span style={{ color: '#ddd' }}>{meta.pickup_person}</span>
                         </div>
                       )}
                       {/* 合并发货 */}
                       {meta.shipping_method === 'combined' && meta.associated_order_ref && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: '#888' }}>关联订单</span>
+                          <span style={{ color: 'var(--text-tertiary)' }}>关联订单</span>
                           <span style={{ color: '#3B82F6', fontFamily: 'monospace' }}>{meta.associated_order_ref}</span>
                         </div>
                       )}
                       {/* 通用单号（非 express 模式） */}
                       {meta.shipping_method !== 'express' && meta.tracking_number && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                          <span style={{ color: '#888' }}>运单号</span>
+                          <span style={{ color: 'var(--text-tertiary)' }}>运单号</span>
                           <span style={{ color: '#10B981', fontFamily: 'monospace' }}>{meta.tracking_number}</span>
                         </div>
                       )}
@@ -1542,7 +1552,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {meta.warranty_decision && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                        <span style={{ color: '#888' }}>保修判定</span>
+                        <span style={{ color: 'var(--text-tertiary)' }}>保修判定</span>
                         <span style={{ color: meta.warranty_decision === 'in_warranty' ? '#10B981' : '#FFD700', fontWeight: 500 }}>
                           {meta.warranty_decision === 'in_warranty' ? '保内' : (meta.warranty_decision === 'out_warranty' ? '保外' : meta.warranty_decision)}
                         </span>
@@ -1550,13 +1560,13 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     )}
                     {meta.estimated_cost !== undefined && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                        <span style={{ color: '#888' }}>预估费用</span>
+                        <span style={{ color: 'var(--text-tertiary)' }}>预估费用</span>
                         <span style={{ color: '#FFD700' }}>¥{meta.estimated_cost}</span>
                       </div>
                     )}
                     {meta.review_notes && (
                       <div style={{ fontSize: 13 }}>
-                        <div style={{ color: '#888', marginBottom: 4 }}>审核备注:</div>
+                        <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>审核备注:</div>
                         <div style={{ color: '#ddd' }}>{meta.review_notes}</div>
                       </div>
                     )}
@@ -1571,13 +1581,13 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {meta.settlement_type && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                        <span style={{ color: '#888' }}>发货方式</span>
+                        <span style={{ color: 'var(--text-tertiary)' }}>发货方式</span>
                         <span style={{ color: '#ddd' }}>{meta.settlement_type}</span>
                       </div>
                     )}
                     {meta.payment_confirmed !== undefined && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                        <span style={{ color: '#888' }}>款项确认</span>
+                        <span style={{ color: 'var(--text-tertiary)' }}>款项确认</span>
                         <span style={{ color: meta.payment_confirmed ? '#10B981' : '#888' }}>
                           {meta.payment_confirmed ? '已确认' : '未确认'}
                         </span>
@@ -1585,13 +1595,13 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     )}
                     {meta.actual_payment && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                        <span style={{ color: '#888' }}>实收金额</span>
+                        <span style={{ color: 'var(--text-tertiary)' }}>实收金额</span>
                         <span style={{ color: '#FFD700' }}>¥{meta.actual_payment}</span>
                       </div>
                     )}
                     {meta.closing_notes && (
                       <div style={{ fontSize: 13 }}>
-                        <div style={{ color: '#888', marginBottom: 4 }}>留言备注:</div>
+                        <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>留言备注:</div>
                         <div style={{ color: '#ddd' }}>{meta.closing_notes}</div>
                       </div>
                     )}
@@ -1631,7 +1641,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10B981', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>
                     <Wrench size={14} /> {meta.submission_type === 'technical_diagnosis' ? '详细诊断报告' : '诊断记录'}
                     {correctionCount > 0 && (
-                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,165,0,0.2)', color: '#FFA500', textTransform: 'none' }}>
+                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,165,0,0.2)', color: 'var(--accent-orange, #FFA500)', textTransform: 'none' }}>
                         已更正 {correctionCount}次
                       </span>
                     )}
@@ -1642,7 +1652,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                       style={{
                         display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', fontSize: 11,
                         background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)',
-                        borderRadius: 4, color: '#FFA500', cursor: 'pointer', transition: 'all 0.2s'
+                        borderRadius: 4, color: 'var(--accent-orange, #FFA500)', cursor: 'pointer', transition: 'all 0.2s'
                       }}
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,165,0,0.2)'}
                       onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,165,0,0.1)'}
@@ -1653,12 +1663,12 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 </div>
 
                 <div style={{ fontSize: 13 }}>
-                  <div style={{ color: '#888', marginBottom: 4 }}>故障判定:</div>
+                  <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>故障判定:</div>
                   <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.diagnosis || '-'}</div>
                 </div>
 
                 <div style={{ fontSize: 13 }}>
-                  <div style={{ color: '#888', marginBottom: 4 }}>维修方案/建议:</div>
+                  <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>维修方案/建议:</div>
                   <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.repair_advice || '-'}</div>
                 </div>
 
@@ -1666,7 +1676,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 4 }}>
                     {meta.technical_damage_status && (
                       <div style={{ fontSize: 13 }}>
-                        <div style={{ color: '#888', marginBottom: 4 }}>损坏判定:</div>
+                        <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>损坏判定:</div>
                         <div style={{ color: meta.technical_damage_status === 'physical_damage' ? '#EF4444' : (meta.technical_damage_status === 'no_damage' ? '#10B981' : '#FFD200'), fontWeight: 500 }}>
                           {meta.technical_damage_status === 'physical_damage' ? '人为损坏/物理损伤' : (meta.technical_damage_status === 'no_damage' ? '无人为损坏/正常故障' : '无法判定')}
                         </div>
@@ -1674,7 +1684,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     )}
                     {meta.technical_warranty_suggestion && (
                       <div style={{ fontSize: 13 }}>
-                        <div style={{ color: '#888', marginBottom: 4 }}>保修建议:</div>
+                        <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>保修建议:</div>
                         <div style={{ color: meta.technical_warranty_suggestion === 'suggest_out_warranty' ? '#FFD700' : (meta.technical_warranty_suggestion === 'suggest_in_warranty' ? '#10B981' : '#3B82F6'), fontWeight: 500 }}>
                           {meta.technical_warranty_suggestion === 'suggest_out_warranty' ? '建议保外' : (meta.technical_warranty_suggestion === 'suggest_in_warranty' ? '建议保内' : '需进一步核实')}
                         </div>
@@ -1685,7 +1695,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
                 {(meta.estimated_labor_hours > 0 || (meta.estimated_parts && meta.estimated_parts.length > 0)) && (
                   <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12, marginTop: 4 }}>
-                    <div style={{ color: '#888', marginBottom: 8, fontSize: 12, fontWeight: 600 }}>预估配件与工时</div>
+                    <div style={{ color: 'var(--text-tertiary)', marginBottom: 8, fontSize: 12, fontWeight: 600 }}>预估配件与工时</div>
                     {meta.estimated_labor_hours > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
                         <span style={{ color: '#ccc' }}>预估工时</span>
@@ -1719,14 +1729,14 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
                 {meta.repair_content && (
                   <div style={{ fontSize: 13 }}>
-                    <div style={{ color: '#888', marginBottom: 4 }}>维修工作详述:</div>
+                    <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>维修工作详述:</div>
                     <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.repair_content}</div>
                   </div>
                 )}
 
                 {meta.test_result && (
                   <div style={{ fontSize: 13 }}>
-                    <div style={{ color: '#888', marginBottom: 4 }}>老化/测试结论:</div>
+                    <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>老化/测试结论:</div>
                     <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.test_result}</div>
                   </div>
                 )}
@@ -1750,7 +1760,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     <Wrench size={18} />
                     <span>OP维修记录</span>
                     {correctionCount > 0 && (
-                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,165,0,0.2)', color: '#FFA500' }}>
+                      <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,165,0,0.2)', color: 'var(--accent-orange, #FFA500)' }}>
                         已更正 {correctionCount}次
                       </span>
                     )}
@@ -1765,7 +1775,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                         display: 'flex', alignItems: 'center', gap: 4,
                         padding: '4px 8px', fontSize: 11,
                         background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)',
-                        borderRadius: 4, color: '#FFA500', cursor: 'pointer',
+                        borderRadius: 4, color: 'var(--accent-orange, #FFA500)', cursor: 'pointer',
                         transition: 'all 0.2s'
                       }}
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,165,0,0.2)'}
@@ -1780,7 +1790,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 {/* Repair Actions */}
                 {repairProcess.actions_taken && repairProcess.actions_taken.length > 0 && (
                   <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
-                    <div style={{ fontSize: 12, color: '#888', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>维修操作</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>维修操作</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {repairProcess.actions_taken.map((action: string, i: number) => (
                         <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
@@ -1795,7 +1805,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 {/* Parts Replaced */}
                 {repairProcess.parts_replaced && repairProcess.parts_replaced.length > 0 && (
                   <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
-                    <div style={{ fontSize: 12, color: '#888', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>更换零件</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>更换零件</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {repairProcess.parts_replaced.map((part: any, i: number) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: 6 }}>
@@ -1804,7 +1814,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                             {part.part_number && <span style={{ fontSize: 11, color: '#666', fontFamily: 'monospace' }}>{part.part_number}</span>}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <span style={{ fontSize: 12, color: '#888' }}>x{part.quantity}</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>x{part.quantity}</span>
                             <span style={{ fontSize: 13, color: '#FFD200', fontWeight: 500 }}>¥{(part.unit_price * part.quantity).toFixed(2)}</span>
                           </div>
                         </div>
@@ -1816,7 +1826,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 {/* Labor Charges */}
                 {laborCharges.length > 0 && (
                   <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
-                    <div style={{ fontSize: 12, color: '#888', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>工时费用</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>工时费用</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {laborCharges.map((labor: any, i: number) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1834,7 +1844,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 {/* Conclusion */}
                 {(conclusion.summary || conclusion.test_result) && (
                   <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
-                    <div style={{ fontSize: 12, color: '#888', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>维修结论</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>维修结论</div>
                     {conclusion.summary && (
                       <div style={{ marginBottom: 8 }}>
                         <div style={{ fontSize: 11, color: '#666' }}>总结</div>
@@ -1863,7 +1873,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
           {/* Attachments Grid */}
           {activity.attachments && activity.attachments.length > 0 && (
             <div>
-              <h4 style={{ margin: '0 0 12px 0', fontSize: 13, color: '#888', fontWeight: 600 }}>附件 ({activity.attachments.length})</h4>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>附件 ({activity.attachments.length})</h4>
               {(() => {
                 const count = activity.attachments!.length;
                 // Dynamic layout based on attachment count
@@ -1964,7 +1974,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                                 </div>
                               )}
                               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: '50%', padding: 12, color: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+                                <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: '50%', padding: 12, color: 'var(--text-main)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
                                   <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                                 </div>
                               </div>
@@ -1972,7 +1982,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                           ) : (
                             <div style={{ padding: 12, textAlign: 'center' }}>
                               <div style={{ fontSize: 24, marginBottom: 4 }}>📄</div>
-                              <div style={{ fontSize: 10, color: '#888', wordBreak: 'break-all', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{att.file_name}</div>
+                              <div style={{ fontSize: 10, color: 'var(--text-tertiary)', wordBreak: 'break-all', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{att.file_name}</div>
                             </div>
                           )}
                         </div>
@@ -1994,24 +2004,24 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
           zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center'
         }} onClick={() => setCorrectionModal(false)}>
           <div style={{
-            background: '#1a1a1a', borderRadius: 12, 
+            background: 'var(--bg-secondary)', borderRadius: 12, 
             width: isComplexActivityType(activity?.activity_type || '') ? 420 : 500, 
             maxWidth: '90vw',
-            border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            border: '1px solid var(--glass-border)', boxShadow: '0 20px 40px var(--glass-shadow-lg)',
             maxHeight: '80vh', display: 'flex', flexDirection: 'column'
           }} onClick={e => e.stopPropagation()}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 style={{ margin: 0, fontSize: 16, color: '#fff', fontWeight: 600 }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: 'var(--text-main)', fontWeight: 600 }}>
                 {isComplexActivityType(activity?.activity_type || '') ? '确认更正' : '更正活动记录'}
               </h3>
-              <button onClick={() => setCorrectionModal(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: 4 }}>
+              <button onClick={() => setCorrectionModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }}>
                 <X size={18} />
               </button>
             </div>
             <div style={{ padding: 20, overflow: 'auto', flex: 1 }}>
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>活动类型</div>
-                <div style={{ fontSize: 14, color: '#FFD200' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>活动类型</div>
+                <div style={{ fontSize: 14, color: 'var(--accent-blue)' }}>
                   {{
                     'op_repair_report': 'OP维修记录',
                     'diagnostic_report': '诊断报告',
@@ -2029,7 +2039,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
               {/* 关键节点更正提示 */}
               {isKeyNodeActivity && (
                 <div style={{ 
-                  fontSize: 13, color: '#ccc', marginBottom: 16, padding: 12, 
+                  fontSize: 13, color: 'var(--text-main)', marginBottom: 16, padding: 12, 
                   background: 'rgba(59,130,246,0.1)', borderRadius: 8, 
                   border: '1px solid rgba(59,130,246,0.2)',
                   lineHeight: 1.6
@@ -2041,7 +2051,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
               {/* 复杂类型的提示说明 */}
               {!isKeyNodeActivity && isComplexActivityType(activity?.activity_type || '') && (
                 <div style={{ 
-                  fontSize: 13, color: '#ccc', marginBottom: 16, padding: 12, 
+                  fontSize: 13, color: 'var(--text-main)', marginBottom: 16, padding: 12, 
                   background: 'rgba(59,130,246,0.1)', borderRadius: 8, 
                   border: '1px solid rgba(59,130,246,0.2)',
                   lineHeight: 1.6
@@ -2053,18 +2063,18 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
               {/* 内容编辑区 - 仅简单类型显示（非关键节点且非复杂类型） */}
               {!isKeyNodeActivity && !isComplexActivityType(activity?.activity_type || '') && (
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 8 }}>内容（可编辑）</label>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>内容（可编辑）</label>
                   <textarea
                     value={correctedContent}
                     onChange={e => setCorrectedContent(e.target.value)}
                     placeholder="编辑内容..."
                     style={{
-                      width: '100%', padding: 12, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: 8, color: '#fff', fontSize: 13, resize: 'vertical', minHeight: 100, fontFamily: 'inherit'
+                      width: '100%', padding: 12, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)',
+                      borderRadius: 8, color: 'var(--text-main)', fontSize: 13, resize: 'vertical', minHeight: 100, fontFamily: 'inherit'
                     }}
                   />
                   {correctedContent !== (activity?.content || '') && (
-                    <div style={{ fontSize: 11, color: '#FFA500', marginTop: 6 }}>
+                    <div style={{ fontSize: 11, color: 'var(--accent-orange, #FFA500)', marginTop: 6 }}>
                       内容已修改
                     </div>
                   )}
@@ -2072,24 +2082,24 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
               )}
               
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 8 }}>更正原因 *</label>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>更正原因 *</label>
                 <textarea
                   value={correctionReason}
                   onChange={e => setCorrectionReason(e.target.value)}
                   placeholder="请说明更正原因，例如：快递单号填写错误、图片贴错等..."
                   style={{
-                    width: '100%', padding: 12, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 8, color: '#fff', fontSize: 13, resize: 'vertical', minHeight: 80
+                    width: '100%', padding: 12, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)',
+                    borderRadius: 8, color: 'var(--text-main)', fontSize: 13, resize: 'vertical', minHeight: 80
                   }}
                 />
               </div>
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 16, padding: 12, background: 'rgba(255,165,0,0.05)', borderRadius: 6, border: '1px solid rgba(255,165,0,0.1)' }}>
-                <strong style={{ color: '#FFA500' }}>提示：</strong> 此操作将记录更正历史并在时间线上公示，原操作人将收到通知。
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 16, padding: 12, background: 'rgba(255,165,0,0.05)', borderRadius: 6, border: '1px solid rgba(255,165,0,0.1)' }}>
+                <strong style={{ color: 'var(--accent-orange, #FFA500)' }}>提示：</strong> 此操作将记录更正历史并在时间线上公示，原操作人将收到通知。
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
                 <button
                   onClick={() => setCorrectionModal(false)}
-                  style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}
+                  style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}
                 >
                   取消
                 </button>

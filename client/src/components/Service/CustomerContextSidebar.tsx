@@ -6,7 +6,7 @@ import {
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import ContactCleaningModal from './ContactCleaningModal';
-import ConvertIndividualModal from './ConvertIndividualModal';
+import UnifiedCustomerModal from './UnifiedCustomerModal';
 import ConfirmModal from './ConfirmModal';
 import LinkCorporateModal from './LinkCorporateModal';
 import { ProductWarrantyRegistrationModal } from './ProductWarrantyRegistrationModal';
@@ -37,8 +37,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     ticketId, accountId, contactId, reporterSnapshot,
     serialNumber, customerName, contactName,
     dealerId, dealerName, dealerCode, dealerContactName, dealerContactTitle,
-    onCleanComplete, onClose, ticketProductName, onRequestEdit, hideDeviceCard,
-    collapsed = false, onToggleCollapse
+    onCleanComplete, onClose, ticketProductName, onRequestEdit, hideDeviceCard
 }) => {
     // const { t } = useLanguage();
     const { token } = useAuthStore();
@@ -174,7 +173,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     };
 
     const cardStyle: React.CSSProperties = {
-        background: 'var(--glass-border)',
+        background: 'var(--glass-bg-light)',
         borderRadius: '12px',
         padding: '16px',
         border: '1px solid var(--glass-border)',
@@ -262,46 +261,14 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     return (
         <div style={sidebarStyle} className="customer-context-sidebar">
 
-            {/* Collapsible Header */}
-            <div
-                onClick={onToggleCollapse}
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    cursor: onToggleCollapse ? 'pointer' : 'default',
-                    userSelect: 'none',
-                    borderBottom: collapsed ? 'none' : '1px solid rgba(255,255,255,0.05)'
-                }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <User size={14} color="#888" />
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>
-                        {data?.account?.name || '客户信息'}
-                    </span>
-                </div>
-                {onToggleCollapse && (
-                    <ChevronRight
-                        size={16}
-                        color="#888"
-                        style={{
-                            transform: collapsed ? 'rotate(90deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.2s'
-                        }}
-                    />
-                )}
-            </div>
-
-            {/* Content - Three Cards Layout */}
-            {!collapsed && (
+            {/* Content - Cards Layout (removed standalone header per UI spec) */}
             <div style={{ ...contentStyle, padding: onClose ? '0 16px 16px' : '16px 0' }}>
                 {/* ===== Card 1: 经销商卡片 ===== */}
                 {(dealerId || dealerName) && (
                     <div style={{
                         ...cardStyle,
                         background: 'var(--bg-sidebar)',
-                        border: '1px solid rgba(255, 215, 0, 0.15)',
+                        border: '1px solid var(--accent-subtle)',
                         overflow: 'hidden',
                     }}>
                         <div
@@ -312,10 +279,10 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 cursor: 'pointer',
                             }}
                         >
-                            <div style={{ ...cardTitleStyle, marginBottom: 0, color: 'rgba(255, 215, 0, 0.7)' }}>
+                            <div style={{ ...cardTitleStyle, marginBottom: 0, color: 'var(--accent-blue)' }}>
                                 <Building size={12} /> 经销商
                             </div>
-                            {dealerExpanded ? <ChevronDown size={14} style={{ color: 'rgba(255,215,0,0.5)' }} /> : <ChevronRight size={14} style={{ color: 'rgba(255,215,0,0.5)' }} />}
+                            {dealerExpanded ? <ChevronDown size={14} style={{ color: 'var(--accent-blue)' }} /> : <ChevronRight size={14} style={{ color: 'var(--accent-blue)' }} />}
                         </div>
 
                         {dealerExpanded && (
@@ -350,17 +317,17 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 {/* 经销商工单统计 */}
                                 {data?.dealer_ai_profile && data.dealer_ai_profile.ticket_count > 0 && (
                                     <div style={{
-                                        background: 'rgba(255, 215, 0, 0.08)',
+                                        background: 'var(--accent-subtle)',
                                         borderRadius: '8px',
                                         padding: '10px 12px',
                                         marginTop: '12px'
                                     }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                                            <Ticket size={12} style={{ color: 'rgba(255, 215, 0, 0.7)' }} />
-                                            <span style={{ fontSize: '0.75rem', color: 'rgba(255, 215, 0, 0.8)', fontWeight: 600 }}>工单统计</span>
+                                            <Ticket size={12} style={{ color: 'var(--accent-blue)' }} />
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', fontWeight: 600 }}>工单统计</span>
                                         </div>
                                         <div style={{ fontSize: '0.8rem', color: 'var(--text-main)' }}>
-                                            总计 <span style={{ color: 'rgba(255, 215, 0, 0.9)', fontWeight: 600 }}>{data.dealer_ai_profile.ticket_count}</span>
+                                            总计 <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>{data.dealer_ai_profile.ticket_count}</span>
                                             {data.dealer_ai_profile.inquiry_count > 0 && <span style={{ marginLeft: '8px' }}>咨询 {data.dealer_ai_profile.inquiry_count}</span>}
                                             {data.dealer_ai_profile.rma_count > 0 && <span style={{ marginLeft: '8px' }}>RMA {data.dealer_ai_profile.rma_count}</span>}
                                             {data.dealer_ai_profile.repair_count > 0 && <span style={{ marginLeft: '8px' }}>维修 {data.dealer_ai_profile.repair_count}</span>}
@@ -375,20 +342,20 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                 {/* ===== Card 2: 客户卡片 ===== */}
                 {/* Status 4: Ghost / Unregistered */}
                 {!data?.account && (reporterSnapshot || contactName || customerName) && (
-                    <div style={{ ...cardStyle, border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-                        <div style={{ ...cardTitleStyle, color: '#EF4444', justifyContent: 'space-between' }}>
+                    <div style={{ ...cardStyle, border: '1px solid var(--status-red-subtle)' }}>
+                        <div style={{ ...cardTitleStyle, color: 'var(--status-red)', justifyContent: 'space-between' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 未知身份
                             </div>
                         </div>
 
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--card-border)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                                来源: <span style={{ color: '#ddd' }}>{reporterSnapshot?.source || 'Email / 电话接入'}</span>
+                                来源: <span style={{ color: 'var(--text-main)' }}>{reporterSnapshot?.source || 'Email / 电话接入'}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span>原始信息:</span>
-                                <span style={{ color: '#ddd', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                                <span style={{ color: 'var(--text-main)', wordBreak: 'break-all', fontFamily: 'monospace' }}>
                                     {reporterSnapshot ? `${reporterSnapshot.name || ''} ${reporterSnapshot.email ? `<${reporterSnapshot.email}>` : ''} ${reporterSnapshot.phone || ''}` : (contactName || customerName)}
                                 </span>
                             </div>
@@ -402,8 +369,8 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 user?.role === 'Admin' || user?.role === 'Exec';
                             if (!isMsDept) return null;
                             return (
-                                <div style={{ background: 'rgba(239, 68, 68, 0.05)', padding: '10px 12px', borderRadius: 8 }}>
-                                    <div style={{ fontSize: '0.8rem', color: '#EF4444', fontWeight: 600, marginBottom: 10 }}>
+                                <div style={{ background: 'var(--status-red-subtle)', padding: '10px 12px', borderRadius: 8 }}>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--status-red)', fontWeight: 600, marginBottom: 10 }}>
                                         建议操作
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -411,18 +378,18 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                             onClick={() => setShowLinkModal(true)}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                                background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                borderRadius: 6, color: '#ddd', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                                background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)',
+                                                borderRadius: 6, color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
                                             }}
                                         >
-                                            <Search size={14} /> 关联到企业
+                                            <Search size={14} /> 关联到已知客户
                                         </button>
                                         <button
                                             onClick={() => setShowConvertModal(true)}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                                background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)',
-                                                borderRadius: 6, color: '#3B82F6', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                                background: 'var(--accent-blue-subtle)', border: '1px solid var(--accent-blue-border)',
+                                                borderRadius: 6, color: 'var(--accent-blue)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
                                             }}
                                         >
                                             <UserPlus size={14} /> 添加为新客户
@@ -431,8 +398,8 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                             onClick={() => setShowSpamModal(true)}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                                background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)',
-                                                borderRadius: 6, color: '#EF4444', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                                background: 'var(--status-red-subtle)', border: '1px solid var(--status-red)',
+                                                borderRadius: 6, color: 'var(--status-red)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
                                             }}
                                         >
                                             <Trash2 size={14} /> 标记为垃圾
@@ -879,7 +846,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                                 {data.parts_catalog.map((part: any) => (
                                                     <div key={part.id} style={{
-                                                        background: 'var(--glass-border)',
+                                                        background: 'var(--glass-bg-light)',
                                                         borderRadius: '6px',
                                                         padding: '8px 10px',
                                                         display: 'flex',
@@ -908,7 +875,6 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                     </div>
                 )}
             </div>
-            )}
 
             {/* Modals */}
             {showCleanModal && ticketId && data?.account && reporterSnapshot && (
@@ -927,14 +893,20 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
 
             {/* 新增的未知访客操作弹窗 */}
             {showConvertModal && ticketId && (
-                <ConvertIndividualModal
-                    ticketId={ticketId}
-                    reporterSnapshot={reporterSnapshot || { name: customerName || contactName }}
+                <UnifiedCustomerModal
+                    isOpen={showConvertModal}
                     onClose={() => setShowConvertModal(false)}
                     onSuccess={() => {
                         setShowConvertModal(false);
                         if (onCleanComplete) onCleanComplete();
                     }}
+                    ticketId={ticketId}
+                    prefillData={{
+                        name: reporterSnapshot?.name || customerName || contactName,
+                        email: reporterSnapshot?.email,
+                        phone: reporterSnapshot?.phone
+                    }}
+                    defaultLifecycleStage="ACTIVE"
                 />
             )}
 

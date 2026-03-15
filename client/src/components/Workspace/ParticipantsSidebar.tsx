@@ -119,7 +119,7 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
             mentioned: { color: '#3B82F6', label: '协作中' },
             follower: { color: '#8B5CF6', label: '关注者' }
         };
-        const r = roles[role] || { color: '#888', label: role };
+        const r = roles[role] || { color: 'var(--text-tertiary)', label: role };
         return (
             <span style={{
                 fontSize: 10, padding: '1px 5px', borderRadius: 3,
@@ -183,8 +183,8 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
     return (
         <div style={{
             borderRadius: 12, marginBottom: 16,
-            background: 'rgba(30,30,30,0.5)', backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'var(--glass-bg-light)', backdropFilter: 'blur(12px)',
+            border: '1px solid var(--glass-border)',
             overflow: 'visible',
             position: 'relative',
         }}>
@@ -197,11 +197,11 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                     display: 'flex', alignItems: 'center', gap: 8,
                     cursor: 'pointer',
                 }}>
-                <User size={16} color="#FFD700" />
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>
+                <User size={16} color="var(--accent-blue)" />
+                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-main)' }}>
                     协作成员
                 </span>
-                <span style={{ fontSize: 12, color: '#666' }}>({participants.length})</span>
+                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>({participants.length})</span>
 
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
                     {!collapsed && (
@@ -209,9 +209,9 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                             onClick={(e) => { e.stopPropagation(); setShowInvite(!showInvite); }}
                             style={{
                                 width: 26, height: 26, borderRadius: 6,
-                                border: '1px solid rgba(255,255,255,0.12)',
-                                background: showInvite ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.04)',
-                                color: showInvite ? '#FFD700' : '#888',
+                                border: '1px solid var(--glass-border)',
+                                background: showInvite ? 'var(--accent-subtle)' : 'var(--glass-bg-light)',
+                                color: showInvite ? 'var(--accent-blue)' : 'var(--text-secondary)',
                                 cursor: 'pointer', display: 'flex',
                                 alignItems: 'center', justifyContent: 'center',
                                 transition: 'all 0.15s', padding: 0,
@@ -220,7 +220,7 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                             {showInvite ? <X size={13} /> : <Plus size={13} />}
                         </button>
                     )}
-                    {collapsed ? <ChevronRight size={14} color="#888" /> : <ChevronDown size={14} color="#888" />}
+                    {collapsed ? <ChevronRight size={14} color="var(--text-tertiary)" /> : <ChevronDown size={14} color="var(--text-tertiary)" />}
                 </div>
             </div>
 
@@ -230,23 +230,23 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                     <div ref={dropdownRef} style={{
                         position: 'absolute', top: '100%', left: 0, right: 0,
                         zIndex: 50,
-                        background: '#1E1E1E',
-                        border: '1px solid rgba(255,255,255,0.12)',
+                        background: 'var(--modal-bg)',
+                        border: '1px solid var(--glass-border)',
                         borderRadius: 10,
-                        boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
+                        boxShadow: 'var(--glass-shadow-lg)',
                         maxHeight: 320,
                         overflow: 'hidden',
                         display: 'flex', flexDirection: 'column',
                     }}>
                         {/* Search */}
-                        <div style={{ padding: '10px 12px 6px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div style={{ padding: '10px 12px 6px', borderBottom: '1px solid var(--glass-border)' }}>
                             <div style={{
                                 display: 'flex', alignItems: 'center', gap: 8,
                                 padding: '6px 10px',
-                                background: 'rgba(255,255,255,0.06)',
+                                background: 'var(--glass-bg-light)',
                                 borderRadius: 6,
                             }}>
-                                <Search size={13} color="#666" />
+                                <Search size={13} color="var(--text-tertiary)" />
                                 <input
                                     type="text"
                                     value={searchQuery}
@@ -255,7 +255,7 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                                     autoFocus
                                     style={{
                                         flex: 1, background: 'none', border: 'none',
-                                        color: '#fff', fontSize: 13, outline: 'none',
+                                        color: 'var(--text-main)', fontSize: 13, outline: 'none',
                                     }}
                                 />
                             </div>
@@ -266,7 +266,7 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                             {buildInviteGroups().map(group => (
                                 <div key={group.name}>
                                     <div style={{
-                                        fontSize: 11, fontWeight: 600, color: '#888',
+                                        fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)',
                                         padding: '6px 14px 3px', letterSpacing: 0.5,
                                     }}>
                                         {group.name} ({group.users.length})
@@ -286,12 +286,12 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                                                     gap: 10,
                                                     transition: 'background 0.1s',
                                                 }}
-                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,215,0,0.08)'}
+                                                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-subtle)'}
                                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                                             >
                                                 <div style={{
                                                     width: 26, height: 26, borderRadius: '50%',
-                                                    background: 'rgba(255,215,0,0.15)', color: '#FFD700',
+                                                    background: 'var(--accent-subtle)', color: 'var(--accent-blue)',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     fontSize: 11, fontWeight: 600, flexShrink: 0,
                                                 }}>
@@ -300,13 +300,13 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
 
                                                 <div style={{ flex: 1, minWidth: 0 }}>
                                                     <div style={{
-                                                        fontSize: 13, fontWeight: 500, color: '#e0e0e0',
+                                                        fontSize: 13, fontWeight: 500, color: 'var(--text-main)',
                                                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                                     }}>
                                                         {user.name}
                                                     </div>
                                                     {user.department && (
-                                                        <div style={{ fontSize: 11, color: '#666' }}>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
                                                             {user.department}
                                                         </div>
                                                     )}
@@ -314,8 +314,8 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
 
                                                 {totalScore > 0 && (
                                                     <span style={{
-                                                        fontSize: 11, color: '#FFD700', fontWeight: 600,
-                                                        background: 'rgba(255,215,0,0.1)',
+                                                        fontSize: 11, color: 'var(--accent-blue)', fontWeight: 600,
+                                                        background: 'var(--accent-subtle)',
                                                         padding: '1px 6px', borderRadius: 4,
                                                     }}>
                                                         ↑{totalScore}
@@ -327,7 +327,7 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                                 </div>
                             ))}
                             {buildInviteGroups().length === 0 && (
-                                <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: '#666' }}>
+                                <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>
                                     无可邀请的用户
                                 </div>
                             )}
@@ -347,25 +347,25 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                                     alignItems: 'center',
                                     gap: 10,
                                     padding: '7px 8px',
-                                    background: 'rgba(255,255,255,0.02)',
+                                    background: 'var(--glass-bg-light)',
                                     borderRadius: 8,
                                     transition: 'background 0.15s',
                                     position: 'relative',
                                 }}
                                 onMouseEnter={e => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                     const btn = e.currentTarget.querySelector('.remove-btn') as HTMLElement;
                                     if (btn) btn.style.opacity = '1';
                                 }}
                                 onMouseLeave={e => {
-                                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                    e.currentTarget.style.background = 'var(--glass-bg-light)';
                                     const btn = e.currentTarget.querySelector('.remove-btn') as HTMLElement;
                                     if (btn) btn.style.opacity = '0';
                                 }}
                             >
                                 <div style={{
                                     width: 26, height: 26, borderRadius: '50%',
-                                    background: 'rgba(255,215,0,0.15)', color: '#FFD700',
+                                    background: 'var(--accent-subtle)', color: 'var(--accent-blue)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     fontSize: 11, fontWeight: 600
                                 }}>
@@ -373,7 +373,7 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                                 </div>
 
                                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <span style={{ fontSize: 13, color: '#e0e0e0', fontWeight: 500 }}>{p.name}</span>
+                                    <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>{p.name}</span>
                                     {getRoleBadge(p.role)}
                                 </div>
 
@@ -401,11 +401,11 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     gap: 4, padding: '6px 0', marginTop: 4,
                                     background: 'none', border: 'none',
-                                    color: '#888', fontSize: 12,
+                                    color: 'var(--text-tertiary)', fontSize: 12,
                                     cursor: 'pointer', transition: 'color 0.15s',
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.color = '#FFD700'}
-                                onMouseLeave={e => e.currentTarget.style.color = '#888'}
+                                onMouseEnter={e => e.currentTarget.style.color = 'var(--accent-blue)'}
+                                onMouseLeave={e => e.currentTarget.style.color = 'var(--text-tertiary)'}
                             >
                                 {showAllParticipants ? (
                                     <>收起 <ChevronRight size={12} style={{ transform: 'rotate(-90deg)' }} /></>

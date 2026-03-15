@@ -256,7 +256,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                     width: `${size.width}px`,
                     height: `${size.height}px`,
                     maxHeight: 'calc(100vh - 64px)',
-                    background: 'rgba(28, 28, 30, 0.85)',
+                    background: 'var(--glass-bg)',
                     backdropFilter: 'blur(20px)',
                     borderRadius: '16px',
                     border: '1px solid var(--glass-border)',
@@ -592,7 +592,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                 )}
 
                 {/* INPUT AREA */}
-                <div style={{ padding: '20px', background: 'rgba(0,0,0,0.2)', borderTop: '1px solid var(--glass-border)' }}>
+                <div style={{ padding: '20px', background: 'var(--glass-bg-light)', borderTop: '1px solid var(--glass-border)' }}>
                     <div style={{
                         background: 'var(--glass-bg-light)',
                         borderRadius: '12px',
@@ -602,6 +602,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                         alignItems: 'flex-end'
                     }}>
                         <textarea
+                            className="bokeh-input"
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
@@ -627,7 +628,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                                 disabled={!input.trim()}
                                 style={{
                                     background: input.trim() ? '#10B981' : 'var(--glass-bg-hover)',
-                                    color: input.trim() ? 'white' : 'rgba(255,255,255,0.3)',
+                                    color: input.trim() ? 'white' : 'var(--text-tertiary)',
                                 }}
                             >
                                 <Send size={16} />
@@ -640,7 +641,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                  .panel-btn {
                      background: transparent;
                      border: none;
-                     color: rgba(255,255,255,0.5);
+                     color: var(--text-secondary);
                      cursor: pointer;
                      padding: 4px;
                      border-radius: 4px;
@@ -656,7 +657,7 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                      border-radius: 8px;
                      border: none;
                      background: transparent;
-                     color: rgba(255,255,255,0.5);
+                     color: var(--text-secondary);
                      cursor: pointer;
                      display: flex;
                      align-items: center;
@@ -666,6 +667,9 @@ const BokehPanel: React.FC<BokehPanelProps> = ({ isOpen, onClose, onMinimize, me
                  .input-btn:hover {
                      background: var(--glass-bg-hover);
                      color: var(--text-main);
+                 }
+                 .bokeh-input::placeholder {
+                     color: var(--text-tertiary);
                  }
              `}</style>
             </motion.div >

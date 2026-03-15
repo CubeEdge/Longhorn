@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLanguage } from '../i18n/useLanguage';
 import { ArrowLeft, MapPin, Phone, Mail, Package, User, ChevronDown, ChevronUp, History, Wrench, MessageSquare, Edit2, Trash2, MoreHorizontal, PowerOff, RotateCcw } from 'lucide-react';
-import CustomerFormModal from './CustomerFormModal';
+import UnifiedCustomerModal from './Service/UnifiedCustomerModal';
 import DeleteAccountModal from './DeleteAccountModal';
 import { TicketCard } from './TicketCard';
 import { ProductCard } from './ProductCard';
@@ -1211,71 +1211,18 @@ const CustomerDetailPage: React.FC = () => {
 
             {/* Edit Modal */}
             {isEditModalOpen && customer && (
-                <CustomerFormModal
+                <UnifiedCustomerModal
                     isOpen={isEditModalOpen}
                     onClose={() => setIsEditModalOpen(false)}
-                    onSubmit={async (e, formData) => {
-                        e.preventDefault();
-                        try {
-                            const accountId = customer.id;
-                            const accountData = {
-                                name: formData.name,
-                                account_type: formData.account_type,
-                                dealer_code: formData.dealer_code,
-                                dealer_level: formData.dealer_level,
-                                address: formData.address,
-                                country: formData.country,
-                                city: formData.city,
-                                notes: formData.notes,
-                                service_tier: formData.service_tier,
-                                primary_contact: formData.contacts.find((c: any) => c.is_primary) || formData.contacts[0]
-                            };
-
-                            // Update account
-                            await axios.patch(`/api/v1/accounts/${accountId}`, accountData, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            });
-
-                            // Sync contacts - delete existing and recreate
-                            const existingContactsRes = await axios.get(`/api/v1/accounts/${accountId}/contacts`, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            });
-                            const existingContacts = existingContactsRes.data.data || [];
-
-                            // Delete all existing contacts
-                            for (const contact of existingContacts) {
-                                await axios.delete(`/api/v1/contacts/${contact.id}`, {
-                                    headers: { Authorization: `Bearer ${token}` }
-                                });
-                            }
-
-                            // Create new contacts
-                            for (const contact of formData.contacts) {
-                                await axios.post(`/api/v1/accounts/${accountId}/contacts`, {
-                                    name: contact.name,
-                                    email: contact.email,
-                                    phone: contact.phone,
-                                    job_title: contact.job_title,
-                                    is_primary: contact.is_primary
-                                }, {
-                                    headers: { Authorization: `Bearer ${token}` }
-                                });
-                            }
-
-                            setIsEditModalOpen(false);
-                            fetchCustomerDetail(); // Refresh data
-                        } catch (err) {
-                            console.error('Failed to save customer', err);
-                            alert('保存失败');
-                        }
+                    onSuccess={() => {
+                        setIsEditModalOpen(false);
+                        fetchCustomerDetail(); // Refresh data
                     }}
-                    initialData={{
+                    editData={{
                         id: customer.id,
-                        customer_name: customer.customer_name,
                         name: customer.customer_name,
                         account_type: isDealer ? 'DEALER' : (customer.customer_type === 'EndUser' ? 'ORGANIZATION' : 'INDIVIDUAL'),
-                        dealer_code: (customer as any).dealer_code || '',
-                        dealer_level: (customer as any).dealer_level || '',
+                        lifecycle_stage: customer.lifecycle_stage || 'ACTIVE',
                         service_tier: customer.service_tier,
                         address: (customer as any).address || '',
                         country: customer.country || '',
@@ -1291,8 +1238,7 @@ const CustomerDetailPage: React.FC = () => {
                         }))
                     }}
                     isEditing={true}
-                    _user={user}
-                    mode={isDealer ? 'dealer' : (customer.customer_type === 'EndUser' ? 'organization' : 'individual')}
+                    defaultMode={isDealer ? 'dealer' : (customer.customer_type === 'EndUser' ? 'organization' : 'individual')}
                 />
             )}
 

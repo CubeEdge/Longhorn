@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import {
     ArrowLeft, Layers, Package, Info,
     Edit2, ChevronDown, ChevronUp, AlertCircle,
-    CheckCircle2, XCircle
+    CheckCircle2, XCircle, X, Save, Image as ImageIcon,
+    MoreHorizontal, Trash2, Power, Plus
 } from 'lucide-react';
 
 interface ProductModel {
@@ -52,6 +53,12 @@ const ProductModelDetailPage: React.FC = () => {
     const [skus, setSkus] = useState<ProductSku[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['basic', 'skus']));
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [editFormData, setEditFormData] = useState<Partial<ProductModel>>({});
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+    const moreMenuRef = useRef<HTMLDivElement>(null);
 
     const fetchModelDetail = async () => {
         if (!id || !token) return;
@@ -81,6 +88,23 @@ const ProductModelDetailPage: React.FC = () => {
     useEffect(() => {
         fetchModelDetail();
     }, [id, token]);
+
+    useEffect(() => {
+        if (model) {
+            setEditFormData({
+                name_zh: model.name_zh,
+                name_en: model.name_en,
+                brand: model.brand,
+                model_code: model.model_code,
+                material_id_prefix: model.material_id_prefix,
+                product_family: model.product_family,
+                product_type: model.product_type,
+                description: model.description,
+                hero_image: model.hero_image,
+                is_active: model.is_active
+            });
+        }
+    }, [model]);
 
     const toggleSection = (section: string) => {
         const next = new Set(expandedSections);
@@ -113,6 +137,45 @@ const ProductModelDetailPage: React.FC = () => {
     }
 
     const familyInfo = PRODUCT_FAMILY_MAP[model.product_family] || { label: model.product_family, color: '#6B7280' };
+
+    const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', file);
+        formDataUpload.append('type', 'product_photo');
+
+        try {
+            const res = await axios.post('/api/v1/upload', formDataUpload, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (res.data.success) {
+                setEditFormData(prev => ({ ...prev, hero_image: res.data.file.url }));
+            }
+        } catch (err: any) {
+            alert('上传图片失败: ' + (err.response?.data?.error?.message || err.message));
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!model || !id) return;
+        setSaving(true);
+        try {
+            await axios.put(`/api/v1/admin/product-models/${id}`, editFormData, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setIsEditModalOpen(false);
+            fetchModelDetail();
+        } catch (err: any) {
+            alert(err.response?.data?.error?.message || '保存失败');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <div className="fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-main)' }}>
@@ -153,10 +216,114 @@ const ProductModelDetailPage: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {isInternalStaff && (
-                        <button className="btn-kine-lowkey" style={{ gap: 8 }}>
-                            <Edit2 size={16} /> 编辑型号
-                        </button>
+                    {isInternalStaff && model && (
+                        <div ref={moreMenuRef} style={{ position: 'relative' }}>
+                            <button
+                                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                                style={{
+                                    width: 40, height: 40, borderRadius: '50%',
+                                    background: 'var(--glass-bg-hover)', border: '1.5px solid var(--glass-border)',
+                                    color: 'var(--text-secondary)', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.15s'
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-secondary)'; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+                            >
+                                <MoreHorizontal size={20} />
+                            </button>
+                            {isMoreMenuOpen && (
+                                <>
+                                    <div
+                                        style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                                        onClick={() => setIsMoreMenuOpen(false)}
+                                    />
+                                    <div style={{
+                                        position: 'absolute', top: '100%', right: 0, marginTop: 8,
+                                        background: 'var(--bg-sidebar)', border: '1px solid var(--glass-border)',
+                                        borderRadius: 12, padding: '8px 0', minWidth: 160, zIndex: 100,
+                                        boxShadow: '0 8px 32px var(--glass-shadow)'
+                                    }}>
+                                        <button
+                                            onClick={() => {
+                                                setIsMoreMenuOpen(false);
+                                                setEditFormData({
+                                                    name_zh: model.name_zh,
+                                                    name_en: model.name_en,
+                                                    brand: model.brand,
+                                                    model_code: model.model_code,
+                                                    material_id_prefix: model.material_id_prefix,
+                                                    product_family: model.product_family,
+                                                    product_type: model.product_type,
+                                                    description: model.description,
+                                                    hero_image: model.hero_image,
+                                                    is_active: model.is_active
+                                                });
+                                                setIsEditModalOpen(true);
+                                            }}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 10,
+                                                width: '100%', padding: '10px 16px', background: 'transparent',
+                                                border: 'none', color: 'var(--text-main)', fontSize: '0.9rem',
+                                                cursor: 'pointer', textAlign: 'left'
+                                            }}
+                                        >
+                                            <Edit2 size={16} color="#FFD700" /> 编辑
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                setIsMoreMenuOpen(false);
+                                                if (!confirm(`确定要${model.is_active ? '停用' : '启用'}此型号吗？`)) return;
+                                                try {
+                                                    await axios.put(`/api/v1/admin/product-models/${model.id}`, {
+                                                        ...model,
+                                                        is_active: !model.is_active
+                                                    }, { headers: { Authorization: `Bearer ${token}` } });
+                                                    fetchModelDetail();
+                                                } catch (err: any) {
+                                                    alert(err.response?.data?.error?.message || '操作失败');
+                                                }
+                                            }}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 10,
+                                                width: '100%', padding: '10px 16px', background: 'transparent',
+                                                border: 'none', color: model.is_active ? '#EF4444' : '#10B981', fontSize: '0.9rem',
+                                                cursor: 'pointer', textAlign: 'left'
+                                            }}
+                                        >
+                                            <Power size={16} /> {model.is_active ? '停用' : '启用'}
+                                        </button>
+                                        <div style={{ height: 1, background: 'var(--glass-border)', margin: '4px 0' }} />
+                                        <button
+                                            onClick={async () => {
+                                                setIsMoreMenuOpen(false);
+                                                if (model.instance_count > 0) {
+                                                    alert('此型号有关联的设备实例，无法删除');
+                                                    return;
+                                                }
+                                                if (!confirm(`确定要删除产品型号 "${model.name_zh}" 吗？此操作不可撤销。`)) return;
+                                                try {
+                                                    await axios.delete(`/api/v1/admin/product-models/${model.id}`, {
+                                                        headers: { Authorization: `Bearer ${token}` }
+                                                    });
+                                                    navigate('/service/product-models');
+                                                } catch (err: any) {
+                                                    alert(err.response?.data?.error?.message || '删除失败');
+                                                }
+                                            }}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 10,
+                                                width: '100%', padding: '10px 16px', background: 'transparent',
+                                                border: 'none', color: '#EF4444', fontSize: '0.9rem',
+                                                cursor: 'pointer', textAlign: 'left'
+                                            }}
+                                        >
+                                            <Trash2 size={16} /> 删除
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     )}
                 </div>
             </div>
@@ -349,6 +516,285 @@ const ProductModelDetailPage: React.FC = () => {
 
                 </div>
             </div>
+
+            {/* Edit Modal */}
+            {isEditModalOpen && model && (
+                <>
+                    <div
+                        onClick={() => setIsEditModalOpen(false)}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'var(--modal-overlay)', backdropFilter: 'blur(4px)',
+                            zIndex: 9999
+                        }}
+                    />
+                    <div style={{
+                        position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                        width: 900, maxHeight: '85vh', background: 'var(--modal-bg)', borderRadius: 16,
+                        boxShadow: 'var(--glass-shadow-lg)', border: '1px solid var(--glass-border)',
+                        display: 'flex', flexDirection: 'column', zIndex: 10000,
+                        overflow: 'hidden'
+                    }}>
+                        {/* Header */}
+                        <div style={{
+                            padding: '20px 24px', borderBottom: '1px solid var(--glass-border)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            flexShrink: 0
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                <div style={{
+                                    width: 44, height: 44, borderRadius: 12,
+                                    background: 'rgba(59,130,246,0.15)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <Edit2 size={22} color="#3B82F6" />
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 600, fontSize: 18, color: 'var(--text-main)' }}>
+                                        编辑产品型号
+                                    </div>
+                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3 }}>
+                                        {model.name_zh}
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                <X size={22} />
+                            </button>
+                        </div>
+
+                        {/* Body - 左右分栏 */}
+                        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                            {/* 左侧表单 */}
+                            <div className="custom-scroll" style={{ flex: 1, padding: 24, overflowY: 'auto', borderRight: '1px solid var(--glass-border)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                    {/* 主图 */}
+                                    <div style={{ padding: 20, background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 12, display: 'block' }}>
+                                            主视觉图片
+                                        </label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                            <div
+                                                onClick={() => fileInputRef.current?.click()}
+                                                style={{
+                                                    width: 120, height: 120, borderRadius: 12, background: 'var(--glass-bg-hover)',
+                                                    border: '2px dashed var(--glass-border)', cursor: 'pointer', overflow: 'hidden',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                }}
+                                            >
+                                                {editFormData.hero_image ? (
+                                                    <img src={editFormData.hero_image} alt="Hero" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <ImageIcon size={32} opacity={0.3} />
+                                                )}
+                                                <input ref={fileInputRef} type="file" hidden accept="image/*" onChange={handleUploadImage} />
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                                                    建议尺寸: 800x600, 支持 JPG/PNG/WEBP.
+                                                </p>
+                                                {editFormData.hero_image && (
+                                                    <button onClick={() => setEditFormData(p => ({ ...p, hero_image: '' }))} style={{ fontSize: '0.75rem', color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer' }}>
+                                                        移除图片
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 名称 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>产品名称 (中文) *</label>
+                                            <input
+                                                type="text" value={editFormData.name_zh || ''}
+                                                onChange={(e) => setEditFormData({ ...editFormData, name_zh: e.target.value })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                                placeholder="例如: MAVO Edge 8K"
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>产品名称 (英文)</label>
+                                            <input
+                                                type="text" value={editFormData.name_en || ''}
+                                                onChange={(e) => setEditFormData({ ...editFormData, name_en: e.target.value })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                                placeholder="Model Name (EN)"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* 代码 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>型号代码 *</label>
+                                            <input
+                                                type="text" value={editFormData.model_code || ''}
+                                                onChange={(e) => setEditFormData({ ...editFormData, model_code: e.target.value })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                                placeholder="例如: C181"
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>物料号前缀</label>
+                                            <input
+                                                type="text" value={editFormData.material_id_prefix || ''}
+                                                onChange={(e) => setEditFormData({ ...editFormData, material_id_prefix: e.target.value })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                                placeholder="例如: 9-010-001"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* 分类 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>产品族群 *</label>
+                                            <select
+                                                value={editFormData.product_family || 'A'}
+                                                onChange={(e) => setEditFormData({ ...editFormData, product_family: e.target.value as any })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                            >
+                                                <option value="A">A - 在售电影机</option>
+                                                <option value="B">B - 历史机型</option>
+                                                <option value="C">C - 电子寻像器</option>
+                                                <option value="D">D - 通用配件</option>
+                                            </select>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>产品类型 *</label>
+                                            <select
+                                                value={editFormData.product_type || 'CAMERA'}
+                                                onChange={(e) => setEditFormData({ ...editFormData, product_type: e.target.value })}
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                            >
+                                                <option value="CAMERA">摄影机</option>
+                                                <option value="VIEWFINDER">寻像器</option>
+                                                <option value="BATTERY">电池</option>
+                                                <option value="CHARGER">充电器</option>
+                                                <option value="CABLE">线缆</option>
+                                                <option value="MOUNT">卡口</option>
+                                                <option value="MONITOR">监视器</option>
+                                                <option value="STORAGE">存储</option>
+                                                <option value="ACCESSORY">配件</option>
+                                                <option value="OTHER">其他</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* 品牌和描述 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>品牌</label>
+                                        <input
+                                            type="text" value={editFormData.brand || 'Kinefinity'}
+                                            onChange={(e) => setEditFormData({ ...editFormData, brand: e.target.value })}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                        />
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>描述说明</label>
+                                        <textarea
+                                            value={editFormData.description || ''}
+                                            onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                                            rows={3}
+                                            style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem', resize: 'none' }}
+                                            placeholder="输入产品描述..."
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 右侧SKU体系 */}
+                            <div style={{ width: 280, padding: 24, overflowY: 'auto', background: 'var(--glass-bg-light)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <h4 style={{ margin: 0, fontSize: 15, color: 'var(--text-main)', fontWeight: 600 }}>SKU体系</h4>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{skus.length} 个SKU</span>
+                                    </div>
+
+                                    {skus.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: 32, background: 'var(--glass-bg)', borderRadius: 12, border: '1px dashed var(--glass-border)' }}>
+                                            <Package size={32} opacity={0.2} style={{ margin: '0 auto 8px' }} />
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>暂无SKU</p>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {skus.map(sku => (
+                                                <div
+                                                    key={sku.id}
+                                                    onClick={() => navigate(`/service/product-skus/${sku.id}`)}
+                                                    style={{
+                                                        padding: 12, background: 'var(--glass-bg)', borderRadius: 10, border: '1px solid var(--glass-border)',
+                                                        display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+                                                        transition: 'all 0.15s'
+                                                    }}
+                                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-blue)'; }}
+                                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+                                                >
+                                                    <div style={{ width: 36, height: 36, borderRadius: 6, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                        {sku.sku_image ? (
+                                                            <img src={sku.sku_image} alt={sku.display_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                        ) : (
+                                                            <Package size={14} opacity={0.3} />
+                                                        )}
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sku.display_name}</div>
+                                                        <div style={{ fontSize: '0.7rem', opacity: 0.6, fontFamily: 'monospace' }}>{sku.sku_code}</div>
+                                                    </div>
+                                                    {!sku.is_active && (
+                                                        <span style={{ fontSize: '0.65rem', color: '#9CA3AF', background: 'rgba(107,114,128,0.1)', padding: '2px 5px', borderRadius: 4 }}>下架</span>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    
+                                    <button
+                                        className="btn-kine-lowkey"
+                                        style={{ padding: '8px 12px', fontSize: '0.8rem', marginTop: 8 }}
+                                        onClick={() => navigate('/admin/product-skus')}
+                                    >
+                                        <Plus size={14} style={{ marginRight: 6 }} /> 管理SKU
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ 
+                            padding: '16px 24px', borderTop: '1px solid var(--glass-border)', 
+                            display: 'flex', justifyContent: 'flex-end', gap: 12, flexShrink: 0 
+                        }}>
+                            <button
+                                onClick={() => setIsEditModalOpen(false)}
+                                style={{
+                                    padding: '10px 20px', borderRadius: 10, fontWeight: 600,
+                                    background: 'transparent', color: 'var(--text-secondary)',
+                                    border: '1px solid var(--glass-border)',
+                                    cursor: 'pointer', fontSize: '0.88rem'
+                                }}
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={handleSaveEdit}
+                                disabled={saving}
+                                style={{
+                                    padding: '10px 24px', borderRadius: 10, fontWeight: 600,
+                                    background: 'var(--accent-blue)', color: '#000',
+                                    border: 'none', cursor: saving ? 'wait' : 'pointer', fontSize: '0.88rem',
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    opacity: saving ? 0.7 : 1
+                                }}
+                            >
+                                <Save size={15} /> {saving ? '保存中...' : '保存'}
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     );
 };

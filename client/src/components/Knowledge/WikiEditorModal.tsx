@@ -435,7 +435,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             width: '100%',
                             maxWidth: '1100px',
                             height: '90vh',
-                            background: 'rgba(28, 28, 30, 0.95)',
+                            background: 'var(--drawer-bg)',
                             borderRadius: '20px',
                             border: '1px solid var(--glass-border)',
                             boxShadow: '0 25px 80px var(--glass-shadow-lg)',
@@ -514,7 +514,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         background: 'var(--glass-bg-light)',
                                         border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
-                                        color: summary ? 'var(--text-main)' : 'rgba(255,255,255,0.5)',
+                                        color: summary ? 'var(--text-main)' : 'var(--text-tertiary)',
                                         fontSize: '13px',
                                         fontWeight: 500,
                                         cursor: 'pointer',
@@ -590,7 +590,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                         }}>
                                             <span>用于列表预览和 SEO 优化</span>
                                             <span style={{
-                                                color: summary.length >= SUMMARY_MAX_LENGTH ? '#ef4444' : 'rgba(255,255,255,0.4)'
+                                                color: summary.length >= SUMMARY_MAX_LENGTH ? '#ef4444' : 'var(--text-tertiary)'
                                             }}>
                                                 {summary.length} / {SUMMARY_MAX_LENGTH}
                                             </span>
@@ -716,7 +716,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     style={{
                                         padding: '8px 16px',
                                         background: 'var(--glass-bg-light)',
-                                        border: '1px solid rgba(255,255,255,0.12)',
+                                        border: '1px solid var(--glass-border)',
                                         borderRadius: '8px',
                                         color: 'var(--text-secondary)',
                                         fontSize: '13px',
@@ -730,11 +730,11 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                                     }}
                                     onMouseEnter={e => {
                                         e.currentTarget.style.background = 'var(--glass-bg-hover)';
-                                        e.currentTarget.style.color = '#fff';
+                                        e.currentTarget.style.color = 'var(--text-main)';
                                     }}
                                     onMouseLeave={e => {
                                         e.currentTarget.style.background = 'var(--glass-bg-light)';
-                                        e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
+                                        e.currentTarget.style.color = 'var(--text-secondary)';
                                     }}
                                 >
                                     <History size={14} />
@@ -769,7 +769,7 @@ const WikiEditorModal: React.FC<WikiEditorModalProps> = ({ isOpen, onClose, arti
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             gap: '12px',
-                            background: 'rgba(0,0,0,0.2)'
+                            background: 'var(--drawer-header-bg)'
                         }}>
                             {/* 左侧: Bokeh 助手按钮 */}
                             <BokehEditorPanel

@@ -373,19 +373,19 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                             {/* 发货日期和运费方式 */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>期望发货日期</label>
+                                    <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>期望发货日期</label>
                                     <div style={{ position: 'relative' }}>
-                                        <Calendar size={16} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: '#888' }} />
+                                        <Calendar size={16} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                         <input
                                             type="date"
                                             value={formData.target_shipping_date}
                                             onChange={e => setFormData(prev => ({ ...prev, target_shipping_date: e.target.value }))}
-                                            style={{ width: '100%', padding: '12px 16px 12px 44px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#fff', fontSize: 14, outline: 'none' }}
+                                            style={{ width: '100%', padding: '12px 16px 12px 44px', background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', borderRadius: 10, color: 'var(--text-main)', fontSize: 14, outline: 'none' }}
                                         />
                                     </div>
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>运费方式</label>
+                                    <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>运费方式</label>
                                     <div style={{ display: 'flex', gap: 8 }}>
                                         {[{ value: 'prepaid', label: '寄付' }, { value: 'collect', label: '到付' }].map(opt => (
                                             <button
@@ -393,9 +393,9 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                                                 onClick={() => setFormData(prev => ({ ...prev, shipping_payment: opt.value as any }))}
                                                 style={{
                                                     flex: 1, padding: '12px 16px', borderRadius: 10,
-                                                    background: formData.shipping_payment === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(0,0,0,0.2)',
-                                                    border: `1px solid ${formData.shipping_payment === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                                                    color: formData.shipping_payment === opt.value ? '#FFD200' : '#888',
+                                                    background: formData.shipping_payment === opt.value ? 'rgba(255,210,0,0.1)' : 'var(--glass-bg-hover)',
+                                                    border: `1px solid ${formData.shipping_payment === opt.value ? 'rgba(255,210,0,0.4)' : 'var(--glass-border)'}`,
+                                                    color: formData.shipping_payment === opt.value ? 'var(--accent-blue)' : 'var(--text-secondary)',
                                                     fontSize: 14, fontWeight: formData.shipping_payment === opt.value ? 600 : 400,
                                                     cursor: 'pointer', transition: 'all 0.2s'
                                                 }}
@@ -409,7 +409,7 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
 
                             {/* 发货时效 */}
                             <div>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#888', marginBottom: 8 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
                                     <Clock size={14} /> 发货时效
                                 </label>
                                 <div style={{ display: 'flex', gap: 8 }}>
@@ -419,9 +419,9 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                                             onClick={() => setFormData(prev => ({ ...prev, shipping_urgency: opt.value as any }))}
                                             style={{
                                                 flex: 1, padding: '10px 12px', borderRadius: 10,
-                                                background: formData.shipping_urgency === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(0,0,0,0.2)',
-                                                border: `1px solid ${formData.shipping_urgency === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                                                color: formData.shipping_urgency === opt.value ? '#FFD200' : '#888',
+                                                background: formData.shipping_urgency === opt.value ? 'rgba(255,210,0,0.1)' : 'var(--glass-bg-hover)',
+                                                border: `1px solid ${formData.shipping_urgency === opt.value ? 'rgba(255,210,0,0.4)' : 'var(--glass-border)'}`,
+                                                color: formData.shipping_urgency === opt.value ? 'var(--accent-blue)' : 'var(--text-secondary)',
                                                 fontSize: 13, fontWeight: formData.shipping_urgency === opt.value ? 600 : 400,
                                                 cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
                                             }}
@@ -435,7 +435,7 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
 
                             {/* 合单指令 */}
                             <div>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#888', marginBottom: 8 }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
                                     <Package size={14} /> 合单指令
                                 </label>
                                 <div style={{ display: 'flex', gap: 8 }}>
@@ -449,9 +449,9 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                                             onClick={() => setFormData(prev => ({ ...prev, shipping_combine: opt.value as any, shipping_combine_ref: opt.value === 'standalone' ? '' : prev.shipping_combine_ref }))}
                                             style={{
                                                 flex: 1, padding: '10px 12px', borderRadius: 10,
-                                                background: formData.shipping_combine === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(0,0,0,0.2)',
-                                                border: `1px solid ${formData.shipping_combine === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                                                color: formData.shipping_combine === opt.value ? '#FFD200' : '#888',
+                                                background: formData.shipping_combine === opt.value ? 'rgba(255,210,0,0.1)' : 'var(--glass-bg-hover)',
+                                                border: `1px solid ${formData.shipping_combine === opt.value ? 'rgba(255,210,0,0.4)' : 'var(--glass-border)'}`,
+                                                color: formData.shipping_combine === opt.value ? 'var(--accent-blue)' : 'var(--text-secondary)',
                                                 fontSize: 13, fontWeight: formData.shipping_combine === opt.value ? 600 : 400,
                                                 cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
                                             }}

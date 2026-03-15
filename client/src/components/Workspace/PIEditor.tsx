@@ -620,23 +620,23 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
                 <div style={{
-                    width: 900, height: '90vh', background: '#1c1c1e', borderRadius: 16,
-                    border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden',
-                    boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
+                    width: 900, height: '90vh', background: 'var(--bg-secondary)', borderRadius: 16,
+                    border: '1px solid var(--glass-border)', overflow: 'hidden',
+                    boxShadow: '0 30px 60px var(--glass-shadow-lg)',
                     display: 'flex', flexDirection: 'column'
                 }}>
                     {/* Header */}
-                    <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
+                    <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--glass-bg)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <FileText size={18} color="#10B981" />
                             </div>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>
+                                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--text-main)' }}>
                                     {isReadOnly ? '查看 PI' : (piId ? '编辑 PI' : '制作PI发票')}
                                 </h3>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
-                                    <span style={{ fontSize: 12, color: '#888' }}>工单 {ticketNumber}</span>
+                                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>工单 {ticketNumber}</span>
                                     {piData.pi_number && (
                                         <span style={{ fontSize: 11, color: '#3B82F6', background: 'rgba(59,130,246,0.15)', padding: '2px 8px', borderRadius: 4 }}>
                                             {piData.pi_number}
@@ -650,7 +650,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                             <button
                                 onClick={() => setActiveTab('edit')}
                                 style={{
-                                    padding: '6px 16px', background: activeTab === 'edit' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                    padding: '6px 16px', background: activeTab === 'edit' ? 'var(--glass-bg-light)' : 'transparent',
                                     border: 'none', color: activeTab === 'edit' ? '#fff' : '#888', borderRadius: 6,
                                     cursor: 'pointer', fontSize: 13
                                 }}
@@ -660,7 +660,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                             <button
                                 onClick={() => setActiveTab('preview')}
                                 style={{
-                                    padding: '6px 16px', background: activeTab === 'preview' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                    padding: '6px 16px', background: activeTab === 'preview' ? 'var(--glass-bg-light)' : 'transparent',
                                     border: 'none', color: activeTab === 'preview' ? '#fff' : '#888', borderRadius: 6,
                                     cursor: 'pointer', fontSize: 13
                                 }}
@@ -670,7 +670,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                             <button
                                 onClick={() => setShowPdfSettings(true)}
                                 title="PDF导出设置"
-                                style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', marginLeft: 4 }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', marginLeft: 4 }}
                             >
                                 <Settings size={18} />
                             </button>
@@ -680,7 +680,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                     {/* Body */}
                     <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
                         {loading ? (
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>
                                 加载中...
                             </div>
                         ) : activeTab === 'edit' ? (
@@ -715,7 +715,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                 >
                                                     <FileInput size={14} /> {importing ? '导入中...' : '从维修报告导入'}
                                                 </button>
-                                                <button onClick={addItem} style={{ padding: '4px 12px', background: '#3B82F6', border: 'none', borderRadius: 4, color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <button onClick={addItem} style={{ padding: '4px 12px', background: '#3B82F6', border: 'none', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                                                     <Plus size={14} /> 添加
                                                 </button>
                                             </>
@@ -732,7 +732,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                         onChange={e => updateItem(item.id, 'description', e.target.value)}
                                                         placeholder="服务/零件描述"
                                                         disabled={!canEdit}
-                                                        style={{ width: '100%', padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                        style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
                                                     />
                                                 </div>
                                                 <input
@@ -741,7 +741,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                     onChange={e => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
                                                     placeholder="数量"
                                                     disabled={!canEdit}
-                                                    style={{ width: 70, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'center' }}
+                                                    style={{ width: 70, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'center' }}
                                                 />
                                                 <input
                                                     type="number"
@@ -749,7 +749,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                     onChange={e => updateItem(item.id, 'unit_price', parseFloat(e.target.value) || 0)}
                                                     placeholder="单价"
                                                     disabled={!canEdit}
-                                                    style={{ width: 100, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13, textAlign: 'right' }}
+                                                    style={{ width: 100, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
                                                 />
                                                 <div style={{ width: 100, padding: 8, textAlign: 'right', color: '#FFD700', fontWeight: 500, fontSize: 13 }}>
                                                     ¥{Number(item.total || 0).toFixed(2)}
@@ -787,7 +787,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                     setPIData(prev => ({ ...prev, tax_rate: rate, tax_amount: taxAmount, total_amount: total }));
                                                 }}
                                                 disabled={!canEdit}
-                                                style={{ width: 50, padding: 4, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 12, textAlign: 'right' }}
+                                                style={{ width: 50, padding: 4, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, textAlign: 'right' }}
                                             />
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa', fontSize: 13 }}>
@@ -805,7 +805,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                     setPIData(prev => ({ ...prev, discount_amount: discount, tax_amount: taxAmount, total_amount: total }));
                                                 }}
                                                 disabled={!canEdit}
-                                                style={{ width: 80, padding: 4, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 12, textAlign: 'right' }}
+                                                style={{ width: 80, padding: 4, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, textAlign: 'right' }}
                                             />
                                         </div>
                                         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -827,7 +827,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                 value={piData.content.terms.valid_days}
                                                 onChange={e => setPIData(prev => ({ ...prev, content: { ...prev.content, terms: { ...prev.content.terms, valid_days: parseInt(e.target.value) || 7 } } }))}
                                                 disabled={!canEdit}
-                                                style={{ width: 80, padding: 8, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: '#fff', fontSize: 13 }}
+                                                style={{ width: 80, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
                                             />
                                         </div>
                                     </div>
@@ -840,7 +840,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                         onChange={e => setPIData(prev => ({ ...prev, content: { ...prev.content, notes: e.target.value } }))}
                                         disabled={!canEdit}
                                         placeholder="添加备注信息..."
-                                        style={{ width: '100%', minHeight: 80, padding: 12, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#fff', fontSize: 13, resize: 'vertical' }}
+                                        style={{ width: '100%', minHeight: 80, padding: 12, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'var(--text-main)', fontSize: 13, resize: 'vertical' }}
                                     />
                                 </Section>
                             </div>
@@ -851,13 +851,13 @@ export const PIEditor: React.FC<PIEditorProps> = ({
 
                     {/* Footer - 统一布局：左侧关闭，右侧操作按钮 */}
                     <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)' }}>
-                        <button onClick={onClose} style={{ padding: '8px 20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', borderRadius: 6 }}>关闭</button>
+                        <button onClick={onClose} style={{ padding: '8px 20px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 6 }}>关闭</button>
                         <div style={{ display: 'flex', gap: 8 }}>
                             {/* 导出PDF按钮 - 仅预览模式下显示 */}
                             {canExport && activeTab === 'preview' && (
                                 <button
                                     onClick={exportPDF}
-                                    style={{ padding: '8px 20px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                    style={{ padding: '8px 20px', background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: 'var(--text-main)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                                 >
                                     <Download size={16} /> 导出 PDF
                                 </button>
@@ -866,7 +866,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                 <button
                                     onClick={saveDraft}
                                     disabled={saving}
-                                    style={{ padding: '8px 20px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 6, color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                    style={{ padding: '8px 20px', background: 'var(--glass-bg-light)', border: 'none', borderRadius: 6, color: 'var(--text-main)', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                                 >
                                     <Save size={16} /> {saving ? '保存中...' : '保存草稿'}
                                 </button>
@@ -1002,12 +1002,12 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ width: 440, background: '#2c2c2e', borderRadius: 12, padding: 24, border: '1px solid rgba(255,255,255,0.1)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#fff' }}>PDF导出设置</h3>
-                            <button onClick={() => setShowPdfSettings(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}><X size={18} /></button>
+                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--text-main)' }}>PDF导出设置</h3>
+                            <button onClick={() => setShowPdfSettings(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={18} /></button>
                         </div>
                         
                         <div style={{ marginBottom: 16 }}>
-                            <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>纸张尺寸</label>
+                            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>纸张尺寸</label>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 {[{ value: 'a4', label: 'A4' }, { value: 'letter', label: 'Letter' }].map(opt => (
                                     <button
@@ -1015,8 +1015,8 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                         onClick={() => setPdfSettings(prev => ({ ...prev, format: opt.value as any }))}
                                         style={{
                                             flex: 1, padding: '10px', borderRadius: 8,
-                                            background: pdfSettings.format === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(255,255,255,0.05)',
-                                            border: `1px solid ${pdfSettings.format === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                            background: pdfSettings.format === opt.value ? 'rgba(255,210,0,0.1)' : 'var(--glass-bg-light)',
+                                            border: `1px solid ${pdfSettings.format === opt.value ? 'rgba(255,210,0,0.4)' : 'var(--glass-bg-light)'}`,
                                             color: pdfSettings.format === opt.value ? '#FFD200' : '#888',
                                             fontSize: 14, fontWeight: pdfSettings.format === opt.value ? 600 : 400,
                                             cursor: 'pointer'
@@ -1029,7 +1029,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                         </div>
 
                         <div style={{ marginBottom: 16 }}>
-                            <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>方向</label>
+                            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>方向</label>
                             <div style={{ display: 'flex', gap: 8 }}>
                                 {[{ value: 'portrait', label: '纵向' }, { value: 'landscape', label: '横向' }].map(opt => (
                                     <button
@@ -1037,8 +1037,8 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                         onClick={() => setPdfSettings(prev => ({ ...prev, orientation: opt.value as any }))}
                                         style={{
                                             flex: 1, padding: '10px', borderRadius: 8,
-                                            background: pdfSettings.orientation === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(255,255,255,0.05)',
-                                            border: `1px solid ${pdfSettings.orientation === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                            background: pdfSettings.orientation === opt.value ? 'rgba(255,210,0,0.1)' : 'var(--glass-bg-light)',
+                                            border: `1px solid ${pdfSettings.orientation === opt.value ? 'rgba(255,210,0,0.4)' : 'var(--glass-bg-light)'}`,
                                             color: pdfSettings.orientation === opt.value ? '#FFD200' : '#888',
                                             fontSize: 14, fontWeight: pdfSettings.orientation === opt.value ? 600 : 400,
                                             cursor: 'pointer'
@@ -1051,7 +1051,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                         </div>
 
                         <div style={{ marginBottom: 16 }}>
-                            <label style={{ display: 'block', fontSize: 13, color: '#888', marginBottom: 8 }}>语言</label>
+                            <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>语言</label>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                 {[{ value: 'original', label: '原文' }, { value: 'zh-CN', label: '中文' }, { value: 'en-US', label: 'English' }, { value: 'ja-JP', label: '日本語' }].map(opt => (
                                     <button
@@ -1059,8 +1059,8 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                         onClick={() => setPdfSettings(prev => ({ ...prev, language: opt.value as any }))}
                                         style={{
                                             padding: '8px 16px', borderRadius: 6,
-                                            background: pdfSettings.language === opt.value ? 'rgba(255,210,0,0.1)' : 'rgba(255,255,255,0.05)',
-                                            border: `1px solid ${pdfSettings.language === opt.value ? 'rgba(255,210,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                            background: pdfSettings.language === opt.value ? 'rgba(255,210,0,0.1)' : 'var(--glass-bg-light)',
+                                            border: `1px solid ${pdfSettings.language === opt.value ? 'rgba(255,210,0,0.4)' : 'var(--glass-bg-light)'}`,
                                             color: pdfSettings.language === opt.value ? '#FFD200' : '#888',
                                             fontSize: 13, cursor: 'pointer'
                                         }}
@@ -1073,11 +1073,11 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                         </div>
 
                         <div style={{ marginBottom: 16, display: 'flex', gap: 16 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#888', cursor: 'pointer' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
                                 <input type="checkbox" checked={pdfSettings.showHeader} onChange={e => setPdfSettings(prev => ({ ...prev, showHeader: e.target.checked }))} />
                                 显示页眉
                             </label>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#888', cursor: 'pointer' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
                                 <input type="checkbox" checked={pdfSettings.showFooter} onChange={e => setPdfSettings(prev => ({ ...prev, showFooter: e.target.checked }))} />
                                 显示页脚
                             </label>
@@ -1103,7 +1103,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
 const Section: React.FC<{ title: string; children: React.ReactNode; action?: React.ReactNode }> = ({ title, children, action }) => (
     <div style={{ background: 'rgba(255,255,255,0.02)', padding: 20, borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#fff' }}>{title}</h4>
+            <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-main)' }}>{title}</h4>
             {action}
         </div>
         {children}
@@ -1112,20 +1112,20 @@ const Section: React.FC<{ title: string; children: React.ReactNode; action?: Rea
 
 const Input: React.FC<{ label: string; value: string; onChange: (v: string) => void; disabled?: boolean }> = ({ label, value, onChange, disabled }) => (
     <div>
-        <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>{label}</label>
+        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</label>
         <input
             type="text"
             value={value}
             onChange={e => onChange(e.target.value)}
             disabled={disabled}
-            style={{ width: '100%', padding: 10, background: disabled ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13, outline: 'none' }}
+            style={{ width: '100%', padding: 10, background: disabled ? 'var(--glass-bg-light)' : 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: 'var(--text-main)', fontSize: 13, outline: 'none' }}
         />
     </div>
 );
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     const configs: Record<string, { text: string; color: string; bg: string }> = {
-        'draft': { text: '草稿', color: '#888', bg: 'rgba(255,255,255,0.1)' },
+        'draft': { text: '草稿', color: 'var(--text-secondary)', bg: 'var(--glass-bg-light)' },
         'pending_review': { text: '审核中', color: '#FFD200', bg: 'rgba(245,158,11,0.15)' },
         'approved': { text: '已发布', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
         'rejected': { text: '已驳回', color: '#EF4444', bg: 'rgba(239,68,68,0.15)' },

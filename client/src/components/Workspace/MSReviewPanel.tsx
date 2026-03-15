@@ -264,6 +264,11 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                     : (customerConfirmed ? '客户确认维修费用，流向维修执行' : '完成商务审核，等待客户确认')
             };
             
+            // 更正模式下添加 is_modal_edit 标记以记录 field_update 活动
+            if (isCorrectMode) {
+                patchData.is_modal_edit = true;
+            }
+            
             // 只有在非更正模式时才修改 current_node
             if (!isCorrectMode) {
                 patchData.current_node = customerConfirmed ? 'op_repairing' : 'ms_review';

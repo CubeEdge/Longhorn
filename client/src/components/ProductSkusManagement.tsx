@@ -5,11 +5,11 @@ import { useAuthStore } from '../store/useAuthStore';
 import {
     Plus, Package, Search,
     Edit2, X, ArrowLeft,
-    Image as ImageIcon
+    Image as ImageIcon, Save
 } from 'lucide-react';
 import { useLanguage } from '../i18n/useLanguage';
 
-const TOP_BAR_HEIGHT = 64;
+const MODAL_Z_INDEX = 9999;
 
 interface ProductModel {
     id: number;
@@ -47,8 +47,8 @@ const ProductSkusManagement: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterModelId, setFilterModelId] = useState<string>(initialModelId || 'ALL');
 
-    // Drawer State
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSku, setEditingSku] = useState<ProductSku | null>(null);
     const [saving, setSaving] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -97,7 +97,7 @@ const ProductSkusManagement: React.FC = () => {
         if (token) fetchData();
     }, [token, filterModelId, searchQuery]);
 
-    const handleOpenDrawer = (sku?: ProductSku) => {
+    const handleOpenModal = (sku?: ProductSku) => {
         if (sku) {
             setEditingSku(sku);
             setFormData({
@@ -123,16 +123,16 @@ const ProductSkusManagement: React.FC = () => {
                 is_active: true
             });
         }
-        setIsDrawerOpen(true);
+        setIsModalOpen(true);
     };
 
-    const handleCloseDrawer = () => {
-        setIsDrawerOpen(false);
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
         setEditingSku(null);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async (e?: React.FormEvent) => {
+        e?.preventDefault();
         if (!formData.model_id || !formData.sku_code || !formData.display_name) {
             alert('请完整填写必填项');
             return;
@@ -148,7 +148,7 @@ const ProductSkusManagement: React.FC = () => {
                     headers: { Authorization: `Bearer ${token}` }
                 });
             }
-            handleCloseDrawer();
+            handleCloseModal();
             fetchData();
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
@@ -242,7 +242,7 @@ const ProductSkusManagement: React.FC = () => {
                         ))}
                     </select>
                     {canManage && (
-                        <button className="btn-kine-lowkey" onClick={() => handleOpenDrawer()}>
+                        <button className="btn-kine-lowkey" onClick={() => handleOpenModal()}>
                             <Plus size={18} /> {_t('product.add_sku')}
                         </button>
                     )}
@@ -316,7 +316,7 @@ const ProductSkusManagement: React.FC = () => {
                                     </td>
                                     <td style={{ padding: 16, textAlign: 'center' }}>
                                         <button
-                                            onClick={() => handleOpenDrawer(sku)}
+                                            onClick={(e) => { e.stopPropagation(); handleOpenModal(sku); }}
                                             style={{ background: 'transparent', border: 'none', color: 'var(--accent-blue)', cursor: 'pointer' }}
                                         >
                                             <Edit2 size={16} />
@@ -329,104 +329,238 @@ const ProductSkusManagement: React.FC = () => {
                 </table>
             </div>
 
-            {/* Drawer */}
-            {isDrawerOpen && (
+            {/* Add/Edit Modal */}
+            {isModalOpen && (
                 <>
-                    <div onClick={handleCloseDrawer} style={{ position: 'fixed', top: TOP_BAR_HEIGHT, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000 }} />
+                    {/* Backdrop */}
+                    <div
+                        onClick={handleCloseModal}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'var(--modal-overlay)', backdropFilter: 'blur(4px)',
+                            zIndex: MODAL_Z_INDEX
+                        }}
+                    />
+                    {/* Modal Container */}
                     <div style={{
-                        position: 'fixed', top: TOP_BAR_HEIGHT, right: 0, bottom: 0, width: 400,
-                        background: '#0a0a0a', borderLeft: '1px solid var(--glass-border)',
-                        zIndex: 1001, display: 'flex', flexDirection: 'column'
+                        position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                        width: 800, maxHeight: '85vh', background: 'var(--modal-bg)', borderRadius: 16,
+                        boxShadow: 'var(--glass-shadow-lg)', border: '1px solid var(--glass-border)',
+                        display: 'flex', flexDirection: 'column', zIndex: MODAL_Z_INDEX + 1,
+                        overflow: 'hidden'
                     }}>
-                        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 700 }}>{editingSku ? `${_t('action.edit')} SKU` : _t('product.add_sku')}</span>
-                            <button onClick={handleCloseDrawer} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={20} /></button>
-                        </div>
-
-                        <div className="custom-scroll" style={{ flex: 1, overflowY: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('parts.model')} *</label>
-                                <select
-                                    value={formData.model_id}
-                                    onChange={e => setFormData({ ...formData, model_id: parseInt(e.target.value) })}
-                                    style={{ padding: '10px', borderRadius: 8, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}
-                                >
-                                    {models.map(m => (
-                                        <option key={m.id} value={m.id}>{m.name_zh}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('product.sku_id')} *</label>
-                                    <input
-                                        type="text" value={formData.sku_code}
-                                        onChange={e => setFormData({ ...formData, sku_code: e.target.value.toUpperCase() })}
-                                        style={{ padding: '10px', borderRadius: 8, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}
-                                        placeholder="例: A010-001-01"
-                                    />
+                        {/* Modal Header */}
+                        <div style={{
+                            padding: '20px 24px', borderBottom: '1px solid var(--glass-border)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            flexShrink: 0
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                <div style={{
+                                    width: 44, height: 44, borderRadius: 12,
+                                    background: editingSku ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    {editingSku ? <Edit2 size={22} color="#3B82F6" /> : <Plus size={22} color="#10B981" />}
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('product.material_id')}</label>
-                                    <input
-                                        type="text" value={formData.material_id}
-                                        onChange={e => setFormData({ ...formData, material_id: e.target.value })}
-                                        style={{ padding: '10px', borderRadius: 8, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}
-                                        placeholder="例: 9-010-001-01"
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('common.name')} *</label>
-                                <input
-                                    type="text" value={formData.display_name}
-                                    onChange={e => setFormData({ ...formData, display_name: e.target.value })}
-                                    style={{ padding: '10px', borderRadius: 8, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('product.sku_image')}</label>
-                                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                                    <div
-                                        onClick={() => fileInputRef.current?.click()}
-                                        style={{ width: 80, height: 80, borderRadius: 8, border: '1px dashed var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', overflow: 'hidden' }}
-                                    >
-                                        {formData.sku_image ? <img src={formData.sku_image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Plus size={20} opacity={0.3} />}
+                                <div>
+                                    <div style={{ fontWeight: 600, fontSize: 18, color: 'var(--text-main)' }}>
+                                        {editingSku ? '编辑SKU' : '添加SKU'}
                                     </div>
-                                    <input type="file" ref={fileInputRef} hidden onChange={handleUploadImage} />
-                                    <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>{_t('product.image_hint')}</span>
+                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3 }}>
+                                        {editingSku ? formData.display_name || '修改商品规格' : '创建新的商品规格'}
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={handleCloseModal} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                <X size={22} />
+                            </button>
+                        </div>
+
+                        {/* Modal Body - 左右分栏布局 */}
+                        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                            {/* 左侧：基本信息表单 */}
+                            <div className="custom-scroll" style={{ flex: 1, padding: 24, overflowY: 'auto', borderRight: '1px solid var(--glass-border)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                    {/* 所属型号 - 关键关联 */}
+                                    <div style={{ 
+                                        padding: 20, background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)'
+                                    }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 12, display: 'block' }}>
+                                            所属产品型号 * <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>(SKU必须关联到一个产品型号)</span>
+                                        </label>
+                                        <select
+                                            value={formData.model_id}
+                                            onChange={e => setFormData({ ...formData, model_id: parseInt(e.target.value) })}
+                                            style={{ 
+                                                width: '100%', padding: '12px', borderRadius: 8, 
+                                                background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', 
+                                                color: 'var(--text-main)', fontSize: '0.95rem'
+                                            }}
+                                        >
+                                            {models.map(m => (
+                                                <option key={m.id} value={m.id}>{m.name_zh}</option>
+                                            ))}
+                                        </select>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', marginTop: 8 }}>
+                                            产品型号定义了SKU的基础硬件特征。修改型号将影响所有关联此SKU的设备台账。
+                                        </p>
+                                    </div>
+
+                                    {/* SKU代码和物料号 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                                {_t('product.sku_id')} *
+                                            </label>
+                                            <input
+                                                type="text" value={formData.sku_code}
+                                                onChange={e => setFormData({ ...formData, sku_code: e.target.value.toUpperCase() })}
+                                                style={{ 
+                                                    padding: '10px 12px', borderRadius: 8, 
+                                                    background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', 
+                                                    color: 'var(--text-main)', fontSize: '0.9rem' 
+                                                }}
+                                                placeholder="例: A010-001-01"
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                                {_t('product.material_id')}
+                                            </label>
+                                            <input
+                                                type="text" value={formData.material_id}
+                                                onChange={e => setFormData({ ...formData, material_id: e.target.value })}
+                                                style={{ 
+                                                    padding: '10px 12px', borderRadius: 8, 
+                                                    background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', 
+                                                    color: 'var(--text-main)', fontSize: '0.9rem' 
+                                                }}
+                                                placeholder="例: 9-010-001-01"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* 显示名称 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            {_t('common.name')} *
+                                        </label>
+                                        <input
+                                            type="text" value={formData.display_name}
+                                            onChange={e => setFormData({ ...formData, display_name: e.target.value })}
+                                            style={{ 
+                                                padding: '10px 12px', borderRadius: 8, 
+                                                background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', 
+                                                color: 'var(--text-main)', fontSize: '0.9rem' 
+                                            }}
+                                            placeholder="例如: MAVO Edge 8K 标准套装"
+                                        />
+                                    </div>
+
+                                    {/* 规格标签 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                            规格标签
+                                        </label>
+                                        <input
+                                            type="text" value={formData.spec_label}
+                                            onChange={e => setFormData({ ...formData, spec_label: e.target.value })}
+                                            placeholder="例: RF Mount, Professional Kit"
+                                            style={{ 
+                                                padding: '10px 12px', borderRadius: 8, 
+                                                background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', 
+                                                color: 'var(--text-main)', fontSize: '0.9rem' 
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>规格标签</label>
-                                <input
-                                    type="text" value={formData.spec_label}
-                                    onChange={e => setFormData({ ...formData, spec_label: e.target.value })}
-                                    placeholder="例: RF Mount, Professional Kit"
-                                    style={{ padding: '10px', borderRadius: 8, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-main)' }}
-                                />
-                            </div>
+                            {/* 右侧：图片和状态 */}
+                            <div style={{ width: 280, padding: 24, overflowY: 'auto', background: 'var(--glass-bg-light)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                    <h4 style={{ margin: 0, fontSize: 15, color: 'var(--text-main)', fontWeight: 600 }}>SKU图片</h4>
+                                    
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <div
+                                            onClick={() => fileInputRef.current?.click()}
+                                            style={{ 
+                                                width: '100%', aspectRatio: '1/1', borderRadius: 12, 
+                                                border: '2px dashed var(--glass-border)', 
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                                cursor: 'pointer', overflow: 'hidden', background: 'var(--glass-bg)'
+                                            }}
+                                        >
+                                            {formData.sku_image ? (
+                                                <img src={formData.sku_image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <Plus size={32} opacity={0.3} />
+                                            )}
+                                        </div>
+                                        <input type="file" ref={fileInputRef} hidden onChange={handleUploadImage} />
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                                            {_t('product.image_hint')}
+                                        </p>
+                                        {formData.sku_image && (
+                                            <button 
+                                                onClick={() => setFormData({ ...formData, sku_image: '' })}
+                                                style={{ fontSize: '0.75rem', color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer' }}
+                                            >
+                                                移除图片
+                                            </button>
+                                        )}
+                                    </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <input
-                                    type="checkbox" id="sku_active" checked={formData.is_active}
-                                    onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
-                                />
-                                <label htmlFor="sku_active">{_t('product.on_sale')}</label>
+                                    <div style={{ 
+                                        padding: 16, background: 'var(--glass-bg)', borderRadius: 12, border: '1px solid var(--glass-border)'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <input
+                                                type="checkbox" id="sku_active_modal" checked={formData.is_active}
+                                                onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
+                                                style={{ width: 18, height: 18, accentColor: '#10B981' }}
+                                            />
+                                            <label htmlFor="sku_active_modal" style={{ fontSize: '0.9rem', color: 'var(--text-main)', cursor: 'pointer' }}>
+                                                {_t('product.on_sale')}
+                                            </label>
+                                        </div>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 8, marginLeft: 30 }}>
+                                            下架后该SKU将不在新建工单时显示
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div style={{ padding: 24, borderTop: '1px solid var(--glass-border)' }}>
+                        {/* Modal Footer */}
+                        <div style={{ 
+                            padding: '16px 24px', borderTop: '1px solid var(--glass-border)', 
+                            display: 'flex', justifyContent: 'flex-end', gap: 12, flexShrink: 0 
+                        }}>
+                            <button
+                                onClick={handleCloseModal}
+                                style={{
+                                    padding: '10px 20px', borderRadius: 10, fontWeight: 600,
+                                    background: 'transparent', color: 'var(--text-secondary)',
+                                    border: '1px solid var(--glass-border)',
+                                    cursor: 'pointer', fontSize: '0.88rem'
+                                }}
+                            >
+                                取消
+                            </button>
                             <button
                                 onClick={handleSubmit}
                                 disabled={saving}
-                                style={{ width: '100%', padding: 12, borderRadius: 10, background: 'var(--accent-blue)', color: '#000', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                                style={{
+                                    padding: '10px 24px', borderRadius: 10, fontWeight: 600,
+                                    background: 'var(--accent-blue)', color: '#000',
+                                    border: 'none', cursor: saving ? 'wait' : 'pointer', fontSize: '0.88rem',
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    opacity: saving ? 0.7 : 1
+                                }}
                             >
-                                {saving ? _t('product.saving') : (editingSku ? _t('action.save') : _t('action.confirm'))}
+                                {saving ? _t('product.saving') : (editingSku ? <><Save size={15} /> {_t('action.save')}</> : <><Plus size={15} /> {_t('action.create')}</>)}
                             </button>
                         </div>
                     </div>

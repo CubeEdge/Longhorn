@@ -842,7 +842,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 background: importMode === mode
                                                     ? 'rgba(255,215,0,0.12)'
                                                     : 'transparent',
-                                                border: `1px solid ${importMode === mode ? 'rgba(255,215,0,0.4)' : 'transparent'}`,
+                                                border: `1px solid ${importMode === mode ? 'var(--accent-gold-muted)' : 'transparent'}`,
                                                 borderRadius: '8px',
                                                 color: importMode === mode  ? 'var(--text-main)' : 'var(--text-secondary)',
                                                 cursor: 'pointer',
@@ -1014,10 +1014,8 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             style={{
                                                 flex: 1,
                                                 padding: '10px 12px',
-                                                background: bokehOptimize
-                                                    ? 'linear-gradient(#262626, #262626) padding-box, linear-gradient(90deg, #00BFA5 0%, #8E24AA 100%) border-box'
-                                                    : 'rgba(255,255,255,0.02)',
-                                                border: `1px solid ${bokehOptimize ? 'transparent' : 'var(--glass-bg-hover)'}`,
+                                                background: bokehOptimize ? 'var(--accent-gold-subtle)' : 'var(--glass-bg-light)',
+                                                border: `1px solid ${bokehOptimize ? 'var(--accent-gold-muted)' : 'var(--glass-bg-hover)'}`,
                                                 borderRadius: '8px',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s',
@@ -1043,8 +1041,8 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             style={{
                                                 flex: 1,
                                                 padding: '10px 12px',
-                                                background: !bokehOptimize ? 'rgba(255,215,0,0.12)' : 'rgba(255,255,255,0.02)',
-                                                border: `1px solid ${!bokehOptimize ? 'rgba(255,215,0,0.4)' : 'var(--glass-bg-hover)'}`,
+                                                background: !bokehOptimize ? 'var(--accent-gold-subtle)' : 'var(--glass-bg-light)',
+                                                border: `1px solid ${!bokehOptimize ? 'var(--accent-gold-muted)' : 'var(--glass-bg-hover)'}`,
                                                 borderRadius: '8px',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s',
@@ -1389,8 +1387,8 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 padding: '16px',
                                                 background: step.status === 'processing'
                                                     ? 'var(--glass-bg-light)'
-                                                    : step.status === 'completed' ? 'rgba(255,255,255,0.02)' :
-                                                        step.status === 'failed' ? 'rgba(255,68,68,0.1)' : 'rgba(255,255,255,0.02)',
+                                                    : step.status === 'completed' ? 'var(--glass-bg-light)' :
+                                                        step.status === 'failed' ? 'rgba(255,68,68,0.1)' : 'var(--glass-bg-light)',
                                                 border: `1px solid ${step.status === 'processing'
                                                     ? 'var(--glass-bg-hover)' :
                                                     step.status === 'completed' ? 'var(--glass-bg-light)' :

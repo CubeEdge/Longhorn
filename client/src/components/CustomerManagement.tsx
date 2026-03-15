@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLanguage } from '../i18n/useLanguage';
 import { Search, Plus, MapPin, Edit2, Users, ChevronUp, ChevronDown, MoreHorizontal, RotateCcw, Trash2 } from 'lucide-react';
-import CustomerFormModal from './CustomerFormModal';
+import UnifiedCustomerModal from './Service/UnifiedCustomerModal';
 import PermanentDeleteModal from './PermanentDeleteModal';
 
 
@@ -35,7 +35,7 @@ const STORAGE_KEY = 'longhorn_customer_management_tab';
 type CustomerType = 'ORGANIZATION' | 'INDIVIDUAL';
 
 const CustomerManagement: React.FC = () => {
-    const { token, user } = useAuthStore();
+    const { token } = useAuthStore();
     const { t } = useLanguage();
     const navigate = useNavigate();
 
@@ -88,7 +88,6 @@ const CustomerManagement: React.FC = () => {
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-    const [saving, setSaving] = useState(false);
 
     // More dropdown state
     const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
@@ -208,117 +207,6 @@ const CustomerManagement: React.FC = () => {
             });
         }
         setIsModalOpen(true);
-    };
-
-    const handleSubmit = async (e: React.FormEvent, formData: any) => {
-        e.preventDefault();
-        setSaving(true);
-        try {
-            // Prepare data for accounts API
-            const accountData = {
-                name: formData.name,
-                account_type: formData.account_type,
-                dealer_level: formData.account_type === 'DEALER' ? formData.dealer_level : undefined,
-                can_repair: formData.account_type === 'DEALER' ? !!formData.repair_level : undefined,
-                repair_level: formData.account_type === 'DEALER' ? formData.repair_level : undefined,
-                service_tier: formData.service_tier || 'STANDARD',
-                address: formData.address,
-                country: formData.country,
-                city: formData.city,
-                notes: formData.notes,
-                primary_contact: formData.contacts.find((c: any) => c.is_primary) || formData.contacts[0]
-            };
-
-            if (editingCustomer) {
-                // Use account_id if available, otherwise fall back to id
-                const accountId = editingCustomer.account_id || editingCustomer.id;
-
-                // 1. Update account basic info
-                await axios.patch(`/api/v1/accounts/${accountId}`, accountData, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                // 2. Sync contacts - Differential Sync
-                const existingContactsRes = await axios.get(`/api/v1/accounts/${accountId}/contacts`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                const existingContacts = existingContactsRes.data.data || [];
-
-                const submittedContacts = formData.contacts;
-                const submittedIds = submittedContacts.map((c: any) => c.id).filter(Boolean);
-
-                const contactsToDelete = existingContacts.filter((ec: any) => !submittedIds.includes(ec.id));
-                const contactsToUpdate = submittedContacts.filter((sc: any) => sc.id);
-                const contactsToCreate = submittedContacts.filter((sc: any) => !sc.id);
-
-                // Sequential deletions
-                for (const contact of contactsToDelete) {
-                    try {
-                        await axios.delete(`/api/v1/contacts/${contact.id}`, { headers: { Authorization: `Bearer ${token}` } });
-                    } catch (err) { console.error('Failed to delete contact', err); }
-                }
-
-                // Sequential updates
-                for (const contact of contactsToUpdate) {
-                    try {
-                        await axios.patch(`/api/v1/contacts/${contact.id}`, {
-                            name: contact.name,
-                            email: contact.email,
-                            phone: contact.phone,
-                            job_title: contact.job_title,
-                            is_primary: contact.is_primary
-                        }, { headers: { Authorization: `Bearer ${token}` } });
-                    } catch (err) { console.error('Failed to update contact', err); }
-                }
-
-                // Sequential creations
-                for (const contact of contactsToCreate) {
-                    try {
-                        await axios.post(`/api/v1/accounts/${accountId}/contacts`, {
-                            name: contact.name,
-                            email: contact.email,
-                            phone: contact.phone,
-                            job_title: contact.job_title,
-                            is_primary: contact.is_primary
-                        }, { headers: { Authorization: `Bearer ${token}` } });
-                    } catch (err) { console.error('Failed to create contact', err); }
-                }
-            } else {
-                // 新增账户
-                const createRes = await axios.post('/api/v1/accounts', accountData, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-
-                // 如果有额外的联系人（除了主联系人），也需要创建
-                if (createRes.data.success && formData.contacts.length > 1) {
-                    const newAccountId = createRes.data.data.id;
-                    // 跳过第一个联系人（已通过 primary_contact 创建），创建其余联系人
-                    const additionalContacts = formData.contacts.slice(1);
-                    for (const contact of additionalContacts) {
-                        try {
-                            await axios.post(`/api/v1/accounts/${newAccountId}/contacts`, {
-                                name: contact.name,
-                                email: contact.email,
-                                phone: contact.phone,
-                                job_title: contact.job_title,
-                                is_primary: contact.is_primary
-                            }, {
-                                headers: { Authorization: `Bearer ${token}` }
-                            });
-                        } catch (err) {
-                            console.error('Failed to create additional contact', err);
-                        }
-                    }
-                }
-            }
-            setIsModalOpen(false);
-            fetchCustomers();
-        } catch (err) {
-            console.error('Failed to save customer', err);
-            alert('Operation failed');
-        } finally {
-            setSaving(false);
-        }
     };
 
     // 恢复账户（从已删除/已停用状态恢复）
@@ -800,15 +688,17 @@ const CustomerManagement: React.FC = () => {
 
             {/* Modal */}
             {isModalOpen && (
-                <CustomerFormModal
+                <UnifiedCustomerModal
                     isOpen={isModalOpen}
-                    onClose={() => !saving && setIsModalOpen(false)}
-                    onSubmit={handleSubmit}
-                    initialData={editingCustomer}
+                    onClose={() => setIsModalOpen(false)}
+                    onSuccess={() => {
+                        setIsModalOpen(false);
+                        fetchCustomers();
+                    }}
+                    editData={editingCustomer}
                     isEditing={!!editingCustomer}
-                    _user={user}
-                    mode={activeTab === 'ORGANIZATION' ? 'organization' : 'individual'}
-                    saving={saving}
+                    defaultMode={activeTab === 'ORGANIZATION' ? 'organization' : 'individual'}
+                    defaultLifecycleStage="ACTIVE"
                 />
             )}
 

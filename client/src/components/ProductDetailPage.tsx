@@ -4,7 +4,6 @@ import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { ArrowLeft, Edit2, MoreHorizontal, User, Shield, Calculator, CheckCircle, AlertTriangle, Trash2, History, Package, Wifi, ShoppingCart, ChevronDown, ChevronUp, Power, AlertCircle, X } from 'lucide-react';
 import ProductModal from './Workspace/ProductModal';
-import ProductSummaryCard from './Workspace/ProductSummaryCard';
 import ProductWarrantyRegistrationModal from './Service/ProductWarrantyRegistrationModal';
 
 interface ProductDetail {
@@ -254,44 +253,64 @@ const ProductDetailPage: React.FC = () => {
 
     return (
         <div style={{ padding: '24px 32px', maxWidth: 1200, margin: '0 auto' }}>
-            {/* Action Buttons Top Bar */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                <button
-                    onClick={() => navigate('/service/products')}
-                    style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 8,
-                        background: 'var(--glass-bg)',
-                        border: '1px solid var(--glass-border)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: 'var(--text-secondary)'
-                    }}
-                >
-                    <ArrowLeft size={20} />
-                </button>
-
-                <div style={{ position: 'relative' }}>
-                    <button
-                        onClick={() => setShowMoreMenu(!showMoreMenu)}
-                        style={{
-                            background: 'var(--glass-bg-hover)',
-                            border: '1px solid var(--glass-border)',
-                            borderRadius: '50%',
-                            width: 36,
-                            height: 36,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            color: 'var(--text-secondary)'
-                        }}
-                    >
-                        <MoreHorizontal size={20} />
+            {/* Header Sticky Bar - 参考SKU详情页表头设计 */}
+            <div style={{
+                padding: '16px 0',
+                borderBottom: '1px solid var(--glass-border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 24
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <button onClick={() => navigate('/service/products')} style={{
+                        width: 36, height: 36, borderRadius: '50%', background: 'var(--glass-bg-hover)',
+                        border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', cursor: 'pointer'
+                    }}>
+                        <ArrowLeft size={18} />
                     </button>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{product.model_display_name || product.model_name}</h2>
+                            <span style={{
+                                fontSize: '0.75rem', padding: '2px 8px', borderRadius: 12,
+                                background: product.warranty_status === 'ACTIVE' ? 'rgba(16,185,129,0.1)' : 
+                                           product.warranty_status === 'EXPIRED' ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
+                                color: product.warranty_status === 'ACTIVE' ? '#10B981' : 
+                                       product.warranty_status === 'EXPIRED' ? '#EF4444' : '#F59E0B',
+                                border: `1px solid ${product.warranty_status === 'ACTIVE' ? 'rgba(16,185,129,0.2)' : 
+                                         product.warranty_status === 'EXPIRED' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`
+                            }}>
+                                {product.warranty_status === 'ACTIVE' ? '保内' : 
+                                 product.warranty_status === 'EXPIRED' ? '过保' : '待确认'}
+                            </span>
+                        </div>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            {product.serial_number} | {product.product_family}族群 | {product.sku_name || product.product_sku}
+                        </p>
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setShowMoreMenu(!showMoreMenu)}
+                            style={{
+                                background: 'var(--glass-bg-hover)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '50%',
+                                width: 36,
+                                height: 36,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                color: 'var(--text-secondary)'
+                            }}
+                        >
+                            <MoreHorizontal size={20} />
+                        </button>
 
                     {showMoreMenu && (
                         <>
@@ -419,19 +438,8 @@ const ProductDetailPage: React.FC = () => {
                         </>
                     )}
                 </div>
+                </div>
             </div>
-
-            <ProductSummaryCard
-                product={{
-                    model_name: product.model_name,
-                    serial_number: product.serial_number,
-                    product_family: product.product_family,
-                    warranty_status: product.warranty_status,
-                    is_iot_device: product.is_iot_device
-                }}
-                isWarrantyValid={isWarrantyValid}
-                hideBadges={true}
-            />
 
             {/* Content Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>

@@ -38,6 +38,12 @@ interface RMATicket {
     // Customer Info (backward compatible)
     customer_name: string;
     customer_contact?: string;
+    reporter_snapshot?: {
+        name?: string;
+        email?: string;
+        phone?: string;
+        company?: string;
+    };
     product: { id: number; name: string } | null;
     serial_number: string;
     problem_description: string;
@@ -433,8 +439,19 @@ const RMATicketListPage: React.FC = () => {
                                 </>
                             );
                         } else {
-                            // RMA-C: 客户名称 + 客户联系人（保持不变）
-                            const displayName = ticket.contact?.name || ticket.customer_contact || ticket.account?.name || ticket.customer_name || ticket.reporter_name || '匿名';
+                            // RMA-C: 客户名称 + 客户联系人（支持 reporter_snapshot）
+                            // 优先级: account > contact > reporter_snapshot > legacy fields > 匿名
+                            const displayName = ticket.account?.name
+                                || ticket.contact?.name
+                                || ticket.customer_name
+                                || ticket.customer_contact
+                                || ticket.reporter_snapshot?.name
+                                || ticket.reporter_name
+                                || '匿名';
+
+                            // 判断是否为访客（无 account_id 但有 snapshot）
+                            const isVisitor = !ticket.account_id && ticket.reporter_snapshot?.name;
+
                             let contactPart = '';
 
                             if (ticket.contact?.name && ticket.contact.name !== displayName) {
@@ -446,6 +463,20 @@ const RMATicketListPage: React.FC = () => {
                             return (
                                 <>
                                     <span style={{ fontWeight: 500 }}>{displayName}</span>
+                                    {isVisitor && (
+                                        <span style={{
+                                            marginLeft: '6px',
+                                            padding: '1px 6px',
+                                            borderRadius: '4px',
+                                            fontSize: '0.65rem',
+                                            fontWeight: 500,
+                                            background: 'rgba(var(--accent-rgb), 0.15)',
+                                            color: 'var(--accent-blue)',
+                                            border: '1px solid rgba(var(--accent-rgb), 0.3)'
+                                        }}>
+                                            访客
+                                        </span>
+                                    )}
                                     {contactPart && (
                                         <>
                                             <span>·</span>
