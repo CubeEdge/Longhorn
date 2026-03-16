@@ -4886,7 +4886,7 @@ ${contextTickets.map((ticket: any) => {
                                         <button
                                             onClick={() => setShowManualTocModal(false)}
                                             style={{
-                                                background: 'var(--glass-bg-hover)',
+                                                background: 'var(--glass-bg-light)',
                                                 border: 'none',
                                                 borderRadius: '50%',
                                                 width: '40px',
@@ -4901,10 +4901,10 @@ ${contextTickets.map((ticket: any) => {
                                                 e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                             }}
                                             onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                e.currentTarget.style.background = 'var(--glass-bg-light)';
                                             }}
                                         >
-                                            <X size={22} color="#fff" />
+                                            <X size={22} color="var(--text-secondary)" />
                                         </button>
                                     </div>
 
@@ -5052,7 +5052,7 @@ ${contextTickets.map((ticket: any) => {
                                                             >
                                                                 <ChevronRight
                                                                     size={18}
-                                                                    color="#FFD700"
+                                                                    color="var(--text-secondary)"
                                                                     style={{
                                                                         transform: (isCurrentChapter && !expandedModalChapters.has('collapsed-' + chapterKey)) || expandedModalChapters.has(chapterKey) ? 'rotate(90deg)' : 'rotate(0deg)',
                                                                         transition: 'transform 0.2s ease',

@@ -24,6 +24,12 @@ interface PIItem {
     total: number;
 }
 
+interface PIOtherFee {
+    id: string;
+    description: string;
+    amount: number;
+}
+
 interface PIContent {
     header: {
         title: string;
@@ -41,6 +47,7 @@ interface PIContent {
         firmware_version: string;
     };
     items: PIItem[];
+    other_fees: PIOtherFee[];
     terms: {
         payment_terms: string;
         delivery_terms: string;
@@ -86,6 +93,7 @@ const DEFAULT_CONTENT: PIContent = {
         firmware_version: ''
     },
     items: [],
+    other_fees: [],
     terms: {
         payment_terms: '100% Prepayment',
         delivery_terms: 'Express Shipping',
@@ -112,6 +120,9 @@ export const PIEditor: React.FC<PIEditorProps> = ({
     }>({ type: null, isOpen: false });
     // 待导入的项目（用于确认后处理）
     const [pendingImportItems, setPendingImportItems] = useState<PIItem[]>([]);
+    const [pendingImportOtherFees, setPendingImportOtherFees] = useState<PIOtherFee[]>([]);
+    // 存储当前导入的维修报告数据
+    const [importSourceReport, setImportSourceReport] = useState<any>(null);
     // PDF export settings - 扩展设置项
     const [pdfSettings, setPdfSettings] = useState({
         format: 'a4' as 'a4' | 'letter',
@@ -283,7 +294,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                             if (newItems.length > 0) {
                                 const taxRate = piData.tax_rate || 0;
                                 const discountAmount = piData.discount_amount || 0;
-                                const { subtotal, taxAmount, total } = calculateTotals(newItems, taxRate, discountAmount);
+                                const { subtotal, taxAmount, total } = calculateTotals(newItems, piData.content.other_fees, taxRate, discountAmount);
                                 setPIData(prev => ({
                                     ...prev,
                                     content: {
@@ -346,6 +357,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
             const report = fullReportRes.data.data;
             const reportContent = report.content;
             const newItems: PIItem[] = [];
+            const newOtherFees: PIOtherFee[] = [];
             
             // 1. 导入更换零件
             if (reportContent.repair_process?.parts_replaced) {
@@ -373,31 +385,41 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                 });
             }
             
-            // 3. 导入物流费用
-            if (reportContent.logistics?.shipping_fee && reportContent.logistics.shipping_fee > 0) {
-                newItems.push({
+            // 3. 导入其他费用 (新结构)
+            if (reportContent.other_fees && reportContent.other_fees.length > 0) {
+                reportContent.other_fees.forEach((fee: any, idx: number) => {
+                    newOtherFees.push({
+                        id: `fee-${Date.now()}-${idx}`,
+                        description: fee.description || '其他费用',
+                        amount: fee.amount || 0
+                    });
+                });
+            }
+            // 兼容旧结构: logistics.shipping_fee
+            else if (reportContent.logistics?.shipping_fee && reportContent.logistics.shipping_fee > 0) {
+                newOtherFees.push({
                     id: `shipping-${Date.now()}`,
-                    description: `物流: ${reportContent.logistics.shipping_method || '快递'}`,
-                    quantity: 1,
-                    unit_price: reportContent.logistics.shipping_fee,
-                    total: reportContent.logistics.shipping_fee
+                    description: reportContent.logistics.shipping_method || '运费',
+                    amount: reportContent.logistics.shipping_fee
                 });
             }
             
-            if (newItems.length === 0) {
+            if (newItems.length === 0 && newOtherFees.length === 0) {
                 setConfirmAction({ type: 'import_empty', isOpen: true });
                 return;
             }
             
             // 保存待导入项目
             setPendingImportItems(newItems);
+            setPendingImportOtherFees(newOtherFees);
+            setImportSourceReport(report);
             
             // 确认是否覆盖现有项目
-            if (piData.content.items.length > 0) {
-                setConfirmAction({ type: 'import_replace', isOpen: true, data: { count: newItems.length } });
+            if (piData.content.items.length > 0 || piData.content.other_fees.length > 0) {
+                setConfirmAction({ type: 'import_replace', isOpen: true, data: { count: newItems.length + newOtherFees.length } });
             } else {
                 // 直接导入（无现有项目）
-                applyImportItems(newItems, true);
+                applyImportItems(newItems, newOtherFees, true, report);
             }
         } catch (err) {
             console.error('Failed to import from repair report:', err);
@@ -408,15 +430,21 @@ export const PIEditor: React.FC<PIEditorProps> = ({
     };
 
     // 应用导入项目并保存
-    const applyImportItems = async (items: PIItem[], replace: boolean) => {
+    const applyImportItems = async (items: PIItem[], otherFees: PIOtherFee[], replace: boolean, sourceReport?: any) => {
         const finalItems = replace ? items : [...piData.content.items, ...items];
-        const taxRate = Number(piData.tax_rate) || 0;
-        const discountAmount = Number(piData.discount_amount) || 0;
-        const { subtotal, taxAmount, total } = calculateTotals(finalItems, taxRate, discountAmount);
+        const finalOtherFees = replace ? otherFees : [...piData.content.other_fees, ...otherFees];
+        
+        // 从维修报告导入税率和优惠金额（如果存在）
+        const importedTaxRate = sourceReport?.tax_rate ?? piData.tax_rate ?? 0;
+        const importedDiscount = sourceReport?.discount_amount ?? piData.discount_amount ?? 0;
+        
+        const { subtotal, taxAmount, total } = calculateTotals(finalItems, finalOtherFees, importedTaxRate, importedDiscount);
         
         const newPIData = {
             ...piData,
-            content: { ...piData.content, items: finalItems },
+            content: { ...piData.content, items: finalItems, other_fees: finalOtherFees },
+            tax_rate: importedTaxRate,
+            discount_amount: importedDiscount,
             subtotal,
             tax_amount: taxAmount,
             total_amount: total
@@ -456,12 +484,16 @@ export const PIEditor: React.FC<PIEditorProps> = ({
         }
         
         // 显示成功提示
-        setConfirmAction({ type: 'import_success', isOpen: true, data: { count: items.length, action: replace ? '导入' : '追加' } });
+        setConfirmAction({ type: 'import_success', isOpen: true, data: { count: items.length + otherFees.length, action: replace ? '导入' : '追加' } });
         setPendingImportItems([]);
+        setPendingImportOtherFees([]);
+        setImportSourceReport(null);
     };
 
-    const calculateTotals = (items: PIItem[], taxRate: number = 0, discount: number = 0) => {
-        const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.unit_price || 0)), 0);
+    const calculateTotals = (items: PIItem[], otherFees: PIOtherFee[], taxRate: number = 0, discount: number = 0) => {
+        const itemsSubtotal = items.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.unit_price || 0)), 0);
+        const otherFeesTotal = otherFees.reduce((sum, fee) => sum + (Number(fee.amount) || 0), 0);
+        const subtotal = itemsSubtotal + otherFeesTotal;
         const taxAmount = subtotal * (taxRate / 100);
         const total = subtotal + taxAmount - discount;
         return { subtotal, taxAmount, total };
@@ -481,7 +513,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
 
         const taxRate = Number(piData.tax_rate) || 0;
         const discountAmount = Number(piData.discount_amount) || 0;
-        const { subtotal, taxAmount, total } = calculateTotals(newItems, taxRate, discountAmount);
+        const { subtotal, taxAmount, total } = calculateTotals(newItems, piData.content.other_fees, taxRate, discountAmount);
 
         setPIData(prev => ({
             ...prev,
@@ -510,7 +542,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
         const newItems = piData.content.items.filter(item => item.id !== id);
         const taxRate = Number(piData.tax_rate) || 0;
         const discountAmount = Number(piData.discount_amount) || 0;
-        const { subtotal, taxAmount, total } = calculateTotals(newItems, taxRate, discountAmount);
+        const { subtotal, taxAmount, total } = calculateTotals(newItems, piData.content.other_fees, taxRate, discountAmount);
 
         setPIData(prev => ({
             ...prev,
@@ -518,6 +550,40 @@ export const PIEditor: React.FC<PIEditorProps> = ({
             subtotal,
             tax_amount: taxAmount,
             total_amount: total
+        }));
+    };
+
+    // Other fees management
+    const addOtherFee = () => {
+        const newFee: PIOtherFee = {
+            id: Date.now().toString(),
+            description: '',
+            amount: 0
+        };
+        setPIData(prev => ({
+            ...prev,
+            content: { ...prev.content, other_fees: [...prev.content.other_fees, newFee] }
+        }));
+    };
+
+    const updateOtherFee = (id: string, field: keyof PIOtherFee, value: any) => {
+        const newFees = piData.content.other_fees.map(fee => {
+            if (fee.id === id) {
+                return { ...fee, [field]: value };
+            }
+            return fee;
+        });
+        setPIData(prev => ({
+            ...prev,
+            content: { ...prev.content, other_fees: newFees }
+        }));
+    };
+
+    const removeOtherFee = (id: string) => {
+        const newFees = piData.content.other_fees.filter(fee => fee.id !== id);
+        setPIData(prev => ({
+            ...prev,
+            content: { ...prev.content, other_fees: newFees }
         }));
     };
 
@@ -751,7 +817,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                     disabled={!canEdit}
                                                     style={{ width: 100, padding: 8, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
                                                 />
-                                                <div style={{ width: 100, padding: 8, textAlign: 'right', color: 'var(--accent-gold)', fontWeight: 500, fontSize: 13 }}>
+                                                <div style={{ width: 100, padding: 8, textAlign: 'right', color: 'var(--text-main)', fontWeight: 500, fontSize: 13 }}>
                                                     ¥{Number(item.total || 0).toFixed(2)}
                                                 </div>
                                                 {canEdit && (
@@ -764,6 +830,50 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                         {piData.content.items.length === 0 && (
                                             <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>
                                                 暂无服务项目，点击"从维修报告导入"或"添加"按钮
+                                            </div>
+                                        )}
+                                    </div>
+                                </Section>
+
+                                {/* Other Fees */}
+                                <Section title="其他费用" action={
+                                    canEdit && (
+                                        <button onClick={addOtherFee} style={{ padding: '4px 12px', background: 'var(--status-blue)', border: 'none', borderRadius: 4, color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                            <Plus size={14} /> 添加
+                                        </button>
+                                    )
+                                }>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {piData.content.other_fees.map((fee) => (
+                                            <div key={fee.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 12, background: 'var(--glass-bg-light)', borderRadius: 8 }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <input
+                                                        type="text"
+                                                        value={fee.description}
+                                                        onChange={e => updateOtherFee(fee.id, 'description', e.target.value)}
+                                                        placeholder="费用说明"
+                                                        disabled={!canEdit}
+                                                        style={{ width: '100%', padding: 8, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                    />
+                                                </div>
+                                                <input
+                                                    type="number"
+                                                    value={fee.amount}
+                                                    onChange={e => updateOtherFee(fee.id, 'amount', parseFloat(e.target.value) || 0)}
+                                                    placeholder="金额"
+                                                    disabled={!canEdit}
+                                                    style={{ width: 120, padding: 8, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
+                                                />
+                                                {canEdit && (
+                                                    <button onClick={() => removeOtherFee(fee.id)} style={{ padding: 8, background: 'var(--status-red-subtle)', border: 'none', borderRadius: 4, color: 'var(--status-red)', cursor: 'pointer' }}>
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {piData.content.other_fees.length === 0 && (
+                                            <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-tertiary)', fontSize: 13 }}>
+                                                暂无其他费用
                                             </div>
                                         )}
                                     </div>
@@ -783,7 +893,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                 value={piData.tax_rate}
                                                 onChange={e => {
                                                     const rate = parseFloat(e.target.value) || 0;
-                                                    const { taxAmount, total } = calculateTotals(piData.content.items, rate, piData.discount_amount);
+                                                    const { taxAmount, total } = calculateTotals(piData.content.items, piData.content.other_fees, rate, piData.discount_amount);
                                                     setPIData(prev => ({ ...prev, tax_rate: rate, tax_amount: taxAmount, total_amount: total }));
                                                 }}
                                                 disabled={!canEdit}
@@ -801,7 +911,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                 value={piData.discount_amount}
                                                 onChange={e => {
                                                     const discount = parseFloat(e.target.value) || 0;
-                                                    const { taxAmount, total } = calculateTotals(piData.content.items, piData.tax_rate, discount);
+                                                    const { taxAmount, total } = calculateTotals(piData.content.items, piData.content.other_fees, piData.tax_rate, discount);
                                                     setPIData(prev => ({ ...prev, discount_amount: discount, tax_amount: taxAmount, total_amount: total }));
                                                 }}
                                                 disabled={!canEdit}
@@ -809,8 +919,8 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                             />
                                         </div>
                                         <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ color: 'var(--accent-gold)', fontWeight: 600, fontSize: 13 }}>合计</span>
-                                            <span style={{ color: 'var(--accent-gold)', fontSize: 16, fontWeight: 600 }}>¥{Number(piData.total_amount || 0).toFixed(2)}</span>
+                                            <span style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: 13 }}>合计</span>
+                                            <span style={{ color: 'var(--text-main)', fontSize: 16, fontWeight: 600 }}>¥{Number(piData.total_amount || 0).toFixed(2)}</span>
                                         </div>
                                     </div>
                                 </Section>
@@ -952,11 +1062,11 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                     isDanger={false}
                     onConfirm={() => {
                         setConfirmAction({ type: null, isOpen: false });
-                        applyImportItems(pendingImportItems, true);
+                        applyImportItems(pendingImportItems, pendingImportOtherFees, true, importSourceReport);
                     }}
                     onCancel={() => {
                         setConfirmAction({ type: null, isOpen: false });
-                        applyImportItems(pendingImportItems, false);
+                        applyImportItems(pendingImportItems, pendingImportOtherFees, false, importSourceReport);
                     }}
                 />
             )}

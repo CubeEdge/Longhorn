@@ -292,7 +292,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
                             marginBottom: '8px',
                             width: '400px',
                             maxHeight: '350px',
-                            background: '#2a2a2a',
+                            background: 'var(--modal-bg)',
                             border: '1px solid var(--glass-border)',
                             borderRadius: '12px',
                             boxShadow: '0 -4px 24px var(--glass-shadow)',
@@ -532,7 +532,7 @@ const BokehEditorPanel: React.FC<BokehEditorPanelProps> = ({
 
                             <div style={{
                                 fontSize: '9px',
-                                color: 'rgba(255,255,255,0.25)',
+                                color: 'var(--text-tertiary)',
                                 marginTop: '6px',
                                 textAlign: 'center'
                             }}>

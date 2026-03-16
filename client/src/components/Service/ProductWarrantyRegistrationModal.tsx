@@ -451,514 +451,533 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
             <div style={{
-                width: 600, maxHeight: '90vh', background: 'var(--modal-bg)', borderRadius: '24px',
+                width: 900, maxHeight: '90vh', background: 'var(--modal-bg)', borderRadius: '24px',
                 border: '1px solid var(--modal-border)', overflow: 'hidden',
                 boxShadow: '0 40px 100px rgba(0,0,0,0.8)',
                 display: 'flex', flexDirection: 'column', animation: 'modalScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
             }}>
                 {/* Header */}
                 <div style={{
-                    padding: '32px 40px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    padding: '24px 32px', borderBottom: '1px solid var(--glass-border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'rgba(245,158,11,0.08)'
+                    background: 'var(--glass-bg-light)'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <div style={{
-                            width: 60, height: 60, borderRadius: 16,
-                            background: 'rgba(245,158,11,0.2)', display: 'flex',
+                            width: 48, height: 48, borderRadius: 12,
+                            background: 'rgba(245,158,11,0.15)', display: 'flex',
                             alignItems: 'center', justifyContent: 'center'
                         }}>
-                            <AlertTriangle size={32} color="#FFD200" />
+                            <AlertTriangle size={24} color="#f59e0b" />
                         </div>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>
+                            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
                                 {isNewProduct ? '产品入库并注册保修' : '产品保修注册'}
                             </h3>
-                            <p style={{ margin: 0, fontSize: 16, color: 'rgba(255,255,255,0.5)', marginTop: 6, letterSpacing: '-0.01em' }}>
-                                {isNewProduct ? '该产品尚未入库，请补充产品信息' : '该产品尚未注册保修信息'}
+                            <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', marginTop: 4, letterSpacing: '-0.01em' }}>
+                                {isNewProduct ? '请完善产品信息和保修资料' : '请完善保修注册信息'}
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 12 }}>
-                        <X size={28} />
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 8 }}>
+                        <X size={24} />
                     </button>
                 </div>
 
                 {isSuccess ? (
                     <div style={{ padding: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-                        <div style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#10B981', padding: 24, borderRadius: '50%', marginBottom: 16 }}>
+                        <div style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10B981', padding: 24, borderRadius: '50%', marginBottom: 16 }}>
                             <Save size={48} />
                         </div>
-                        <h2 style={{ margin: 0, color: '#fff', fontSize: 24, fontWeight: 700 }}>注册成功</h2>
-                        <p style={{ margin: 0, color: 'rgba(255,255,255,0.5)' }}>保修信息已验证并记录，即将进入工单...</p>
+                        <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: 24, fontWeight: 700 }}>注册成功</h2>
+                        <p style={{ margin: 0, color: 'var(--text-secondary)' }}>保修信息已验证并记录，即将进入工单...</p>
                     </div>
                 ) : (
                     <>
-                        {/* Body - Scrollable */}
-                        <div style={{ padding: 32, overflowY: 'auto', flex: 1 }}>
-                            {/* Product Info Section */}
-                            <div style={{
-                                background: 'rgba(255,255,255,0.02)', padding: 24, borderRadius: 12,
-                                marginBottom: 24, border: '1px solid rgba(255,255,255,0.06)'
-                            }}>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginBottom: 20, textTransform: 'uppercase', letterSpacing: 1 }}>
-                                    产品信息
+                        {/* Body - Two Column Layout */}
+                        <div style={{ padding: 24, overflowY: 'auto', flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                            {/* Left Column - Product Info & Ownership */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                {/* Product Info Section */}
+                                <div style={{
+                                    background: 'var(--glass-bg-light)', padding: 20, borderRadius: 12,
+                                    border: '1px solid var(--glass-border)'
+                                }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        产品信息
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                        {/* Serial Number */}
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>序列号</div>
+                                            <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-main)', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
+                                                {serialNumber}
+                                            </div>
+                                        </div>
+
+                                        {/* Product Model */}
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                                                产品型号 <span style={{ color: '#EF4444' }}>*</span>
+                                            </div>
+                                            <div style={{ position: 'relative' }}>
+                                                <Box size={18} style={{
+                                                    position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+                                                    color: 'var(--text-tertiary)', pointerEvents: 'none'
+                                                }} />
+                                                <select
+                                                    value={selectedModelName}
+                                                    onChange={(e) => {
+                                                        setSelectedModelName(e.target.value);
+                                                        setSelectedSkuId(''); // Reset SKU when model changes
+                                                    }}
+                                                    style={{
+                                                        width: '100%', height: 48, padding: '0 16px', paddingLeft: 44,
+                                                        background: 'var(--glass-bg)', border: `1px solid ${selectedModelName ? 'rgba(16,185,129,0.5)' : 'var(--glass-border)'} `,
+                                                        borderRadius: 10, color: 'var(--text-main)', fontSize: 14, outline: 'none',
+                                                        cursor: 'pointer', appearance: 'none'
+                                                    }}
+                                                >
+                                                    <option value="" disabled>请选择产品型号</option>
+                                                    {models.map(m => (
+                                                        <option key={m.id} value={m.name_zh}>{m.name_zh}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown size={18} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                                            </div>
+                                        </div>
+
+                                        {/* Product SKU */}
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                                                产品SKU <span style={{ color: '#EF4444' }}>*</span>
+                                            </div>
+                                            <div style={{ position: 'relative' }}>
+                                                <select
+                                                    value={selectedSkuId || ''}
+                                                    onChange={(e) => setSelectedSkuId(e.target.value ? parseInt(e.target.value) : '')}
+                                                    disabled={!selectedModelName}
+                                                    style={{
+                                                        width: '100%', height: 48, padding: '0 16px',
+                                                        background: 'var(--glass-bg)', border: `1px solid ${selectedSkuId ? 'rgba(16,185,129,0.5)' : 'var(--glass-border)'} `,
+                                                        borderRadius: 10, color: 'var(--text-main)', fontSize: 14, outline: 'none',
+                                                        cursor: 'pointer', appearance: 'none', opacity: !selectedModelName ? 0.5 : 1
+                                                    }}
+                                                >
+                                                    <option value="">{selectedModelName ? '选择适用的 SKU' : '选定型号后可选'}</option>
+                                                    {skus.filter(s => {
+                                                        const model = models.find(m => m.name_zh === selectedModelName);
+                                                        return model && s.model_id === model.id;
+                                                    }).map(s => (
+                                                        <option key={s.id} value={s.id}>{s.display_name} ({s.sku_code})</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown size={18} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                                            </div>
+                                        </div>
+
+                                        {/* Product Line & Family - Side by Side */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                                                    产品线 <span style={{ color: '#EF4444' }}>*</span>
+                                                </div>
+                                                <div style={{ position: 'relative' }}>
+                                                    <select
+                                                        value={selectedProductLine}
+                                                        onChange={(e) => setSelectedProductLine(e.target.value as 'Camera' | 'EVF' | 'Accessory')}
+                                                        style={{
+                                                            width: '100%', height: 48, padding: '0 12px',
+                                                            background: 'var(--glass-bg)', border: '1px solid rgba(16,185,129,0.5)',
+                                                            borderRadius: 10, color: 'var(--text-main)', fontSize: 13, outline: 'none',
+                                                            cursor: 'pointer', appearance: 'none'
+                                                        }}
+                                                    >
+                                                        <option value="Camera">Camera（相机）</option>
+                                                        <option value="EVF">EVF（电子寻像器）</option>
+                                                        <option value="Accessory">Accessory（配件）</option>
+                                                    </select>
+                                                    <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                                                    产品族群 <span style={{ color: '#EF4444' }}>*</span>
+                                                </div>
+                                                <div style={{ position: 'relative' }}>
+                                                    <select
+                                                        value={selectedProductFamily}
+                                                        onChange={(e) => setSelectedProductFamily(e.target.value as 'A' | 'B' | 'C' | 'D')}
+                                                        style={{
+                                                            width: '100%', height: 48, padding: '0 12px',
+                                                            background: 'var(--glass-bg)', border: '1px solid rgba(16,185,129,0.5)',
+                                                            borderRadius: 10, color: 'var(--text-main)', fontSize: 13, outline: 'none',
+                                                            cursor: 'pointer', appearance: 'none'
+                                                        }}
+                                                    >
+                                                        <option value="A">A - 在售电影机</option>
+                                                        <option value="B">B - 历史机型</option>
+                                                        <option value="C">C - 电子寻像器</option>
+                                                        <option value="D">D - 通用配件</option>
+                                                    </select>
+                                                    <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                                    {/* Serial Number */}
-                                    <div>
-                                        <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 12, letterSpacing: '-0.01em' }}>序列号</div>
-                                        <div style={{ fontSize: 22, fontWeight: 600, color: '#fff', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
-                                            {serialNumber}
-                                        </div>
+                                {/* Ownership Info - 销售经销商和当前所有者 */}
+                                <div style={{
+                                    background: 'var(--glass-bg-light)', padding: 20, borderRadius: 12,
+                                    border: '1px solid var(--glass-border)'
+                                }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        归属信息
                                     </div>
 
-                                    {/* Product Model */}
-                                    <div>
-                                        <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 12, letterSpacing: '-0.01em' }}>
-                                            产品型号 <span style={{ color: '#EF4444' }}>*</span>
-                                        </div>
+                                    {/* Dealer Selection */}
+                                    <div style={{ marginBottom: 16 }}>
+                                        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                                            销售经销商
+                                        </label>
                                         <div style={{ position: 'relative' }}>
-                                            <Box size={20} style={{
-                                                position: 'absolute', left: 20, top: '50%', transform: 'translateY(-50%)',
-                                                color: 'rgba(255,255,255,0.4)', pointerEvents: 'none'
+                                            <Building size={16} style={{
+                                                position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+                                                color: 'var(--text-tertiary)', pointerEvents: 'none'
                                             }} />
                                             <select
-                                                value={selectedModelName}
+                                                value={selectedDealerId}
+                                                onChange={(e) => setSelectedDealerId(e.target.value ? parseInt(e.target.value) : '')}
+                                                style={{
+                                                    width: '100%', height: 44, padding: '0 16px', paddingLeft: 42,
+                                                    background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                                                    borderRadius: 10, color: 'var(--text-main)', fontSize: 14, outline: 'none',
+                                                    cursor: 'pointer', appearance: 'none'
+                                                }}
+                                            >
+                                                <option value="">请选择经销商（可选）</option>
+                                                {dealers.map((dealer) => (
+                                                    <option key={dealer.id} value={dealer.id}>{dealer.name}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown size={14} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Owner Selection - Searchable */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                                            当前所有者
+                                        </label>
+                                        <div ref={ownerDropdownRef} style={{ position: 'relative' }}>
+                                            <User size={18} style={{
+                                                position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+                                                color: 'var(--text-tertiary)', pointerEvents: 'none', zIndex: 1
+                                            }} />
+                                            <input
+                                                type="text"
+                                                value={ownerSearchQuery}
                                                 onChange={(e) => {
-                                                    setSelectedModelName(e.target.value);
-                                                    setSelectedSkuId(''); // Reset SKU when model changes
+                                                    setOwnerSearchQuery(e.target.value);
+                                                    setShowOwnerDropdown(true);
+                                                    if (!e.target.value) {
+                                                        setSelectedOwnerId('');
+                                                    }
                                                 }}
+                                                onFocus={() => {
+                                                    setShowOwnerDropdown(true);
+                                                    if (ownerSearchQuery && customers.length === 0) {
+                                                        setSearchingOwners(true);
+                                                    }
+                                                }}
+                                                placeholder="输入客户名称关键词搜索..."
                                                 style={{
-                                                    width: '100%', height: 56, padding: '0 20px', paddingLeft: 52,
-                                                    background: 'rgba(0,0,0,0.3)', border: `1px solid ${selectedModelName ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.1)'} `,
-                                                    borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none',
-                                                    cursor: 'pointer', appearance: 'none'
+                                                    width: '100%', height: 44, padding: '0 16px', paddingLeft: 44, paddingRight: 40,
+                                                    background: 'var(--glass-bg)', border: `1px solid ${selectedOwnerId ? 'rgba(16,185,129,0.5)' : 'var(--glass-border)'} `,
+                                                    borderRadius: 10, color: 'var(--text-main)', fontSize: 14, outline: 'none'
                                                 }}
-                                            >
-                                                <option value="" disabled>请选择产品型号</option>
-                                                {models.map(m => (
-                                                    <option key={m.id} value={m.name_zh}>{m.name_zh}</option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown size={20} style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', pointerEvents: 'none' }} />
-                                        </div>
-                                    </div>
+                                            />
+                                            {searchingOwners && (
+                                                <Loader2 size={16} className="animate-spin" style={{
+                                                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                                                    color: '#3B82F6'
+                                                }} />
+                                            )}
+                                            {!searchingOwners && selectedOwnerId && (
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedOwnerId('');
+                                                        setOwnerSearchQuery('');
+                                                    }}
+                                                    style={{
+                                                        position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                                                        background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer',
+                                                        padding: 0, display: 'flex', alignItems: 'center'
+                                                    }}
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            )}
 
-                                    {/* Product SKU */}
-                                    <div>
-                                        <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 12, letterSpacing: '-0.01em' }}>
-                                            产品SKU <span style={{ color: '#EF4444' }}>*</span>
-                                        </div>
-                                        <div style={{ position: 'relative' }}>
-                                            <select
-                                                value={selectedSkuId || ''}
-                                                onChange={(e) => setSelectedSkuId(e.target.value ? parseInt(e.target.value) : '')}
-                                                disabled={!selectedModelName}
-                                                style={{
-                                                    width: '100%', height: 56, padding: '0 20px',
-                                                    background: 'rgba(0,0,0,0.3)', border: `1px solid ${selectedSkuId ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.1)'} `,
-                                                    borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none',
-                                                    cursor: 'pointer', appearance: 'none', opacity: !selectedModelName ? 0.5 : 1
-                                                }}
-                                            >
-                                                <option value="">{selectedModelName ? '选择适用的 SKU' : '选定型号后可选'}</option>
-                                                {skus.filter(s => {
-                                                    const model = models.find(m => m.name_zh === selectedModelName);
-                                                    return model && s.model_id === model.id;
-                                                }).map(s => (
-                                                    <option key={s.id} value={s.id}>{s.display_name} ({s.sku_code})</option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown size={20} style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', pointerEvents: 'none' }} />
+                                            {/* Owner Dropdown */}
+                                            {showOwnerDropdown && (
+                                                <div style={{
+                                                    position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
+                                                    background: 'var(--modal-bg)', border: '1px solid var(--modal-border)',
+                                                    borderRadius: 8, boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                                                    maxHeight: 200, overflowY: 'auto', zIndex: 100
+                                                }}>
+                                                    {!ownerSearchQuery && (
+                                                        <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
+                                                            输入客户名称开始搜索
+                                                        </div>
+                                                    )}
+                                                    {ownerSearchQuery && customers.length === 0 && !searchingOwners && (
+                                                        <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
+                                                            未找到匹配的客户
+                                                        </div>
+                                                    )}
+                                                    {customers.map((customer) => (
+                                                        <div
+                                                            key={customer.id}
+                                                            onClick={() => {
+                                                                setSelectedOwnerId(customer.id);
+                                                                setOwnerSearchQuery(customer.name);
+                                                                setShowOwnerDropdown(false);
+                                                            }}
+                                                            style={{
+                                                                padding: '10px 12px', cursor: 'pointer',
+                                                                background: selectedOwnerId === customer.id ? 'rgba(59,130,246,0.2)' : 'transparent',
+                                                                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                                                display: 'flex', flexDirection: 'column', gap: 4
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                if (selectedOwnerId !== customer.id) {
+                                                                    e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                                                }
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                if (selectedOwnerId !== customer.id) {
+                                                                    e.currentTarget.style.background = 'transparent';
+                                                                }
+                                                            }}
+                                                        >
+                                                            <div style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 600 }}>{customer.name}</div>
+                                                            {(customer.primary_contact_name || customer.email || customer.country) && (
+                                                                <div style={{
+                                                                    fontSize: 11, color: 'var(--text-tertiary)',
+                                                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                                                                }}>
+                                                                    {customer.primary_contact_name ? `联系人: ${customer.primary_contact_name} ` : ''}
+                                                                    {customer.email ? `| 邮箱: ${customer.email} ` : (customer.primary_contact_email ? ` | 联系人邮箱: ${customer.primary_contact_email} ` : '')}
+                                                                    {customer.country ? `| 地区: ${customer.country} ` : ''}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
+                                </div>
 
-                                    {/* Product Line */}
-                                    <div>
-                                        <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 12, letterSpacing: '-0.01em' }}>
-                                            产品线 <span style={{ color: '#EF4444' }}>*</span>
-                                        </div>
-                                        <div style={{ position: 'relative' }}>
-                                            <select
-                                                value={selectedProductLine}
-                                                onChange={(e) => setSelectedProductLine(e.target.value as 'Camera' | 'EVF' | 'Accessory')}
-                                                style={{
-                                                    width: '100%', height: 56, padding: '0 20px',
-                                                    background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(16,185,129,0.5)',
-                                                    borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none',
-                                                    cursor: 'pointer', appearance: 'none'
-                                                }}
-                                            >
-                                                <option value="Camera">Camera（相机）</option>
-                                                <option value="EVF">EVF（电子寻像器）</option>
-                                                <option value="Accessory">Accessory（配件）</option>
-                                            </select>
-                                            <ChevronDown size={20} style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', pointerEvents: 'none' }} />
-                                        </div>
+                                {/* Remarks - 备注放在左侧底部 */}
+                                <div style={{
+                                    background: 'var(--glass-bg-light)', padding: 20, borderRadius: 12,
+                                    border: '1px solid var(--glass-border)'
+                                }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        备注
                                     </div>
-
-                                    {/* Product Family */}
-                                    <div>
-                                        <div style={{ fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 12, letterSpacing: '-0.01em' }}>
-                                            产品族群 <span style={{ color: '#EF4444' }}>*</span>
-                                        </div>
-                                        <div style={{ position: 'relative' }}>
-                                            <select
-                                                value={selectedProductFamily}
-                                                onChange={(e) => setSelectedProductFamily(e.target.value as 'A' | 'B' | 'C' | 'D')}
-                                                style={{
-                                                    width: '100%', height: 56, padding: '0 20px',
-                                                    background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(16,185,129,0.5)',
-                                                    borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none',
-                                                    cursor: 'pointer', appearance: 'none'
-                                                }}
-                                            >
-                                                <option value="A">A - 在售电影机</option>
-                                                <option value="B">B - 历史机型</option>
-                                                <option value="C">C - 电子寻像器</option>
-                                                <option value="D">D - 通用配件</option>
-                                            </select>
-                                            <ChevronDown size={20} style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.4)', pointerEvents: 'none' }} />
-                                        </div>
-                                    </div>
+                                    <textarea
+                                        value={remarks}
+                                        onChange={(e) => setRemarks(e.target.value)}
+                                        placeholder="特殊情况说明（可选）"
+                                        rows={3}
+                                        style={{
+                                            width: '100%', padding: '12px',
+                                            background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                                            borderRadius: 8, color: 'var(--text-main)', fontSize: 13, outline: 'none',
+                                            resize: 'vertical'
+                                        }}
+                                    />
                                 </div>
                             </div>
 
-                            <div style={{ marginBottom: 24 }}>
-                                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.4)', marginBottom: 20, textTransform: 'uppercase', letterSpacing: 1 }}>
-                                    归属信息
-                                </label>
-
-                                {/* Dealer Selection */}
-                                <div style={{ marginBottom: 20 }}>
-                                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                                        销售经销商
-                                    </label>
-                                    <div style={{ position: 'relative' }}>
-                                        <Building size={16} style={{
-                                            position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
-                                            color: 'rgba(255,255,255,0.4)', pointerEvents: 'none'
-                                        }} />
-                                        <select
-                                            value={selectedDealerId}
-                                            onChange={(e) => setSelectedDealerId(e.target.value ? parseInt(e.target.value) : '')}
-                                            style={{
-                                                width: '100%', height: 44, padding: '0 16px', paddingLeft: 42,
-                                                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                                                borderRadius: 10, color: '#fff', fontSize: 14, outline: 'none',
-                                                cursor: 'pointer', appearance: 'none'
-                                            }}
-                                        >
-                                            <option value="">请选择经销商（可选）</option>
-                                            {dealers.map((dealer) => (
-                                                <option key={dealer.id} value={dealer.id}>{dealer.name}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown size={14} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'rgba(255,255,255,0.3)', pointerEvents: 'none' }} />
+                            {/* Right Column - Warranty Info Only */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                {/* Warranty Registration Info Card */}
+                                <div style={{
+                                    background: 'var(--glass-bg-light)', padding: 20, borderRadius: 12,
+                                    border: '1px solid var(--glass-border)'
+                                }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        保修注册信息
                                     </div>
-                                </div>
 
-                                {/* Owner Selection - Searchable */}
-                                <div>
-                                    <label style={{ display: 'block', fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 12, letterSpacing: '-0.01em' }}>
-                                        当前所有者 (客户列表检索)
-                                    </label>
-                                    <div ref={ownerDropdownRef} style={{ position: 'relative' }}>
-                                        <User size={20} style={{
-                                            position: 'absolute', left: 20, top: '50%', transform: 'translateY(-50%)',
-                                            color: 'rgba(255,255,255,0.4)', pointerEvents: 'none', zIndex: 1
-                                        }} />
-                                        <input
-                                            type="text"
-                                            value={ownerSearchQuery}
-                                            onChange={(e) => {
-                                                setOwnerSearchQuery(e.target.value);
-                                                setShowOwnerDropdown(true);
-                                                if (!e.target.value) {
-                                                    setSelectedOwnerId('');
-                                                }
-                                            }}
-                                            onFocus={() => {
-                                                setShowOwnerDropdown(true);
-                                                if (ownerSearchQuery && customers.length === 0) {
-                                                    setSearchingOwners(true);
-                                                }
-                                            }}
-                                            placeholder="输入客户名称关键词搜索..."
-                                            style={{
-                                                width: '100%', height: 56, padding: '0 20px', paddingLeft: 52, paddingRight: 40,
-                                                background: 'rgba(0,0,0,0.3)', border: `1px solid ${selectedOwnerId ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.1)'} `,
-                                                borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none'
-                                            }}
-                                        />
-                                        {searchingOwners && (
-                                            <Loader2 size={18} className="animate-spin" style={{
-                                                position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
-                                                color: '#3B82F6'
-                                            }} />
-                                        )}
-                                        {!searchingOwners && selectedOwnerId && (
+                                    {/* Sale Source Selection */}
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10, letterSpacing: '-0.01em' }}>
+                                            销售日期来源 <span style={{ color: '#EF4444' }}>*</span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 12 }}>
                                             <button
-                                                onClick={() => {
-                                                    setSelectedOwnerId('');
-                                                    setOwnerSearchQuery('');
-                                                }}
+                                                type="button"
+                                                onClick={() => setSaleSource('invoice')}
                                                 style={{
-                                                    position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
-                                                    background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer',
-                                                    padding: 0, display: 'flex', alignItems: 'center'
+                                                    flex: 1, height: 44, borderRadius: 10,
+                                                    border: `2px solid ${saleSource === 'invoice' ? '#3B82F6' : 'var(--glass-border)'} `,
+                                                    background: saleSource === 'invoice' ? 'rgba(59,130,246,0.1)' : 'var(--glass-bg)',
+                                                    color: saleSource === 'invoice' ? '#3B82F6' : 'var(--text-main)',
+                                                    cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                                                    transition: 'all 0.2s'
                                                 }}
                                             >
-                                                <X size={18} />
+                                                有发票
                                             </button>
-                                        )}
+                                            <button
+                                                type="button"
+                                                onClick={() => setSaleSource('customer_statement')}
+                                                style={{
+                                                    flex: 1, height: 44, borderRadius: 10,
+                                                    border: `2px solid ${saleSource === 'customer_statement' ? '#3B82F6' : 'var(--glass-border)'} `,
+                                                    background: saleSource === 'customer_statement' ? 'rgba(59,130,246,0.1)' : 'var(--glass-bg)',
+                                                    color: saleSource === 'customer_statement' ? '#3B82F6' : 'var(--text-main)',
+                                                    cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                客户陈述
+                                            </button>
+                                        </div>
+                                    </div>
 
-                                        {/* Owner Dropdown */}
-                                        {showOwnerDropdown && (
-                                            <div style={{
-                                                position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
-                                                background: 'var(--modal-bg)', border: '1px solid var(--modal-border)',
-                                                borderRadius: 8, boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
-                                                maxHeight: 200, overflowY: 'auto', zIndex: 100
-                                            }}>
-                                                {!ownerSearchQuery && (
-                                                    <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
-                                                        输入客户名称开始搜索
+                                    {/* Sale Date & Warranty Months */}
+                                    {saleSource && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                                        {saleSource === 'invoice' ? '发票日期' : '销售日期'}
+                                                        <span style={{ color: '#EF4444' }}>*</span>
+                                                    </label>
+                                                    <div style={{ position: 'relative' }}>
+                                                        <input
+                                                            type="date"
+                                                            value={saleDate}
+                                                            onChange={(e) => setSaleDate(e.target.value)}
+                                                            style={{
+                                                                width: '100%', height: 44, padding: '0 10px', paddingLeft: 36,
+                                                                background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                                                                borderRadius: 8, color: 'var(--text-main)', fontSize: 13, outline: 'none'
+                                                            }}
+                                                        />
+                                                        <Calendar size={16} style={{
+                                                            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+                                                            color: 'var(--text-tertiary)', pointerEvents: 'none'
+                                                        }} />
                                                     </div>
-                                                )}
-                                                {ownerSearchQuery && customers.length === 0 && !searchingOwners && (
-                                                    <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
-                                                        未找到匹配的客户
-                                                    </div>
-                                                )}
-                                                {customers.map((customer) => (
-                                                    <div
-                                                        key={customer.id}
-                                                        onClick={() => {
-                                                            setSelectedOwnerId(customer.id);
-                                                            setOwnerSearchQuery(customer.name);
-                                                            setShowOwnerDropdown(false);
-                                                        }}
+                                                </div>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                                        保修期时长
+                                                    </label>
+                                                    <select
+                                                        value={warrantyMonths}
+                                                        onChange={(e) => setWarrantyMonths(parseInt(e.target.value))}
                                                         style={{
-                                                            padding: '10px 12px', cursor: 'pointer',
-                                                            background: selectedOwnerId === customer.id ? 'rgba(59,130,246,0.2)' : 'transparent',
-                                                            borderBottom: '1px solid rgba(255,255,255,0.05)',
-                                                            display: 'flex', flexDirection: 'column', gap: 4
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            if (selectedOwnerId !== customer.id) {
-                                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                            }
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            if (selectedOwnerId !== customer.id) {
-                                                                e.currentTarget.style.background = 'transparent';
-                                                            }
+                                                            width: '100%', height: 44, padding: '0 10px',
+                                                            background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                                                            borderRadius: 8, color: 'var(--text-main)', fontSize: 13, outline: 'none'
                                                         }}
                                                     >
-                                                        <div style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>{customer.name}</div>
-                                                        {(customer.primary_contact_name || customer.email || customer.country) && (
-                                                            <div style={{
-                                                                fontSize: 11, color: 'rgba(255,255,255,0.4)',
-                                                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                                                            }}>
-                                                                {customer.primary_contact_name ? `联系人: ${customer.primary_contact_name} ` : ''}
-                                                                {customer.email ? `| 邮箱: ${customer.email} ` : (customer.primary_contact_email ? ` | 联系人邮箱: ${customer.primary_contact_email} ` : '')}
-                                                                {customer.country ? `| 地区: ${customer.country} ` : ''}
+                                                        <option value={12}>12 个月</option>
+                                                        <option value={24}>24 个月（标准）</option>
+                                                        <option value={36}>36 个月</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            {/* Invoice Upload */}
+                                            {saleSource === 'invoice' && (
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                                        发票凭证 <span style={{ color: '#EF4444' }}>*</span>
+                                                    </label>
+                                                    <div
+                                                        onClick={() => document.getElementById('invoice-upload')?.click()}
+                                                        style={{
+                                                            border: `1px dashed ${invoiceFile ? '#10B981' : 'var(--glass-border)'} `,
+                                                            borderRadius: 8, padding: 12,
+                                                            background: invoiceFile ? 'rgba(16,185,129,0.05)' : 'var(--glass-bg)',
+                                                            cursor: 'pointer', textAlign: 'center'
+                                                        }}
+                                                    >
+                                                        <input
+                                                            id="invoice-upload"
+                                                            type="file"
+                                                            accept=".jpg,.jpeg,.png,.pdf"
+                                                            onChange={handleFileChange}
+                                                            style={{ display: 'none' }}
+                                                        />
+                                                        {invoiceFile ? (
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                                                <FileText size={16} color="#10B981" />
+                                                                <span style={{ color: '#10B981', fontSize: 12 }}>{invoiceFileName}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                                                <Upload size={16} color="var(--text-tertiary)" />
+                                                                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>点击上传发票 (JPG/PNG/PDF, 最大5MB)</span>
                                                             </div>
                                                         )}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
 
-                            {/* Warning */}
-                            <div style={{
-                                background: 'rgba(255,215,0,0.05)', border: '1px solid rgba(255,215,0,0.3)',
-                                borderRadius: 16, padding: 24, marginBottom: 32
-                            }}>
-                                <div style={{ fontSize: 15, color: '#FFD700', lineHeight: 1.6, letterSpacing: '-0.01em' }}>
-                                    <strong style={{ fontSize: 18 }}>🚨 需要注册保修核心信息</strong><br />
-                                    <span style={{ color: 'rgba(255, 215, 0, 0.8)' }}>
-                                        该产品在系统中没有保修依据（IoT激活/发票/注册记录）。请确定保修凭证以计算保修期，否则无法执行下一步RMA单据创建。
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Sale Source Selection */}
-                            <div style={{ marginBottom: 32 }}>
-                                <label style={{ display: 'block', fontSize: 15, fontWeight: 600, color: 'rgba(255,255,255,0.6)', marginBottom: 16, letterSpacing: '-0.01em' }}>
-                                    销售日期来源 <span style={{ color: '#EF4444' }}>*</span>
-                                </label>
-                                <div style={{ display: 'flex', gap: 16 }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSaleSource('invoice')}
-                                        style={{
-                                            flex: 1, height: 52, borderRadius: 12,
-                                            border: `2px solid ${saleSource === 'invoice' ? '#3B82F6' : 'rgba(255,255,255,0.1)'} `,
-                                            background: saleSource === 'invoice' ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.03)',
-                                            color: saleSource === 'invoice' ? '#3B82F6' : '#fff',
-                                            cursor: 'pointer', fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        有发票
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSaleSource('customer_statement')}
-                                        style={{
-                                            flex: 1, height: 52, borderRadius: 12,
-                                            border: `2px solid ${saleSource === 'customer_statement' ? '#3B82F6' : 'rgba(255,255,255,0.1)'} `,
-                                            background: saleSource === 'customer_statement' ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.03)',
-                                            color: saleSource === 'customer_statement' ? '#3B82F6' : '#fff',
-                                            cursor: 'pointer', fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        客户陈述
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Sale Date */}
-                            {saleSource && (
-                                <div style={{ marginBottom: 24 }}>
-                                    <label style={{ display: 'block', fontSize: 15, color: '#aaa', marginBottom: 12, letterSpacing: '-0.01em' }}>
-                                        {saleSource === 'invoice' ? '发票日期' : '销售日期'}
-                                        <span style={{ color: '#EF4444' }}>*</span>
-                                    </label>
-                                    <div style={{ position: 'relative' }}>
-                                        <input
-                                            type="date"
-                                            value={saleDate}
-                                            onChange={(e) => setSaleDate(e.target.value)}
-                                            style={{
-                                                width: '100%', height: 56, padding: '0 20px', paddingLeft: 52,
-                                                background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                                                borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none', letterSpacing: '-0.01em'
-                                            }}
-                                        />
-                                        <Calendar size={20} style={{
-                                            position: 'absolute', left: 20, top: '50%', transform: 'translateY(-50%)',
-                                            color: 'var(--text-tertiary)', pointerEvents: 'none'
-                                        }} />
-                                    </div>
-                                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 8, letterSpacing: '-0.01em' }}>
-                                        {saleSource === 'invoice'
-                                            ? '以发票日期作为保修起始日（优先级2）'
-                                            : '以客户陈述的销售日期作为保修起始日（优先级3）'}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Invoice Upload - Only show when invoice source selected */}
-                            {saleSource === 'invoice' && (
-                                <div style={{ marginBottom: 16 }}>
-                                    <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                                        发票凭证 <span style={{ color: '#EF4444' }}>*</span>
-                                    </label>
-                                    <div
-                                        onClick={() => document.getElementById('invoice-upload')?.click()}
-                                        style={{
-                                            border: `1px dashed ${invoiceFile ? '#10B981' : 'rgba(255,255,255,0.2)'} `,
-                                            borderRadius: 8, padding: 16,
-                                            background: invoiceFile ? 'rgba(16,185,129,0.05)' : 'rgba(255,255,255,0.02)',
-                                            cursor: 'pointer', textAlign: 'center'
-                                        }}
-                                    >
-                                        <input
-                                            id="invoice-upload"
-                                            type="file"
-                                            accept=".jpg,.jpeg,.png,.pdf"
-                                            onChange={handleFileChange}
-                                            style={{ display: 'none' }}
-                                        />
-                                        {invoiceFile ? (
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                                                <FileText size={20} color="#10B981" />
-                                                <span style={{ color: '#10B981', fontSize: 13, letterSpacing: '-0.01em' }}>{invoiceFileName}</span>
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <Upload size={24} color="#666" style={{ marginBottom: 8 }} />
-                                                <div style={{ fontSize: 13, color: 'var(--text-secondary)', letterSpacing: '-0.01em' }}>点击上传发票图片或PDF</div>
-                                                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4, letterSpacing: '-0.01em' }}>支持 JPG、PNG、PDF，最大 5MB</div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Warranty Months */}
-                            <div style={{ marginBottom: 16 }}>
-                                <label style={{ display: 'block', fontSize: 12, color: '#aaa', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                                    保修期时长
-                                </label>
-                                <select
-                                    value={warrantyMonths}
-                                    onChange={(e) => setWarrantyMonths(parseInt(e.target.value))}
-                                    style={{
-                                        width: '100%', padding: '10px 12px',
-                                        background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none', letterSpacing: '-0.01em'
-                                    }}
-                                >
-                                    <option value={12}>12 个月</option>
-                                    <option value={24}>24 个月（标准）</option>
-                                    <option value={36}>36 个月</option>
-                                </select>
-                            </div>
-
-                            {/* Remarks */}
-                            <div style={{ marginBottom: 16 }}>
-                                <label style={{ display: 'block', fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.6)', marginBottom: 12, letterSpacing: '-0.01em' }}>
-                                    备注
-                                </label>
-                                <textarea
-                                    value={remarks}
-                                    onChange={(e) => setRemarks(e.target.value)}
-                                    placeholder="特殊情况说明（可选）"
-                                    rows={3}
-                                    style={{
-                                        width: '100%', padding: '16px 20px',
-                                        background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                                        borderRadius: 14, color: '#fff', fontSize: 16, outline: 'none',
-                                        resize: 'vertical', letterSpacing: '-0.01em'
-                                    }}
-                                />
-                            </div>
-
-                            {/* Error */}
-                            {error && (
+                                {/* Warning - 警告信息放在右侧 */}
                                 <div style={{
-                                    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                                    borderRadius: 12, padding: 16, color: '#EF4444', fontSize: 13, letterSpacing: '-0.01em', marginTop: 16
+                                    background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)',
+                                    borderRadius: 12, padding: 16
                                 }}>
-                                    {error}
+                                    <div style={{ fontSize: 13, color: '#f59e0b', lineHeight: 1.5 }}>
+                                        <strong>⚠️ 需要注册保修核心信息</strong><br />
+                                        <span style={{ color: 'rgba(245, 158, 11, 0.85)', fontSize: 12 }}>
+                                            该产品没有保修依据，请确定保修凭证以计算保修期。
+                                        </span>
+                                    </div>
                                 </div>
-                            )}
+
+                                {/* Error */}
+                                {error && (
+                                    <div style={{
+                                        background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                                        borderRadius: 8, padding: 10, color: '#EF4444', fontSize: 12
+                                    }}>
+                                        {error}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Footer */}
                         <div style={{
-                            padding: '32px 40px', borderTop: '1px solid rgba(255,255,255,0.06)',
-                            display: 'flex', justifyContent: 'flex-end', gap: 20,
-                            background: 'rgba(0,0,0,0.4)'
+                            padding: '20px 32px', borderTop: '1px solid var(--glass-border)',
+                            display: 'flex', justifyContent: 'flex-end', gap: 16,
+                            background: 'var(--glass-bg-light)'
                         }}>
                             <button
                                 onClick={onClose}
                                 disabled={loading}
                                 style={{
-                                    padding: '0 32px', height: 56, background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
-                                    color: '#fff', cursor: 'pointer', borderRadius: 16, fontWeight: 600,
-                                    fontSize: 16, letterSpacing: '-0.01em'
+                                    padding: '0 24px', height: 44, background: 'transparent', border: '1px solid var(--glass-border)',
+                                    color: 'var(--text-main)', cursor: 'pointer', borderRadius: 10, fontWeight: 600,
+                                    fontSize: 14
                                 }}
                             >
                                 取消
@@ -967,15 +986,15 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                 onClick={handleSubmit}
                                 disabled={loading || !selectedModelName || !saleSource || !saleDate || (saleSource === 'invoice' && !invoiceFile)}
                                 style={{
-                                    padding: '0 40px', height: 56, background: '#FFD200', border: 'none',
-                                    color: '#000', borderRadius: 16, fontWeight: 700,
+                                    padding: '0 32px', height: 44, background: '#FFD200', border: 'none',
+                                    color: '#000', borderRadius: 10, fontWeight: 700,
                                     cursor: loading || !selectedModelName || !saleSource || !saleDate || (saleSource === 'invoice' && !invoiceFile) ? 'not-allowed' : 'pointer',
-                                    display: 'flex', alignItems: 'center', gap: 12,
+                                    display: 'flex', alignItems: 'center', gap: 8,
                                     opacity: loading || !selectedModelName || !saleSource || !saleDate || (saleSource === 'invoice' && !invoiceFile) ? 0.7 : 1,
-                                    fontSize: 18, letterSpacing: '-0.01em', boxShadow: '0 8px 16px rgba(255,210,0,0.3)'
+                                    fontSize: 14, boxShadow: '0 4px 12px rgba(255,210,0,0.3)'
                                 }}
                             >
-                                {loading ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
+                                {loading ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
                                 保存并继续
                             </button>
                         </div>

@@ -73,11 +73,11 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                     {message}
                 </div>
 
-                <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                <div style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
                     {showCancel && (
                         <button type="button" onClick={onCancel} style={{
                             padding: '8px 16px', background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, color: '#ccc', cursor: 'pointer'
+                            border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--text-secondary)', cursor: 'pointer'
                         }}>
                             {cancelText}
                         </button>

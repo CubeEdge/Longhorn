@@ -32,6 +32,12 @@ interface LaborCharge {
     total: number;
 }
 
+interface OtherFee {
+    id: string;
+    description: string;
+    amount: number;
+}
+
 interface ReportContent {
     header: {
         title: string;
@@ -58,10 +64,7 @@ interface ReportContent {
         testing_results: string;
     };
     labor_charges: LaborCharge[];
-    logistics: {
-        shipping_fee: number;
-        shipping_method: string;
-    };
+    other_fees: OtherFee[];
     qa_result: {
         passed: boolean;
         test_duration: string;
@@ -87,6 +90,10 @@ interface ReportData {
     parts_total: number;
     labor_total: number;
     shipping_total: number;
+    // 财务汇总字段
+    tax_rate: number;
+    tax_amount: number;
+    discount_amount: number;
     version: number;
     created_by?: { id: number; display_name: string };
     created_at?: string;
@@ -131,10 +138,7 @@ const DEFAULT_CONTENT: ReportContent = {
         exclusions: ['Physical damage caused by misuse', 'Water damage', 'Unauthorized modifications']
     },
     labor_charges: [],
-    logistics: {
-        shipping_fee: 0,
-        shipping_method: 'Express'
-    }
+    other_fees: []
 };
 
 export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
@@ -173,6 +177,9 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         parts_total: 0,
         labor_total: 0,
         shipping_total: 0,
+        tax_rate: 0,
+        tax_amount: 0,
+        discount_amount: 0,
         version: 1
     });
 
@@ -246,7 +253,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                         issue_description: { ...DEFAULT_CONTENT.issue_description, ...(incomingData.content?.issue_description || {}) },
                         diagnosis: { ...DEFAULT_CONTENT.diagnosis, ...(incomingData.content?.diagnosis || {}) },
                         repair_process: { ...DEFAULT_CONTENT.repair_process, ...(incomingData.content?.repair_process || {}) },
-                        logistics: { ...DEFAULT_CONTENT.logistics, ...(incomingData.content?.logistics || {}) },
+                        other_fees: incomingData.content?.other_fees || DEFAULT_CONTENT.other_fees,
                         qa_result: { ...DEFAULT_CONTENT.qa_result, ...(incomingData.content?.qa_result || {}) },
                         warranty_terms: { ...DEFAULT_CONTENT.warranty_terms, ...(incomingData.content?.warranty_terms || {}) }
                     }
@@ -466,24 +473,33 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         const laborTotal = reportData.content.labor_charges.reduce(
             (sum: number, labor: LaborCharge) => sum + labor.total, 0
         );
-        const shippingTotal = reportData.content.logistics.shipping_fee;
-        const total = partsTotal + laborTotal + shippingTotal;
+        const otherFeesTotal = reportData.content.other_fees.reduce(
+            (sum: number, fee: OtherFee) => sum + fee.amount, 0
+        );
+        
+        // 财务汇总计算
+        const subtotal = partsTotal + laborTotal + otherFeesTotal;
+        const taxRate = reportData.tax_rate || 0;
+        const discountAmount = reportData.discount_amount || 0;
+        const taxAmount = subtotal * (taxRate / 100);
+        const total = subtotal + taxAmount - discountAmount;
 
         setReportData((prev: ReportData) => ({
             ...prev,
             parts_total: partsTotal,
             labor_total: laborTotal,
-            shipping_total: shippingTotal,
+            shipping_total: otherFeesTotal,
+            tax_amount: taxAmount,
             total_cost: total
         }));
 
-        return { partsTotal, laborTotal, shippingTotal, total };
-    }, [reportData.content.repair_process.parts_replaced, reportData.content.labor_charges, reportData.content.logistics.shipping_fee]);
+        return { partsTotal, laborTotal, otherFeesTotal, subtotal, taxAmount, total };
+    }, [reportData.content.repair_process.parts_replaced, reportData.content.labor_charges, reportData.content.other_fees, reportData.tax_rate, reportData.discount_amount]);
 
-    // Real-time fee calculation when parts, labor or shipping changes
+    // Real-time fee calculation when parts, labor, other fees, tax_rate or discount changes
     useEffect(() => {
         calculateTotals();
-    }, [reportData.content.repair_process.parts_replaced, reportData.content.labor_charges, reportData.content.logistics.shipping_fee]);
+    }, [reportData.content.repair_process.parts_replaced, reportData.content.labor_charges, reportData.content.other_fees, reportData.tax_rate, reportData.discount_amount]);
 
     const addLaborCharge = () => {
         const newCharge: LaborCharge = {
@@ -507,6 +523,26 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     const removeLaborCharge = (index: number) => {
         const charges = reportData.content.labor_charges.filter((_: LaborCharge, i: number) => i !== index);
         updateContent('labor_charges', charges);
+    };
+
+    const addOtherFee = () => {
+        const newFee: OtherFee = {
+            id: `fee_${Date.now()}`,
+            description: '',
+            amount: 0
+        };
+        updateContent('other_fees', [...reportData.content.other_fees, newFee]);
+    };
+
+    const updateOtherFee = (index: number, field: keyof OtherFee, value: any) => {
+        const fees = [...reportData.content.other_fees];
+        fees[index] = { ...fees[index], [field]: value };
+        updateContent('other_fees', fees);
+    };
+
+    const removeOtherFee = (index: number) => {
+        const fees = reportData.content.other_fees.filter((_: OtherFee, i: number) => i !== index);
+        updateContent('other_fees', fees);
     };
 
     const saveDraft = async (silent = false) => {
@@ -623,7 +659,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
             <div style={{
-                width: 900, height: '90vh', background: 'var(--bg-secondary)', borderRadius: 16,
+                width: 900, height: '90vh', background: 'var(--glass-bg)', borderRadius: 16,
                 border: '1px solid var(--glass-border)', overflow: 'hidden',
                 boxShadow: '0 30px 60px var(--glass-shadow-lg)',
                 display: 'flex', flexDirection: 'column', position: 'relative'
@@ -1054,52 +1090,91 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                         <FeeSubSection 
                                             title="其他费用" 
                                             icon={<DollarSign size={14} />}
-                                            subtotal={reportData.content.logistics?.shipping_fee || 0}
+                                            subtotal={reportData.content.other_fees.reduce((sum, fee) => sum + fee.amount, 0)}
                                             defaultOpen={true}
                                         >
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>费用金额</label>
-                                                    <input
-                                                        type="number"
-                                                        value={reportData.content.logistics.shipping_fee}
-                                                        onChange={e => updateContent('logistics.shipping_fee', parseFloat(e.target.value) || 0)}
-                                                        disabled={!canEdit}
-                                                        style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>费用说明</label>
-                                                    <input
-                                                        type="text"
-                                                        value={reportData.content.logistics.shipping_method}
-                                                        onChange={e => updateContent('logistics.shipping_method', e.target.value)}
-                                                        disabled={!canEdit}
-                                                        placeholder="如：运费、包装费、检测费..."
-                                                        style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
-                                                    />
-                                                </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                                {reportData.content.other_fees.map((fee, index) => (
+                                                    <div key={fee.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                                                        <div style={{ flex: 1 }}>
+                                                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>费用说明</label>
+                                                            <input
+                                                                type="text"
+                                                                value={fee.description}
+                                                                onChange={e => updateOtherFee(index, 'description', e.target.value)}
+                                                                disabled={!canEdit}
+                                                                placeholder="如：运费、包装费、检测费..."
+                                                                style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ width: 120 }}>
+                                                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>费用金额</label>
+                                                            <input
+                                                                type="number"
+                                                                value={fee.amount}
+                                                                onChange={e => updateOtherFee(index, 'amount', parseFloat(e.target.value) || 0)}
+                                                                disabled={!canEdit}
+                                                                style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                            />
+                                                        </div>
+                                                        {canEdit && (
+                                                            <button
+                                                                onClick={() => removeOtherFee(index)}
+                                                                style={{ padding: 8, background: 'var(--status-red-subtle)', border: 'none', borderRadius: 4, color: 'var(--status-red)', cursor: 'pointer', marginBottom: 0 }}
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                {canEdit && (
+                                                    <button
+                                                        onClick={addOtherFee}
+                                                        style={{ padding: '8px 12px', background: 'var(--glass-bg-light)', border: '1px dashed var(--glass-border)', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                                                    >
+                                                        <Plus size={14} /> 添加费用
+                                                    </button>
+                                                )}
+                                                {reportData.content.other_fees.length === 0 && (
+                                                    <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-tertiary)', fontSize: 13 }}>暂无其他费用</div>
+                                                )}
                                             </div>
                                         </FeeSubSection>
 
-                                        {/* Fee Summary */}
+                                        {/* 财务汇总 */}
                                         <div style={{ marginTop: 16, padding: 16, background: 'var(--glass-bg-light)', borderRadius: 8, border: '1px solid var(--glass-border)' }}>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)' }}>
-                                                    <span>零件合计</span>
-                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>¥{Number(reportData.parts_total || 0).toFixed(2)}</span>
+                                                    <span>小计</span>
+                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>¥{Number((reportData.parts_total || 0) + (reportData.labor_total || 0) + (reportData.shipping_total || 0)).toFixed(2)}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+                                                    <span style={{ color: 'var(--text-secondary)' }}>税率 (%)</span>
+                                                    <input
+                                                        type="number"
+                                                        value={reportData.tax_rate}
+                                                        onChange={e => setReportData((prev: ReportData) => ({ ...prev, tax_rate: parseFloat(e.target.value) || 0 }))}
+                                                        disabled={!canEdit}
+                                                        style={{ width: 50, padding: 4, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, textAlign: 'right' }}
+                                                    />
                                                 </div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)' }}>
-                                                    <span>工时合计</span>
-                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>¥{Number(reportData.labor_total || 0).toFixed(2)}</span>
+                                                    <span>税额</span>
+                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>¥{Number(reportData.tax_amount || 0).toFixed(2)}</span>
                                                 </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)' }}>
-                                                    <span>其他费用</span>
-                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>¥{Number(reportData.content.logistics?.shipping_fee || 0).toFixed(2)}</span>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+                                                    <span style={{ color: 'var(--text-secondary)' }}>优惠金额</span>
+                                                    <input
+                                                        type="number"
+                                                        value={reportData.discount_amount}
+                                                        onChange={e => setReportData((prev: ReportData) => ({ ...prev, discount_amount: parseFloat(e.target.value) || 0 }))}
+                                                        disabled={!canEdit}
+                                                        style={{ width: 80, padding: 4, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, textAlign: 'right' }}
+                                                    />
                                                 </div>
                                                 <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                        <span style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: 14 }}>总计</span>
+                                                        <span style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: 14 }}>合计</span>
                                                         <select
                                                             value={reportData.currency}
                                                             onChange={e => setReportData((prev: ReportData) => ({ ...prev, currency: e.target.value }))}
@@ -1189,8 +1264,11 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                 payment_status: reportData.payment_status,
                                                 parts_total: reportData.parts_total,
                                                 labor_total: reportData.labor_total,
-                                                shipping_total: reportData.content.logistics?.shipping_fee || 0,
-                                                total_cost: reportData.parts_total + reportData.labor_total + (reportData.content.logistics?.shipping_fee || 0),
+                                                shipping_total: reportData.content.other_fees.reduce((sum, fee) => sum + fee.amount, 0),
+                                                total_cost: reportData.total_cost,
+                                                tax_rate: reportData.tax_rate,
+                                                tax_amount: reportData.tax_amount,
+                                                discount_amount: reportData.discount_amount,
                                                 warranty_status: reportData.warranty_status,
                                                 repair_warranty_days: reportData.content.warranty_terms?.repair_warranty_days || 90
                                             };
@@ -1571,20 +1649,20 @@ const ReportPreview: React.FC<{ reportData: ReportData; ticketInfo?: any }> = ({
                                 <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(charge.total || 0).toFixed(2)}</td>
                             </tr>
                         ))}
-                        {/* 运费 */}
-                        {(reportData.content.logistics?.shipping_fee || 0) > 0 && (
-                            <tr>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>运费: {reportData.content.logistics?.shipping_method || '快递'}</td>
+                        {/* 其他费用 */}
+                        {reportData.content.other_fees.map((fee: OtherFee, i: number) => (
+                            <tr key={`fee-${i}`}>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>其他: {fee.description || '未命名费用'}</td>
                                 <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>-</td>
                                 <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>1</td>
                                 <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>-</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.content.logistics?.shipping_fee || 0).toFixed(2)}</td>
+                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(fee.amount || 0).toFixed(2)}</td>
                             </tr>
-                        )}
+                        ))}
                         {/* 无费用项目时显示空行 */}
                         {reportData.content.repair_process.parts_replaced.length === 0 && 
                          reportData.content.labor_charges.length === 0 && 
-                         !(reportData.content.logistics?.shipping_fee > 0) && (
+                         reportData.content.other_fees.length === 0 && (
                             <tr>
                                 <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#a0aec0' }}>未记录费用项目</td>
                             </tr>
@@ -1601,11 +1679,11 @@ const ReportPreview: React.FC<{ reportData: ReportData; ticketInfo?: any }> = ({
                             <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>工时小计:</td>
                             <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.labor_total || 0).toFixed(2)}</td>
                         </tr>
-                        {(reportData.content.logistics?.shipping_fee || 0) > 0 && (
+                        {reportData.content.other_fees.length > 0 && (
                             <tr style={{ background: '#f7fafc' }}>
                                 <td colSpan={3} style={{ padding: 10 }}></td>
-                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>运费:</td>
-                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.content.logistics?.shipping_fee || 0).toFixed(2)}</td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>其他费用:</td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.content.other_fees.reduce((sum, fee) => sum + fee.amount, 0)).toFixed(2)}</td>
                             </tr>
                         )}
                         <tr style={{ background: '#1a365d' }}>
@@ -1672,7 +1750,7 @@ const FeeSubSection: React.FC<{
                     <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
                     <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>{title}</span>
                 </div>
-                <span style={{ fontSize: 13, color: '#FFD700', fontWeight: 600 }}>小计 ¥{Number(subtotal || 0).toFixed(2)}</span>
+                <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 600 }}>小计 ¥{Number(subtotal || 0).toFixed(2)}</span>
             </div>
             {isOpen && (
                 <div style={{ padding: 12 }}>

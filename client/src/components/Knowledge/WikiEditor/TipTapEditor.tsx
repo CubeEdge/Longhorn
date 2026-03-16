@@ -47,10 +47,10 @@ const Toolbar: React.FC<{
 
     const buttonStyle = (active: boolean = false) => ({
         padding: '8px 10px',
-        background: active ? 'rgba(255, 215, 0, 0.2)' : 'transparent',
-        border: active ? '1px solid rgba(255, 215, 0, 0.4)' : '1px solid transparent',
+        background: active ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+        border: active ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent',
         borderRadius: '6px',
-        color: active ? '#FFD700' : 'rgba(255,255,255,0.7)',
+        color: active ? '#3B82F6' : 'var(--text-secondary)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -72,11 +72,11 @@ const Toolbar: React.FC<{
             disabled={disabled}
             onMouseEnter={(e) => {
                 if (!disabled) {
-                    e.currentTarget.style.background = active ? 'rgba(255, 215, 0, 0.3)' : 'var(--glass-bg-hover)';
+                    e.currentTarget.style.background = active ? 'rgba(59, 130, 246, 0.25)' : 'var(--glass-bg-hover)';
                 }
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.background = active ? 'rgba(255, 215, 0, 0.2)' : 'transparent';
+                e.currentTarget.style.background = active ? 'rgba(59, 130, 246, 0.15)' : 'transparent';
             }}
         >
             {children}
@@ -579,7 +579,7 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
             flexDirection: 'column',
             flex: 1,
             overflow: 'hidden',
-            background: 'rgba(0,0,0,0.2)',
+            background: 'var(--glass-bg)',
             borderRadius: '12px'
         }}>
             <Toolbar
@@ -617,19 +617,19 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                 .tiptap-editor-content h3 {
                     font-size: 18px;
                     font-weight: 600;
-                    color: #FFD700;
+                    color: var(--text-main);
                     margin: 16px 0 10px;
                 }
                 .tiptap-editor-content h4 {
                     font-size: 16px;
                     font-weight: 600;
-                    color: rgba(255,255,255,0.9);
+                    color: var(--text-main);
                     margin: 14px 0 8px;
                 }
                 .tiptap-editor-content p {
                     margin-bottom: 16px;
                     line-height: 1.8;
-                    color: rgba(255,255,255,0.9);
+                    color: var(--text-main);
                 }
                 .tiptap-editor-content p.is-editor-empty:first-child::before {
                     content: attr(data-placeholder);
@@ -648,17 +648,17 @@ const TipTapEditor = forwardRef<TipTapEditorRef, TipTapEditorProps>(({
                     line-height: 1.6;
                 }
                 .tiptap-editor-content blockquote {
-                    border-left: 3px solid #FFD700;
+                    border-left: 3px solid var(--accent-blue);
                     padding-left: 20px;
                     margin: 16px 0;
-                    color: rgba(255,255,255,0.7);
+                    color: var(--text-secondary);
                     font-style: italic;
                 }
                 .tiptap-editor-content code {
-                    background: rgba(255, 215, 0, 0.1);
+                    background: rgba(59, 130, 246, 0.1);
                     padding: 2px 6px;
                     border-radius: 4px;
-                    color: #FFD700;
+                    color: var(--accent-blue);
                     font-size: 14px;
                     font-family: 'SF Mono', Monaco, monospace;
                 }

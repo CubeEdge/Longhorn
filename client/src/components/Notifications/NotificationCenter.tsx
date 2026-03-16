@@ -109,22 +109,22 @@ const NotificationItem: React.FC<{
           padding: 12px 16px;
           cursor: pointer;
           transition: background 0.15s;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
+          border-bottom: 1px solid var(--glass-border);
         }
 
         .notification-item:hover {
-          background: rgba(255,255,255,0.04);
+          background: var(--glass-bg-hover);
         }
 
         .notification-item.unread {
-          background: rgba(255,215,0,0.03); /* Kine Yellow tint */
+          background: rgba(59, 130, 246, 0.05); /* Blue tint */
         }
 
         .notification-icon {
           width: 32px;
           height: 32px;
           border-radius: 8px;
-          background: rgba(255,255,255,0.06);
+          background: var(--glass-bg-light);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -303,12 +303,12 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
           right: 20px;
           width: 380px;
           max-height: calc(100vh - 100px);
-          background: rgba(30, 30, 30, 0.95);
+          background: var(--modal-bg);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255,255,255,0.1);
+          border: 1px solid var(--glass-border);
           border-radius: 16px;
-          box-shadow: 0 24px 48px rgba(0,0,0,0.4);
+          box-shadow: 0 24px 48px var(--glass-shadow-lg);
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -331,7 +331,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
           align-items: center;
           justify-content: space-between;
           padding: 16px 20px;
-          border-bottom: 1px solid rgba(255,255,255,0.08);
+          border-bottom: 1px solid var(--glass-border);
         }
 
         .notification-header h3 {
@@ -380,7 +380,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
         }
 
         .close-btn:hover {
-          background: rgba(255,255,255,0.1);
+          background: var(--glass-bg-hover);
           color: var(--text-main);
         }
 
@@ -404,8 +404,8 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
         .loading-spinner {
           width: 24px;
           height: 24px;
-          border: 2px solid rgba(255,255,255,0.1);
-          border-top-color: #FFD700; /* Kine Yellow */
+          border: 2px solid var(--glass-border);
+          border-top-color: var(--accent-blue);
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         }

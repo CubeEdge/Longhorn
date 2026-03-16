@@ -727,8 +727,8 @@ select.form-control {
 }
 
 select.form-control option {
-  background: #1C1C1E;
-  color: white;
+  background: var(--card-bg);
+  color: var(--text-main);
   padding: 12px;
 }
 
@@ -774,6 +774,18 @@ select.form-control option {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Pulse animation for breathing effect - works in both light and dark modes */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
   }
 }
 
