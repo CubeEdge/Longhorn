@@ -106,7 +106,7 @@ const CRMLookup: React.FC<{
                         }}
                         onFocus={() => setShowResults(true)}
                         style={{
-                            width: '100%', height: '52px', background: 'rgba(0,0,0,0.3)',
+                            width: '100%', height: '52px', background: 'var(--glass-bg-light)',
                             border: '1px solid var(--glass-border)', borderRadius: '14px',
                             padding: '0 12px 0 42px', color: 'var(--text-main)', fontSize: '16px', outline: 'none'
                         }}
@@ -488,7 +488,7 @@ const TicketCreationModal: React.FC = () => {
     const ghostStyle = (field: string): React.CSSProperties => ({
         border: ghostFields.has(field) ? '1px solid rgba(59, 130, 246, 0.6)' : '1px solid var(--glass-border)',
         boxShadow: ghostFields.has(field) ? '0 0 10px rgba(59, 130, 246, 0.2)' : 'none',
-        background: ghostFields.has(field) ? 'rgba(59, 130, 246, 0.05)' : 'rgba(0,0,0,0.3)',
+        background: ghostFields.has(field) ? 'rgba(59, 130, 246, 0.05)' : 'var(--glass-bg-light)',
         transition: 'all 0.3s'
     });
 
@@ -553,7 +553,7 @@ const TicketCreationModal: React.FC = () => {
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                             <Sparkles size={20} color="#FFD700" />
-                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--accent-blue)' }}>{t('ticket.creation.ai_sandbox') || 'AI Sandbox'}</h3>
+                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--accent-blue)' }}>{t('ticket.creation.ai_sandbox') || 'Bokeh 协助'}</h3>
                         </div>
 
                         <div
@@ -562,7 +562,11 @@ const TicketCreationModal: React.FC = () => {
                                 border: '2px dashed var(--glass-border-accent)',
                                 borderRadius: 20,
                                 padding: 4,
-                                background: 'var(--glass-bg-light)'
+                                background: 'var(--glass-bg-light)',
+                                flex: 1,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                minHeight: 0
                             }}
                             onDragOver={(e) => {
                                 e.preventDefault();
@@ -599,10 +603,11 @@ const TicketCreationModal: React.FC = () => {
                                 }}
                                 placeholder={t('ticket.creation.ai_paste_hint') || '粘贴文字、图片，或拖入文件...'}
                                 style={{
-                                    width: '100%', flex: 1, background: 'transparent',
+                                    width: '100%', height: '100%', minHeight: 0, background: 'transparent',
                                     border: 'none', borderRadius: 20,
                                     padding: 24, color: 'var(--text-main)', fontSize: 16, outline: 'none', resize: 'none',
-                                    lineHeight: 1.6
+                                    lineHeight: 1.6,
+                                    flex: 1
                                 }}
                             />
 
@@ -684,18 +689,15 @@ const TicketCreationModal: React.FC = () => {
                     </div>
 
                     {/* RIGHT: Formal Blueprint (结构化蓝图) */}
-                    <div style={{ padding: '24px 40px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 24 }}>
+                    <div style={{ padding: '16px 32px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                        <form id="opt-ticket-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                        <form id="opt-ticket-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
                             {/* CRM Context Section */}
                             <section>
-                                <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 16, borderBottom: '1px solid var(--glass-border)', paddingBottom: 8, letterSpacing: 1.5 }}>
-                                    {t('ticket.creation.customer_crm') || '客户关系 (CRM)'}
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                        <label style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('ticket.creation.search_account') || '搜索企业 / 公司'}</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{t('ticket.creation.search_account') || '搜索企业 / 公司'}</label>
                                         <CRMLookup
                                             onSelect={async (acc) => {
                                                 if (acc) {
@@ -735,8 +737,8 @@ const TicketCreationModal: React.FC = () => {
                                             currentAccountId={draft.account_id}
                                         />
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                        <label style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('ticket.creation.contact_name') || '联系人 / 客户姓名'}</label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{t('ticket.creation.contact_name') || '联系人 / 客户姓名'}</label>
                                         <div style={{ position: 'relative' }}>
                                             <input
                                                 type="text"
@@ -744,8 +746,8 @@ const TicketCreationModal: React.FC = () => {
                                                 onChange={(e) => handleFieldChange('customer_name', e.target.value)}
                                                 placeholder={t('ticket.creation.contact_name_placeholder') || 'XXXJacky'}
                                                 style={{
-                                                    width: '100%', height: 52, borderRadius: 14, padding: '0 20px',
-                                                    color: '#fff', fontSize: 16, outline: 'none',
+                                                    width: '100%', height: 44, borderRadius: 12, padding: '0 16px',
+                                                    color: 'var(--text-main)', fontSize: 15, outline: 'none',
                                                     ...ghostStyle('customer_name')
                                                 }}
                                             />
@@ -753,8 +755,8 @@ const TicketCreationModal: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div style={{ marginTop: 24 }}>
-                                    <label style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 12 }}>{t('ticket.creation.contact_info') || '联系方式 (邮箱 / 电话)'}</label>
+                                <div style={{ marginTop: 16 }}>
+                                    <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>{t('ticket.creation.contact_info') || '联系方式 (邮箱 / 电话)'}</label>
                                     <div style={{ position: 'relative' }}>
                                         <input
                                             type="text"
@@ -762,8 +764,8 @@ const TicketCreationModal: React.FC = () => {
                                             onChange={(e) => handleFieldChange('customer_contact', e.target.value)}
                                             placeholder={t('ticket.creation.contact_info_placeholder') || 'example@email.com or +86...'}
                                             style={{
-                                                width: '100%', height: 52, borderRadius: 14, padding: '0 20px',
-                                                color: '#fff', fontSize: 16, outline: 'none',
+                                                width: '100%', height: 44, borderRadius: 12, padding: '0 16px',
+                                                color: 'var(--text-main)', fontSize: 15, outline: 'none',
                                                 ...ghostStyle('customer_contact')
                                             }}
                                         />
@@ -774,19 +776,16 @@ const TicketCreationModal: React.FC = () => {
 
                             {/* Product Section */}
                             <section>
-                                <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 20, borderBottom: '1px solid var(--glass-border)', paddingBottom: 10, letterSpacing: 1.5 }}>
-                                    {t('ticket.creation.hardware_context') || '硬件信息'}
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                        <label style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('ticket.creation.product_model') || '产品型号'}</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{t('ticket.creation.product_model') || '产品型号'}</label>
                                         <div style={{ position: 'relative' }}>
                                             <select
                                                 value={draft.product_id || ''}
                                                 onChange={(e) => handleFieldChange('product_id', parseInt(e.target.value))}
                                                 style={{
-                                                    width: '100%', height: 52, borderRadius: 14, padding: '0 16px',
-                                                    color: '#fff', fontSize: 16, outline: 'none', appearance: 'none',
+                                                    width: '100%', height: 44, borderRadius: 12, padding: '0 14px',
+                                                    color: 'var(--text-main)', fontSize: 15, outline: 'none', appearance: 'none',
                                                     ...ghostStyle('product_id')
                                                 }}
                                             >
@@ -797,8 +796,8 @@ const TicketCreationModal: React.FC = () => {
                                             {ghostFields.has('product_id') && <div style={{ position: 'absolute', right: 36, top: -10, background: '#3b82f6', color: '#fff', fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 800 }}>AI MATCHED</div>}
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                        <label style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('ticket.creation.serial_number') || '序列号 (S/N)'}</label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{t('ticket.creation.serial_number') || '序列号 (S/N)'}</label>
                                         <div style={{ position: 'relative' }}>
                                             <input
                                                 type="text"
@@ -806,8 +805,8 @@ const TicketCreationModal: React.FC = () => {
                                                 onChange={(e) => handleFieldChange('serial_number', e.target.value)}
                                                 placeholder={t('ticket.creation.sn_placeholder') || 'Enter Device S/N...'}
                                                 style={{
-                                                    width: '100%', height: 52, borderRadius: 14, padding: '0 20px',
-                                                    color: '#fff', fontSize: 16, outline: 'none', fontFamily: 'monospace',
+                                                    width: '100%', height: 44, borderRadius: 12, padding: '0 16px',
+                                                    color: 'var(--text-main)', fontSize: 15, outline: 'none', fontFamily: 'monospace',
                                                     ...ghostStyle('serial_number')
                                                 }}
                                             />
@@ -836,12 +835,12 @@ const TicketCreationModal: React.FC = () => {
                                     const statusColor = isUnregistered ? '#E60000' 
                                         : (needsWarrantyReg ? '#FFD700' 
                                         : (isWarrantyExpired ? '#F97316' : '#10B981'));
-                                    const bgColor = isUnregistered ? 'rgba(230, 0, 0, 0.05)' 
-                                        : (needsWarrantyReg ? 'rgba(255, 215, 0, 0.05)' 
-                                        : (isWarrantyExpired ? 'rgba(249, 115, 22, 0.05)' : 'rgba(16, 185, 129, 0.05)'));
-                                    const borderColor = isUnregistered ? 'rgba(230, 0, 0, 0.3)' 
-                                        : (needsWarrantyReg ? 'rgba(255, 215, 0, 0.3)' 
-                                        : (isWarrantyExpired ? 'rgba(249, 115, 22, 0.3)' : 'rgba(16, 185, 129, 0.2)'));
+                                    const bgColor = isUnregistered ? 'rgba(230, 0, 0, 0.1)' 
+                                        : (needsWarrantyReg ? 'rgba(255, 215, 0, 0.1)' 
+                                        : (isWarrantyExpired ? 'rgba(249, 115, 22, 0.1)' : 'rgba(16, 185, 129, 0.1)'));
+                                    const borderColor = isUnregistered ? 'rgba(230, 0, 0, 0.4)' 
+                                        : (needsWarrantyReg ? 'rgba(255, 215, 0, 0.4)' 
+                                        : (isWarrantyExpired ? 'rgba(249, 115, 22, 0.4)' : 'rgba(16, 185, 129, 0.3)'));
                                     
                                     // 未入库时显示用户选择的型号，否则显示台账中的型号
                                     const displayModelName = isUnregistered 
@@ -853,10 +852,10 @@ const TicketCreationModal: React.FC = () => {
                                     
                                     return (
                                         <div style={{
-                                            marginTop: 20, padding: '16px 20px',
+                                            marginTop: 12, padding: '12px 16px',
                                             background: bgColor,
                                             border: `1px solid ${borderColor}`,
-                                            borderRadius: 12, display: 'flex', alignItems: 'center', gap: 14
+                                            borderRadius: 10, display: 'flex', alignItems: 'center', gap: 12
                                         }}>
                                             <div style={{
                                                 padding: 10, borderRadius: 10,
@@ -867,10 +866,10 @@ const TicketCreationModal: React.FC = () => {
                                                 {isUnregistered ? <AlertTriangle size={22} /> : <ShieldCheck size={22} />}
                                             </div>
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontWeight: 600, color: '#fff', fontSize: 15, marginBottom: 4 }}>
+                                                <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: 15, marginBottom: 4 }}>
                                                     {displayModelName}
                                                 </div>
-                                                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+                                                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                                                     {isUnregistered 
                                                         ? '该序列号尚未录入产品台账' 
                                                         : (needsWarrantyReg 
@@ -920,52 +919,47 @@ const TicketCreationModal: React.FC = () => {
 
                             {/* Details Section */}
                             <section>
-                                <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: 16, borderBottom: '1px solid var(--glass-border)', paddingBottom: 8, letterSpacing: 1.5 }}>
-                                    {t('ticket.creation.problem_spec') || '问题细则'}
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                        <label style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-secondary)' }}>{t('ticket.creation.detailed_desc') || '问题描述'}</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <textarea
-                                                value={draft.problem_description || ''}
-                                                onChange={(e) => handleFieldChange('problem_description', e.target.value)}
-                                                placeholder={t('ticket.creation.elaborate') || '请详细描述问题...'}
-                                                style={{
-                                                    width: '100%', minHeight: 120, borderRadius: 16, padding: 16,
-                                                    color: '#fff', fontSize: 16, outline: 'none', lineHeight: 1.6,
-                                                    background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)',
-                                                    resize: 'none',
-                                                    ...ghostStyle('problem_description')
-                                                }}
-                                            />
-                                            {ghostFields.has('problem_description') && <div style={{ position: 'absolute', right: 12, top: -10, background: '#3b82f6', color: '#fff', fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 800 }}>AI GENERATED</div>}
-                                        </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>问题描述</label>
+                                    <div style={{ position: 'relative' }}>
+                                        <textarea
+                                            value={draft.problem_description || ''}
+                                            onChange={(e) => handleFieldChange('problem_description', e.target.value)}
+                                            placeholder={t('ticket.creation.elaborate') || '请详细描述问题...'}
+                                            style={{
+                                                width: '100%', minHeight: 80, borderRadius: 12, padding: 12,
+                                                color: 'var(--text-main)', fontSize: 15, outline: 'none', lineHeight: 1.5,
+                                                background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)',
+                                                resize: 'vertical',
+                                                ...ghostStyle('problem_description')
+                                            }}
+                                        />
+                                        {ghostFields.has('problem_description') && <div style={{ position: 'absolute', right: 12, top: -10, background: '#3b82f6', color: '#fff', fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 800 }}>AI GENERATED</div>}
                                     </div>
 
                                     {/* Attachments UI */}
-                                    <div style={{ marginTop: 12 }}>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                                    <div style={{ marginTop: 8 }}>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                                             <label style={{
-                                                width: 100, height: 100, borderRadius: 16, border: '2px dashed var(--glass-border)',
+                                                width: 80, height: 80, borderRadius: 12, border: '2px dashed var(--glass-border)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                                                color: 'rgba(255,255,255,0.2)', transition: 'all 0.2s', background: 'rgba(255,255,255,0.02)'
-                                            }} onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--text-tertiary)'} onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--glass-border)'}>
-                                                <Plus size={32} />
+                                                color: 'var(--text-tertiary)', transition: 'all 0.2s', background: 'var(--glass-bg-light)'
+                                            }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-blue)'; e.currentTarget.style.color = 'var(--accent-blue)'; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.color = 'var(--text-tertiary)'; }}>
+                                                <Plus size={28} />
                                                 <input type="file" multiple onChange={handleFileSelect} style={{ display: 'none' }} />
                                             </label>
                                             {attachments.map((file, i) => (
                                                 <div key={i} style={{
-                                                    width: 100, height: 100, borderRadius: 16, background: 'rgba(255,255,255,0.05)',
+                                                    width: 80, height: 80, borderRadius: 12, background: 'var(--glass-bg)',
                                                     border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column',
                                                     alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden'
                                                 }}>
-                                                    <FileText size={28} style={{ color: 'rgba(255,255,255,0.4)' }} />
-                                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 6, width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 8px' }}>
+                                                    <FileText size={24} style={{ color: 'var(--text-secondary)' }} />
+                                                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4, width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 6px' }}>
                                                         {file.name}
                                                     </div>
-                                                    <button onClick={() => removeAttachment(i)} style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', color: '#fff', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                                                        <X size={12} />
+                                                    <button onClick={() => removeAttachment(i)} style={{ position: 'absolute', top: 4, right: 4, background: 'var(--glass-bg-light)', border: 'none', borderRadius: '50%', color: 'var(--text-secondary)', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                                                        <X size={10} />
                                                     </button>
                                                 </div>
                                             ))}
@@ -979,9 +973,9 @@ const TicketCreationModal: React.FC = () => {
 
                 {/* Footer */}
                 <div style={{
-                    padding: '24px 40px', borderTop: '1px solid var(--glass-border)',
+                    padding: '16px 32px', borderTop: '1px solid var(--glass-border)',
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'rgba(0,0,0,0.4)'
+                    background: 'var(--glass-bg)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-tertiary)', fontSize: 13 }}>
                         <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
@@ -991,8 +985,8 @@ const TicketCreationModal: React.FC = () => {
                         <button
                             onClick={closeModal}
                             style={{
-                                padding: '0 32px', height: 56, borderRadius: 16, border: '1px solid var(--glass-border)',
-                                background: 'transparent', color: '#fff', fontWeight: 600, fontSize: 16, cursor: 'pointer'
+                                padding: '0 24px', height: 48, borderRadius: 12, border: '1px solid var(--glass-border)',
+                                background: 'transparent', color: 'var(--text-main)', fontWeight: 600, fontSize: 15, cursor: 'pointer'
                             }}
                         >
                             {t('action.cancel') || '取消'}
@@ -1002,14 +996,14 @@ const TicketCreationModal: React.FC = () => {
                             form="opt-ticket-form"
                             disabled={loading}
                             style={{
-                                padding: '0 48px', height: 56, borderRadius: 16, border: 'none',
+                                padding: '0 32px', height: 48, borderRadius: 12, border: 'none',
                                 background: '#FFD700',
-                                color: '#000', fontWeight: 800, fontSize: 18, cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', gap: 12,
-                                opacity: loading ? 0.6 : 1, boxShadow: '0 12px 24px rgba(255, 215, 0, 0.3)'
+                                color: '#000', fontWeight: 700, fontSize: 16, cursor: 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                opacity: loading ? 0.6 : 1, boxShadow: '0 8px 20px rgba(255, 215, 0, 0.3)'
                             }}
                         >
-                            {loading ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
+                            {loading ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
                             {t('action.create_ticket_now') || '马上创建工单'}
                         </button>
                     </div>

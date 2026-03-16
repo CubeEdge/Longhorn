@@ -1135,7 +1135,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             style={{
                                                 width: '100%',
                                                 padding: '10px 12px',
-                                                background: 'var(--glass-bg-hover)',
+                                                background: 'var(--glass-bg-light)',
                                                 border: '1px solid var(--glass-border)',
                                                 borderRadius: '8px',
                                                 color: 'var(--text-main)',
@@ -1156,11 +1156,12 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                                 setProductLine(e.target.value);
                                                 setProductModels([]);
                                             }}
+                                            className="form-control"
                                             style={{
                                                 width: '100%',
                                                 padding: '10px 12px',
-                                                background: 'var(--glass-bg-hover)',
-                                                border: '1px solid var(--glass-border)',
+                                                background: 'var(--input-bg)',
+                                                border: '1px solid var(--input-border)',
                                                 borderRadius: '8px',
                                                 color: 'var(--text-main)',
                                                 fontSize: '14px',
@@ -1198,7 +1199,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             flexWrap: 'wrap',
                                             gap: '8px',
                                             padding: '12px',
-                                            background: 'var(--glass-bg-hover)',
+                                            background: 'var(--glass-bg-light)',
                                             border: '1px solid var(--glass-border)',
                                             borderRadius: '10px'
                                         }}>
@@ -1243,11 +1244,12 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             <select
                                                 value={category}
                                                 onChange={(e) => setCategory(e.target.value)}
+                                                className="form-control"
                                                 style={{
                                                     width: '100%',
                                                     padding: '10px 12px',
-                                                    background: 'var(--glass-bg-hover)',
-                                                    border: '1px solid var(--glass-border)',
+                                                    background: 'var(--input-bg)',
+                                                    border: '1px solid var(--input-border)',
                                                     borderRadius: '8px',
                                                     color: 'var(--text-main)',
                                                     fontSize: '14px',
@@ -1268,11 +1270,12 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             <select
                                                 value={visibility}
                                                 onChange={(e) => setVisibility(e.target.value as any)}
+                                                className="form-control"
                                                 style={{
                                                     width: '100%',
                                                     padding: '10px 12px',
-                                                    background: 'var(--glass-bg-hover)',
-                                                    border: '1px solid var(--glass-border)',
+                                                    background: 'var(--input-bg)',
+                                                    border: '1px solid var(--input-border)',
                                                     borderRadius: '8px',
                                                     color: 'var(--text-main)',
                                                     fontSize: '14px',
@@ -1301,7 +1304,7 @@ export default function KnowledgeGenerator({ isOpen = true, onClose }: Knowledge
                                             style={{
                                                 width: '100%',
                                                 padding: '10px 12px',
-                                                background: 'var(--glass-bg-hover)',
+                                                background: 'var(--glass-bg-light)',
                                                 border: '1px solid var(--glass-border)',
                                                 borderRadius: '8px',
                                                 color: 'var(--text-main)',

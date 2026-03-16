@@ -1,7 +1,7 @@
 {
   "name": "longhorn-client",
   "private": true,
-  "version": "12.3.260",
+  "version": "12.3.268",
   "type": "module",
   "scripts": {
     "dev": "vite",

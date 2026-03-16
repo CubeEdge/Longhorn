@@ -1,8 +1,13 @@
 # Service 数据模型设计
 
-**版本**: 0.9.3 (Audit & Visibility Integration)
-**最后更新**: 2026-03-12
+**版本**: 0.9.4 (Attachment Management Enhancement)
+**最后更新**: 2026-03-15
 
+> **v0.9.4 更新 (附件管理增强)**：
+> - 完善 `ticket_attachments` 表说明：明确 `activity_id` 可为 NULL（工单级别附件）
+> - 新增 `attachments_count` 字段说明：工单表中的附件计数缓存字段
+> - 附件查询逻辑更新：工单详情接口现在返回所有附件（包括关联到活动的附件）
+>
 > **v0.9.3 更新 (产品台账与保修注册)**：
 > - 新增产品台账统计字段：`inquiry_count`, `rma_count`, `repair_count`
 > - 完善保修注册字段：`warranty_source`, `warranty_start_date`, `warranty_end_date`, `warranty_status`
@@ -526,6 +531,9 @@ tickets (统一工单表 - 单表多态设计)
 ├── deleted_by: INT -- 删除执行人
 ├── delete_reason: TEXT -- 删除理由 (必填)
 │
+├── // ===== 附件计数 (v0.9.4 新增) =====
+├── attachments_count: INT DEFAULT 0 -- 附件数量缓存（关联 ticket_attachments 计数）
+│
 ├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 └── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 
@@ -746,34 +754,40 @@ FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
 
 ---
 
-### 2.4 工单附件 (issue_attachments)
+### 2.4 工单附件 (ticket_attachments)
 
 > **P2 更新**：简化关联结构，统一关联 tickets 表。
+> **v0.9.4 更新**：明确 `activity_id` 为 NULL 时表示工单级别附件；新增 `uploaded_at` 字段。
 
 ```sql
-issue_attachments (工单附件)
+ticket_attachments (工单附件)
 ├── id: SERIAL PRIMARY KEY
 ├── ticket_id: INT NOT NULL -- 关联工单 (tickets 统一表)
-├── activity_id: INT -- 关联活动 (如果是通过评论上传)
+├── activity_id: INT -- 关联活动 (NULL表示工单级别附件)
 ├── file_name: VARCHAR(255) NOT NULL -- 文件名
 ├── file_path: VARCHAR(500) -- 文件路径
-├── file_url: TEXT -- 文件URL
 ├── file_size: BIGINT -- 文件大小 (bytes)
-├── file_type: ENUM('image', 'video', 'document') -- 文件类型
-├── mime_type: VARCHAR(100) -- MIME类型
-├── uploaded_by: INT -- 上传人
-├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+├── file_type: TEXT -- MIME类型 (如 image/png)
+├── uploaded_by: INT NOT NULL -- 上传人
+├── uploaded_at: DATETIME DEFAULT CURRENT_TIMESTAMP -- 上传时间
 
 FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
-FOREIGN KEY (activity_id) REFERENCES ticket_activities(id)
+FOREIGN KEY (activity_id) REFERENCES ticket_activities(id) ON DELETE CASCADE
 FOREIGN KEY (uploaded_by) REFERENCES users(id)
 ```
 
 **索引**：
 - PRIMARY KEY (id)
-- INDEX idx_ticket (ticket_id)
-- INDEX idx_activity (activity_id)
-- INDEX idx_uploaded_by (uploaded_by)
+- INDEX idx_ticket_attachments_ticket (ticket_id)
+- INDEX idx_ticket_attachments_activity (activity_id)
+
+**附件类型说明**：
+- `activity_id IS NULL`: 工单级别附件（创建工单时上传、或通过附件管理API上传）
+- `activity_id IS NOT NULL`: 活动关联附件（通过评论/活动上传）
+
+**查询注意事项**：
+- 工单详情接口 `/api/v1/tickets/:id` 返回所有附件（不区分 `activity_id`）
+- 活动详情中通过 `activity.attachments` 获取该活动的附件
 
 ---
 
@@ -1679,7 +1693,7 @@ Core Entities:
 Ticketing System (P2 统一架构):
   tickets (统一工单表, ticket_type: inquiry/rma/svc)
     ├─ ticket_activities (活动时间轴)
-    ├─ issue_attachments (附件)
+    ├─ ticket_attachments (工单附件)
     ├─ repair_exceptions (维修异常)
     └─ logistics_tracking (物流跟踪)
   

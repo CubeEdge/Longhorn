@@ -479,7 +479,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         repair_content: ticket!.repair_content,
                                         payment_amount: ticket!.payment_amount,
                                         is_warranty: ticket!.is_warranty,
-                                        product_id: ticket!.product_id as number
+                                        product_id: ticket!.product_id as number,
+                                        account_name: ticket!.account_name,
+                                        contact_name: ticket!.contact_name,
+                                        dealer_name: ticket!.dealer_name
                                     });
                                     setIsEditing(true);
                                 }}
@@ -751,11 +754,40 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         if (!changeReason.trim()) return;
         setIsSaving(true);
         try {
+            // 1. 保存工单基本信息（排除附件相关字段）
+            const { _attachmentsToDelete, _newAttachments, ...ticketData } = editForm;
             await axios.patch(`/api/v1/tickets/${ticketId}`, {
-                ...editForm,
+                ...ticketData,
                 change_reason: changeReason.trim(),
                 is_modal_edit: true
             }, { headers: { Authorization: `Bearer ${token}` } });
+
+            // 2. 删除标记的附件
+            const attachmentsToDelete = (_attachmentsToDelete as number[]) || [];
+            for (const attachId of attachmentsToDelete) {
+                try {
+                    await axios.delete(`/api/v1/tickets/${ticketId}/attachments/${attachId}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                } catch (err: any) {
+                    console.error(`Failed to delete attachment ${attachId}:`, err);
+                }
+            }
+
+            // 3. 上传新附件
+            const newAttachments = (_newAttachments as File[]) || [];
+            for (const file of newAttachments) {
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    await axios.post(`/api/v1/tickets/${ticketId}/attachments`, formData, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                } catch (err: any) {
+                    console.error(`Failed to upload attachment ${file.name}:`, err);
+                }
+            }
+
             setIsEditing(false);
             setIsAuditModalOpen(false);
             setChangeReason('');
@@ -951,8 +983,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     <div style={{
                         display: 'flex', alignItems: 'center', gap: 6,
                         padding: '6px 14px', borderRadius: 10, fontSize: 14, fontWeight: 700,
-                        background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)',
-                        color: '#60A5FA',
+                        background: 'rgba(255,215,0,0.15)', border: '1px solid rgba(255,215,0,0.3)',
+                        color: '#FFD700',
                     }}>
                         <span>
                             {(() => {
@@ -1767,30 +1799,92 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             </div>
                             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-                                {/* ---- 分组 1: 设备信息 (RMA/SVC 特有) ---- */}
+                                {/* ---- 分组 1: 流程控制 (仅Admin/Exec可见，放最前面) ---- */}
+                                {(user?.role === 'Admin' || user?.role === 'Exec') && (ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
+                                    <div style={{ paddingBottom: 20 }}>
+                                        <div style={{ fontSize: 11, color: 'var(--status-red)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--status-red-subtle)', paddingBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <AlertTriangle size={12} /> 流程控制 (Admin/Exec)
+                                        </div>
+                                        <div style={{ padding: '12px', background: 'var(--status-red-subtle)', border: '1px solid var(--status-red-subtle)', borderRadius: 8 }}>
+                                            <label style={{ display: 'block', fontSize: 12, color: 'var(--status-red)', marginBottom: 8, fontWeight: 500 }}>强制节点回退</label>
+                                            <select
+                                                value={editForm.current_node as string || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, current_node: e.target.value || undefined }))}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 6, fontSize: 13, marginBottom: 10 }}
+                                            >
+                                                <option value="">保持当前节点: {nodeLabels[ticket.current_node]?.zh || ticket.current_node}</option>
+                                                <option value="op_receiving">待收货 (OP)</option>
+                                                <option value="op_diagnosing">诊断中 (OP)</option>
+                                                <option value="op_repairing">维修中 (OP)</option>
+                                                <option value="ms_review">商务审核 (MS)</option>
+                                                <option value="ms_closing">最终结案 (MS)</option>
+                                                <option value="op_shipping">打包发货 (OP)</option>
+                                            </select>
+                                            <p style={{ margin: 0, fontSize: 10, color: 'var(--status-red)', opacity: 0.8 }}>
+                                                警告：强制回退将触发自动分发规则，可能变更对接人。此操作将记录在活动日志中。
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ---- 分组 2: 客户信息 ---- */}
+                                <div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>客户信息</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>客户名称</label>
+                                            <input
+                                                value={editForm.account_name as string || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, account_name: e.target.value }))}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 6, fontSize: 13 }}
+                                                placeholder="客户名称"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>联系人</label>
+                                            <input
+                                                value={editForm.contact_name as string || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, contact_name: e.target.value }))}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 6, fontSize: 13 }}
+                                                placeholder="联系人姓名"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>经销商</label>
+                                            <input
+                                                value={editForm.dealer_name as string || ''}
+                                                onChange={e => setEditForm(prev => ({ ...prev, dealer_name: e.target.value }))}
+                                                style={{ width: '100%', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 6, fontSize: 13 }}
+                                                placeholder="经销商名称"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ---- 分组 3: 设备信息 (RMA/SVC 特有) ---- */}
                                 {(ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
                                     <div>
-                                        <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>设备信息</div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>设备信息</div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                            <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 8 }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#FFD200', marginBottom: 6 }}>
+                                            <div style={{ padding: '10px 12px', background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 8 }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--accent-blue)', marginBottom: 6 }}>
                                                     <ShieldAlert size={12} /> 序列号 (S/N)
                                                 </label>
                                                 <input
                                                     value={editForm.serial_number as string || ''}
                                                     onChange={e => setEditForm(prev => ({ ...prev, serial_number: e.target.value }))}
-                                                    style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.2)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                                    style={{ width: '100%', padding: '8px 10px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 6, fontSize: 13 }}
                                                 />
-                                                <p style={{ margin: '6px 0 0', fontSize: 10, color: '#777' }}>警告：修改此项将影响设备服务记录与审计体系</p>
+                                                <p style={{ margin: '6px 0 0', fontSize: 10, color: 'var(--text-tertiary)' }}>警告：修改此项将影响设备服务记录与审计体系</p>
                                             </div>
-                                            <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.03)', border: '1px solid rgba(245,158,11,0.1)', borderRadius: 8 }}>
-                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#FFD200', marginBottom: 6 }}>
+                                            <div style={{ padding: '10px 12px', background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 8 }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--accent-blue)', marginBottom: 6 }}>
                                                     <Package size={12} /> 产品型号
                                                 </label>
                                                 <select
                                                     value={editForm.product_id as number || ''}
                                                     onChange={e => setEditForm(prev => ({ ...prev, product_id: e.target.value ? Number(e.target.value) : undefined }))}
-                                                    style={{ width: '100%', padding: '8px 10px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(245,158,11,0.2)', color: '#fff', borderRadius: 6, fontSize: 13 }}
+                                                    style={{ width: '100%', padding: '8px 10px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 6, fontSize: 13 }}
                                                 >
                                                     <option value="">{ticket.product_name || '选择型号...'}</option>
                                                     {products.map(p => (
@@ -1802,64 +1896,151 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     </div>
                                 )}
 
-                                {/* ---- 分组 2: 问题描述 ---- */}
+                                {/* ---- 分组 4: 问题描述 ---- */}
                                 <div>
-                                    <div style={{ fontSize: 11, color: '#555', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: 6 }}>问题描述</div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>问题描述</div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>问题简述</label>
-                                            <input
-                                                value={editForm.problem_summary as string || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, problem_summary: e.target.value }))}
-                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, fontSize: 13 }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 6 }}>详细描述</label>
-                                            <textarea
-                                                value={editForm.problem_description as string || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, problem_description: e.target.value }))}
-                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 6, minHeight: 80, fontSize: 13, resize: 'vertical' }}
-                                            />
-                                        </div>
+                                        <textarea
+                                            value={editForm.problem_description as string || ''}
+                                            onChange={e => setEditForm(prev => ({ ...prev, problem_description: e.target.value }))}
+                                            style={{ width: '100%', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 6, minHeight: 120, fontSize: 13, resize: 'vertical' }}
+                                        />
                                     </div>
                                 </div>
 
-                                {/* ---- 分组 3: 流程控制 (仅Admin/Exec可见) ---- */}
-                                {(user?.role === 'Admin' || user?.role === 'Exec') && (ticket.ticket_type === 'rma' || ticket.ticket_type === 'svc') && (
-                                    <div style={{ paddingBottom: 20 }}>
-                                        <div style={{ fontSize: 11, color: '#EF4444', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid rgba(239,68,68,0.2)', paddingBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <AlertTriangle size={12} /> 流程控制 (Admin/Exec)
-                                        </div>
-                                        <div style={{ padding: '12px', background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 8 }}>
-                                            <label style={{ display: 'block', fontSize: 12, color: '#EF4444', marginBottom: 8, fontWeight: 500 }}>强制节点回退</label>
-                                            <select
-                                                value={editForm.current_node as string || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, current_node: e.target.value || undefined }))}
-                                                style={{ width: '100%', padding: '8px 12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(239,68,68,0.3)', color: '#fff', borderRadius: 6, fontSize: 13, marginBottom: 10 }}
-                                            >
-                                                <option value="">保持当前节点: {nodeLabels[ticket.current_node]?.zh || ticket.current_node}</option>
-                                                <option value="op_receiving">待收货 (OP)</option>
-                                                <option value="op_diagnosing">诊断中 (OP)</option>
-                                                <option value="op_repairing">维修中 (OP)</option>
-                                                <option value="ms_review">商务审核 (MS)</option>
-                                                <option value="ms_closing">最终结案 (MS)</option>
-                                                <option value="op_shipping">打包发货 (OP)</option>
-                                            </select>
-                                            <p style={{ margin: 0, fontSize: 10, color: '#EF4444', opacity: 0.8 }}>
-                                                警告：强制回退将触发自动分发规则，可能变更对接人。此操作将记录在活动日志中。
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
+                                {/* ---- 分组 5: 附件管理 ---- */}
+                                <div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>附件管理</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                        {/* 当前附件列表 */}
+                                        {ticketAttachments.length > 0 && (
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>当前附件</label>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                    {ticketAttachments.map(att => (
+                                                        <div
+                                                            key={att.id}
+                                                            style={{
+                                                                display: 'flex', alignItems: 'center', gap: 10,
+                                                                padding: '10px 12px', background: 'var(--glass-bg)',
+                                                                border: '1px solid var(--glass-border)', borderRadius: 8
+                                                            }}
+                                                        >
+                                                            <div style={{ width: 32, height: 32, borderRadius: 4, background: 'var(--glass-bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                                {att.thumbnail_url ? (
+                                                                    <img src={att.thumbnail_url + (token ? `?token=${token}` : '')} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 4 }} alt="" />
+                                                                ) : (
+                                                                    <Paperclip size={16} color="var(--text-tertiary)" />
+                                                                )}
+                                                            </div>
+                                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                                <div style={{ fontSize: 13, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.file_name}</div>
+                                                                <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{(att.file_size / 1024).toFixed(1)} KB</div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    // 标记为删除
+                                                                    setTicketAttachments(prev => prev.filter(a => a.id !== att.id));
+                                                                    setEditForm((prev: any) => ({
+                                                                        ...prev,
+                                                                        _attachmentsToDelete: [...(prev._attachmentsToDelete || []), att.id]
+                                                                    }));
+                                                                }}
+                                                                style={{
+                                                                    padding: '4px 8px', fontSize: 11, color: '#EF4444',
+                                                                    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+                                                                    borderRadius: 4, cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                删除
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* 新增附件上传 */}
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>添加新附件</label>
+                                            <div
+                                                                                onClick={() => document.getElementById('edit-attachment-input')?.click()}
+                                                                                style={{
+                                                                                    padding: '20px', border: '2px dashed var(--glass-border)',
+                                                                                    borderRadius: 8, textAlign: 'center', cursor: 'pointer',
+                                                                                    background: 'var(--glass-bg)'
+                                                                                }}
+                                                                            >
+                                                                                <Paperclip size={24} color="var(--text-tertiary)" style={{ marginBottom: 8 }} />
+                                                                                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>点击上传文件</div>
+                                                                                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 4 }}>支持图片、文档等多种格式</div>
+                                                                                <input
+                                                                                    id="edit-attachment-input"
+                                                                                    type="file"
+                                                                                    multiple
+                                                                                    hidden
+                                                                                    onChange={(e) => {
+                                                                                        const files = Array.from(e.target.files || []);
+                                                                                        setEditForm((prev: any) => ({
+                                                                                            ...prev,
+                                                                                            _newAttachments: [...(prev._newAttachments || []), ...files]
+                                                                                        }));
+                                                                                        // 清空input以便可以再次选择相同文件
+                                                                                        e.target.value = '';
+                                                                                    }}
+                                                                                />
+                                                                            </div>
+                                                                            
+                                                                            {/* 待上传的新附件列表 */}
+                                                                            {(editForm._newAttachments as File[] || []).length > 0 && (
+                                                                                <div style={{ marginTop: 12 }}>
+                                                                                    <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>待上传附件</label>
+                                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                                                        {(editForm._newAttachments as File[]).map((file, idx) => (
+                                                                                            <div
+                                                                                                key={idx}
+                                                                                                style={{
+                                                                                                    display: 'flex', alignItems: 'center', gap: 10,
+                                                                                                    padding: '10px 12px', background: 'rgba(16,185,129,0.05)',
+                                                                                                    border: '1px solid rgba(16,185,129,0.2)', borderRadius: 8
+                                                                                                }}
+                                                                                            >
+                                                                                                <Paperclip size={16} color="#10B981" />
+                                                                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                                                                    <div style={{ fontSize: 13, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</div>
+                                                                                                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{(file.size / 1024).toFixed(1)} KB</div>
+                                                                                                </div>
+                                                                                                <button
+                                                                                                    onClick={() => {
+                                                                                                        setEditForm((prev: any) => ({
+                                                                                                            ...prev,
+                                                                                                            _newAttachments: (prev._newAttachments as File[] || []).filter((_: any, i: number) => i !== idx)
+                                                                                                        }));
+                                                                                                    }}
+                                                                                                    style={{
+                                                                                                        padding: '4px 8px', fontSize: 11, color: '#EF4444',
+                                                                                                        background: 'transparent', border: 'none',
+                                                                                                        cursor: 'pointer'
+                                                                                                    }}
+                                                                                                >
+                                                                                                    移除
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                             </div>
 
                             {/* STICKY FOOTER */}
-                            <div style={{ padding: '16px 20px', borderTop: '1px solid rgba(255,255,255,0.1)', background: 'rgba(30,30,30,0.8)', backdropFilter: 'blur(10px)', display: 'flex', gap: 12 }}>
-                                <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>取消</button>
+                            <div style={{ padding: '16px 20px', borderTop: '1px solid var(--glass-border)', background: 'var(--drawer-header-bg)', backdropFilter: 'blur(10px)', display: 'flex', gap: 12 }}>
+                                <button onClick={() => setIsEditing(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>取消</button>
                                 <button
                                     onClick={handlePreSave}
-                                    style={{ flex: 1.5, padding: '10px', background: '#FFD200', border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}
+                                    style={{ flex: 1.5, padding: '10px', background: 'var(--accent-blue)', border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 14 }}
                                 >
                                     <Save size={16} /> 保存变更
                                 </button>
@@ -1874,69 +2055,69 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 isAuditModalOpen && (
                     <div style={{
                         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 400,
-                        background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)',
+                        background: 'var(--modal-overlay)', backdropFilter: 'blur(10px)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
                         <div style={{
-                            width: 500, background: '#1c1c1e', borderRadius: 16,
-                            border: '1px solid #FFD200', overflow: 'hidden',
-                            boxShadow: '0 20px 40px rgba(255, 215, 0, 0.15)',
+                            width: 500, background: 'var(--modal-bg)', borderRadius: 16,
+                            border: '1px solid var(--glass-border-accent)', overflow: 'hidden',
+                            boxShadow: 'var(--glass-shadow-lg)',
                             animation: 'modalIn 0.2s ease-out'
                         }}>
-                            <div style={{ padding: 24, textAlign: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(255,215,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                                    <AlertTriangle size={24} color="#FFD200" />
+                            <div style={{ padding: 24, textAlign: 'center', borderBottom: '1px solid var(--glass-border)' }}>
+                                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--accent-gold-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                                    <AlertTriangle size={24} color="var(--accent-gold)" />
                                 </div>
-                                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 8 }}>核心数据变更声明</h3>
-                                <p style={{ margin: 0, fontSize: 13, color: '#aaa', lineHeight: 1.5 }}>
+                                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-main)', marginBottom: 8 }}>核心数据变更声明</h3>
+                                <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                                     您正在修改受审计的数据字段。<br />此操作将永久记录在工单时间轴中，请仔细核对以下变更：
                                 </p>
                             </div>
-                            <div style={{ padding: 24, maxHeight: 300, overflowY: 'auto', background: 'rgba(0,0,0,0.2)' }}>
+                            <div style={{ padding: 24, maxHeight: 300, overflowY: 'auto', background: 'var(--glass-bg-light)' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     {auditDiffs.map((diff, index) => (
                                         <div key={index} style={{
                                             display: 'grid', gridTemplateColumns: 'minmax(80px, max-content) 1fr', gap: 12,
                                             padding: 12, borderRadius: 8,
-                                            background: diff.isRisk ? 'rgba(239,68,68,0.05)' : 'rgba(255,255,255,0.03)',
-                                            border: diff.isRisk ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(255,255,255,0.05)'
+                                            background: diff.isRisk ? 'var(--status-red-subtle)' : 'var(--glass-bg-light)',
+                                            border: diff.isRisk ? '1px solid var(--status-red-subtle)' : '1px solid var(--glass-border)'
                                         }}>
-                                            <div style={{ fontSize: 13, color: diff.isRisk ? '#EF4444' : '#888', fontWeight: diff.isRisk ? 600 : 400, display: 'flex', flexDirection: 'column' }}>
+                                            <div style={{ fontSize: 13, color: diff.isRisk ? 'var(--status-red)' : 'var(--text-secondary)', fontWeight: diff.isRisk ? 600 : 400, display: 'flex', flexDirection: 'column' }}>
                                                 {diff.label}
                                                 {diff.isRisk && <span style={{ fontSize: 10, marginTop: 4, letterSpacing: 0.5 }}>高级别审计项</span>}
                                             </div>
-                                            <div style={{ fontSize: 13, color: '#ddd', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <span style={{ textDecoration: 'line-through', color: '#666' }}>{diff.oldVal}</span>
-                                                <span style={{ color: '#888' }}>➔</span>
-                                                <span style={{ color: diff.isRisk ? '#FFD200' : '#10B981', fontWeight: 500 }}>{diff.newVal}</span>
+                                            <div style={{ fontSize: 13, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <span style={{ textDecoration: 'line-through', color: 'var(--text-tertiary)' }}>{diff.oldVal}</span>
+                                                <span style={{ color: 'var(--text-secondary)' }}>➔</span>
+                                                <span style={{ color: diff.isRisk ? 'var(--accent-gold)' : 'var(--accent-green)', fontWeight: 500 }}>{diff.newVal}</span>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                            <div style={{ padding: 24, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                                <label style={{ display: 'block', fontSize: 12, color: '#888', marginBottom: 8 }}>强制录入修正理由（必填）</label>
+                            <div style={{ padding: 24, borderTop: '1px solid var(--glass-border)' }}>
+                                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>强制录入修正理由（必填）</label>
                                 <textarea
                                     value={changeReason}
                                     onChange={e => setChangeReason(e.target.value)}
                                     placeholder="例如：前期录入错误看错型号、客户凭证证明在保..."
-                                    style={{ width: '100%', padding: '12px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: 8, minHeight: 80, fontSize: 13, resize: 'none' }}
+                                    style={{ width: '100%', padding: '12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 8, minHeight: 80, fontSize: 13, resize: 'none' }}
                                 />
                             </div>
-                            <div style={{ display: 'flex', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                            <div style={{ display: 'flex', borderTop: '1px solid var(--glass-border)' }}>
                                 <button
                                     onClick={() => setIsAuditModalOpen(false)}
-                                    style={{ flex: 1, padding: 16, background: 'transparent', border: 'none', color: '#888', fontSize: 14, cursor: 'pointer' }}
+                                    style={{ flex: 1, padding: 16, background: 'transparent', border: 'none', color: 'var(--text-secondary)', fontSize: 14, cursor: 'pointer' }}
                                 >
                                     返回修改
                                 </button>
-                                <div style={{ width: 1, background: 'rgba(255,255,255,0.1)' }} />
+                                <div style={{ width: 1, background: 'var(--glass-border)' }} />
                                 <button
                                     onClick={handleSaveEdit}
                                     disabled={auditCountdown > 0 || !changeReason.trim() || isSaving}
                                     style={{
                                         flex: 1, padding: 16, background: 'transparent', border: 'none',
-                                        color: (auditCountdown > 0 || !changeReason.trim()) ? '#666' : '#FFD200',
+                                        color: (auditCountdown > 0 || !changeReason.trim()) ? 'var(--text-tertiary)' : 'var(--accent-gold)',
                                         fontSize: 14, fontWeight: 600,
                                         cursor: (auditCountdown > 0 || !changeReason.trim()) ? 'not-allowed' : 'pointer'
                                     }}
@@ -2092,17 +2273,17 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 isDeleteModalOpen && (
                     <div style={{
                         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300,
-                        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)',
+                        background: 'var(--modal-overlay)', backdropFilter: 'blur(5px)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
                         <div style={{
-                            width: 440, background: 'var(--bg-secondary)', borderRadius: 16,
-                            border: '1px solid #EF4444', overflow: 'hidden',
+                            width: 440, background: 'var(--modal-bg)', borderRadius: 16,
+                            border: '1px solid var(--status-red)', overflow: 'hidden',
                             boxShadow: '0 20px 40px rgba(239, 68, 68, 0.15)'
                         }}>
                             <div style={{ padding: 24, textAlign: 'center' }}>
-                                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                                    <Trash2 size={24} color="#EF4444" />
+                                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--status-red-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                                    <Trash2 size={24} color="var(--status-red)" />
                                 </div>
                                 <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-main)', marginBottom: 8 }}>危险操作：废弃工单</h3>
                                 <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
@@ -2114,7 +2295,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     value={deleteReason}
                                     onChange={e => setDeleteReason(e.target.value)}
                                     placeholder="输入废弃理由（必填，至少 5 个字符）..."
-                                    style={{ width: '100%', padding: '12px', background: 'var(--bg-main)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: 8, minHeight: 80, fontSize: 14 }}
+                                    style={{ width: '100%', padding: '12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 8, minHeight: 80, fontSize: 14 }}
                                 />
                             </div>
                             <div style={{ display: 'flex', borderTop: '1px solid var(--glass-border)' }}>
@@ -2128,7 +2309,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     disabled={deleteCountdown > 0 || deleteReason.trim().length < 5 || isDeleting}
                                     style={{
                                         flex: 1, padding: 16, background: 'transparent', border: 'none',
-                                        color: (deleteCountdown > 0 || deleteReason.trim().length < 5) ? '#666' : '#EF4444',
+                                        color: (deleteCountdown > 0 || deleteReason.trim().length < 5) ? 'var(--text-tertiary)' : 'var(--status-red)',
                                         fontSize: 15, fontWeight: 600,
                                         cursor: (deleteCountdown > 0 || deleteReason.trim().length < 5) ? 'not-allowed' : 'pointer',
                                         transition: 'all 0.2s'
@@ -2147,17 +2328,17 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 isRestoreModalOpen && (
                     <div style={{
                         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300,
-                        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)',
+                        background: 'var(--modal-overlay)', backdropFilter: 'blur(5px)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
                         <div style={{
-                            width: 440, background: 'var(--bg-secondary)', borderRadius: 16,
-                            border: '1px solid #10B981', overflow: 'hidden',
+                            width: 440, background: 'var(--modal-bg)', borderRadius: 16,
+                            border: '1px solid var(--accent-green)', overflow: 'hidden',
                             boxShadow: '0 20px 40px rgba(16, 185, 129, 0.15)'
                         }}>
                             <div style={{ padding: 24, textAlign: 'center' }}>
-                                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                                    <ExternalLink size={24} color="#10B981" />
+                                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--accent-green-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                                    <ExternalLink size={24} color="var(--accent-green)" />
                                 </div>
                                 <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-main)', marginBottom: 8 }}>恢复工单</h3>
                                 <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
@@ -2169,7 +2350,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     value={restoreReason}
                                     onChange={e => setRestoreReason(e.target.value)}
                                     placeholder="输入恢复理由（必填）..."
-                                    style={{ width: '100%', padding: '12px', background: 'var(--bg-main)', border: '1px solid var(--glass-border)', color: 'var(--text-main)', borderRadius: 8, minHeight: 80, fontSize: 14 }}
+                                    style={{ width: '100%', padding: '12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 8, minHeight: 80, fontSize: 14 }}
                                 />
                             </div>
                             <div style={{ display: 'flex', borderTop: '1px solid var(--glass-border)' }}>
@@ -2183,7 +2364,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     disabled={!restoreReason.trim() || isRestoring}
                                     style={{
                                         flex: 1, padding: 16, background: 'transparent', border: 'none',
-                                        color: !restoreReason.trim() ? '#666' : '#10B981',
+                                        color: !restoreReason.trim() ? 'var(--text-tertiary)' : 'var(--accent-green)',
                                         fontSize: 15, fontWeight: 600,
                                         cursor: !restoreReason.trim() ? 'not-allowed' : 'pointer'
                                     }}
@@ -2349,6 +2530,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             activity={selectedActivity} 
                             onClose={() => setSelectedActivity(null)} 
                             ticketId={ticket?.id}
+                            ticket={ticket}
                             onRefresh={fetchDetail}
                             onCorrectionRequest={handleCorrectionRequest}
                             onKeyNodeCorrectionRequest={handleKeyNodeCorrectionRequest}

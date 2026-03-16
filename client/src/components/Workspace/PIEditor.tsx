@@ -620,9 +620,9 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                 display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
                 <div style={{
-                    width: 900, height: '90vh', background: 'var(--bg-secondary)', borderRadius: 16,
-                    border: '1px solid var(--glass-border)', overflow: 'hidden',
-                    boxShadow: '0 30px 60px var(--glass-shadow-lg)',
+                    width: 900, height: '90vh', background: 'var(--modal-bg)', borderRadius: 16,
+                    border: '1px solid var(--modal-border)', overflow: 'hidden',
+                    boxShadow: 'var(--glass-shadow-lg)',
                     display: 'flex', flexDirection: 'column'
                 }}>
                     {/* Header */}
@@ -638,7 +638,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
                                     <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>工单 {ticketNumber}</span>
                                     {piData.pi_number && (
-                                        <span style={{ fontSize: 11, color: '#3B82F6', background: 'rgba(59,130,246,0.15)', padding: '2px 8px', borderRadius: 4 }}>
+                                        <span style={{ fontSize: 11, color: 'var(--status-blue)', background: 'var(--accent-blue-subtle)', padding: '2px 8px', borderRadius: 4 }}>
                                             {piData.pi_number}
                                         </span>
                                     )}
@@ -651,7 +651,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                 onClick={() => setActiveTab('edit')}
                                 style={{
                                     padding: '6px 16px', background: activeTab === 'edit' ? 'var(--glass-bg-light)' : 'transparent',
-                                    border: 'none', color: activeTab === 'edit' ? '#fff' : '#888', borderRadius: 6,
+                                    border: 'none', color: activeTab === 'edit' ? 'var(--text-main)' : 'var(--text-secondary)', borderRadius: 6,
                                     cursor: 'pointer', fontSize: 13
                                 }}
                             >
@@ -661,7 +661,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                 onClick={() => setActiveTab('preview')}
                                 style={{
                                     padding: '6px 16px', background: activeTab === 'preview' ? 'var(--glass-bg-light)' : 'transparent',
-                                    border: 'none', color: activeTab === 'preview' ? '#fff' : '#888', borderRadius: 6,
+                                    border: 'none', color: activeTab === 'preview' ? 'var(--text-main)' : 'var(--text-secondary)', borderRadius: 6,
                                     cursor: 'pointer', fontSize: 13
                                 }}
                             >
@@ -711,11 +711,11 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                 <button
                                                     onClick={importFromRepairReport}
                                                     disabled={importing}
-                                                    style={{ padding: '4px 12px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 4, color: '#3B82F6', fontSize: 12, cursor: importing ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                                                    style={{ padding: '4px 12px', background: 'var(--accent-blue-subtle)', border: '1px solid var(--accent-blue-border)', borderRadius: 4, color: 'var(--status-blue)', fontSize: 12, cursor: importing ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
                                                 >
                                                     <FileInput size={14} /> {importing ? '导入中...' : '从维修报告导入'}
                                                 </button>
-                                                <button onClick={addItem} style={{ padding: '4px 12px', background: '#3B82F6', border: 'none', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <button onClick={addItem} style={{ padding: '4px 12px', background: 'var(--status-blue)', border: 'none', borderRadius: 4, color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                                                     <Plus size={14} /> 添加
                                                 </button>
                                             </>
@@ -724,7 +724,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                 }>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                         {piData.content.items.map((item) => (
-                                            <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 12, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
+                                            <div key={item.id} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 12, background: 'var(--glass-bg-light)', borderRadius: 8 }}>
                                                 <div style={{ flex: 1 }}>
                                                     <input
                                                         type="text"
@@ -732,7 +732,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                         onChange={e => updateItem(item.id, 'description', e.target.value)}
                                                         placeholder="服务/零件描述"
                                                         disabled={!canEdit}
-                                                        style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                        style={{ width: '100%', padding: 8, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
                                                     />
                                                 </div>
                                                 <input
@@ -741,7 +741,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                     onChange={e => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
                                                     placeholder="数量"
                                                     disabled={!canEdit}
-                                                    style={{ width: 70, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'center' }}
+                                                    style={{ width: 70, padding: 8, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'center' }}
                                                 />
                                                 <input
                                                     type="number"
@@ -749,20 +749,20 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                     onChange={e => updateItem(item.id, 'unit_price', parseFloat(e.target.value) || 0)}
                                                     placeholder="单价"
                                                     disabled={!canEdit}
-                                                    style={{ width: 100, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
+                                                    style={{ width: 100, padding: 8, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
                                                 />
-                                                <div style={{ width: 100, padding: 8, textAlign: 'right', color: '#FFD700', fontWeight: 500, fontSize: 13 }}>
+                                                <div style={{ width: 100, padding: 8, textAlign: 'right', color: 'var(--accent-gold)', fontWeight: 500, fontSize: 13 }}>
                                                     ¥{Number(item.total || 0).toFixed(2)}
                                                 </div>
                                                 {canEdit && (
-                                                    <button onClick={() => removeItem(item.id)} style={{ padding: 8, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
+                                                    <button onClick={() => removeItem(item.id)} style={{ padding: 8, background: 'var(--status-red-subtle)', border: 'none', borderRadius: 4, color: 'var(--status-red)', cursor: 'pointer' }}>
                                                         <Trash2 size={16} />
                                                     </button>
                                                 )}
                                             </div>
                                         ))}
                                         {piData.content.items.length === 0 && (
-                                            <div style={{ textAlign: 'center', padding: 40, color: '#666' }}>
+                                            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>
                                                 暂无服务项目，点击"从维修报告导入"或"添加"按钮
                                             </div>
                                         )}
@@ -772,12 +772,12 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                 {/* Financial Summary */}
                                 <Section title="财务汇总">
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 280, marginLeft: 'auto' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa', fontSize: 13 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: 13 }}>
                                             <span>小计</span>
                                             <span>¥{Number(piData.subtotal || 0).toFixed(2)}</span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
-                                            <span style={{ color: '#aaa' }}>税率 (%)</span>
+                                            <span style={{ color: 'var(--text-secondary)' }}>税率 (%)</span>
                                             <input
                                                 type="number"
                                                 value={piData.tax_rate}
@@ -787,15 +787,15 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                     setPIData(prev => ({ ...prev, tax_rate: rate, tax_amount: taxAmount, total_amount: total }));
                                                 }}
                                                 disabled={!canEdit}
-                                                style={{ width: 50, padding: 4, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, textAlign: 'right' }}
+                                                style={{ width: 50, padding: 4, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, textAlign: 'right' }}
                                             />
                                         </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa', fontSize: 13 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: 13 }}>
                                             <span>税额</span>
                                             <span>¥{Number(piData.tax_amount || 0).toFixed(2)}</span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
-                                            <span style={{ color: '#aaa' }}>优惠金额</span>
+                                            <span style={{ color: 'var(--text-secondary)' }}>优惠金额</span>
                                             <input
                                                 type="number"
                                                 value={piData.discount_amount}
@@ -805,12 +805,12 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                     setPIData(prev => ({ ...prev, discount_amount: discount, tax_amount: taxAmount, total_amount: total }));
                                                 }}
                                                 disabled={!canEdit}
-                                                style={{ width: 80, padding: 4, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, textAlign: 'right' }}
+                                                style={{ width: 80, padding: 4, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, textAlign: 'right' }}
                                             />
                                         </div>
-                                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ color: '#FFD700', fontWeight: 600, fontSize: 13 }}>合计</span>
-                                            <span style={{ color: '#FFD700', fontSize: 16, fontWeight: 600 }}>¥{Number(piData.total_amount || 0).toFixed(2)}</span>
+                                        <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ color: 'var(--accent-gold)', fontWeight: 600, fontSize: 13 }}>合计</span>
+                                            <span style={{ color: 'var(--accent-gold)', fontSize: 16, fontWeight: 600 }}>¥{Number(piData.total_amount || 0).toFixed(2)}</span>
                                         </div>
                                     </div>
                                 </Section>
@@ -821,13 +821,13 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                         <Input label="付款条款" value={piData.content.terms.payment_terms} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, terms: { ...prev.content.terms, payment_terms: v } } }))} disabled={!canEdit} />
                                         <Input label="交付条款" value={piData.content.terms.delivery_terms} onChange={v => setPIData(prev => ({ ...prev, content: { ...prev.content, terms: { ...prev.content.terms, delivery_terms: v } } }))} disabled={!canEdit} />
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <span style={{ color: '#aaa', fontSize: 13 }}>有效期 (天)</span>
+                                            <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>有效期 (天)</span>
                                             <input
                                                 type="number"
                                                 value={piData.content.terms.valid_days}
                                                 onChange={e => setPIData(prev => ({ ...prev, content: { ...prev.content, terms: { ...prev.content.terms, valid_days: parseInt(e.target.value) || 7 } } }))}
                                                 disabled={!canEdit}
-                                                style={{ width: 80, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                style={{ width: 80, padding: 8, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
                                             />
                                         </div>
                                     </div>
@@ -840,7 +840,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                         onChange={e => setPIData(prev => ({ ...prev, content: { ...prev.content, notes: e.target.value } }))}
                                         disabled={!canEdit}
                                         placeholder="添加备注信息..."
-                                        style={{ width: '100%', minHeight: 80, padding: 12, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: 'var(--text-main)', fontSize: 13, resize: 'vertical' }}
+                                        style={{ width: '100%', minHeight: 80, padding: 12, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 8, color: 'var(--text-main)', fontSize: 13, resize: 'vertical' }}
                                     />
                                 </Section>
                             </div>
@@ -1101,7 +1101,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
 
 // Helper Components
 const Section: React.FC<{ title: string; children: React.ReactNode; action?: React.ReactNode }> = ({ title, children, action }) => (
-    <div style={{ background: 'rgba(255,255,255,0.02)', padding: 20, borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+    <div style={{ background: 'var(--glass-bg-light)', padding: 20, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--text-main)' }}>{title}</h4>
             {action}
@@ -1118,7 +1118,7 @@ const Input: React.FC<{ label: string; value: string; onChange: (v: string) => v
             value={value}
             onChange={e => onChange(e.target.value)}
             disabled={disabled}
-            style={{ width: '100%', padding: 10, background: disabled ? 'var(--glass-bg-light)' : 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: 'var(--text-main)', fontSize: 13, outline: 'none' }}
+            style={{ width: '100%', padding: 10, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 13, outline: 'none' }}
         />
     </div>
 );
@@ -1126,10 +1126,10 @@ const Input: React.FC<{ label: string; value: string; onChange: (v: string) => v
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     const configs: Record<string, { text: string; color: string; bg: string }> = {
         'draft': { text: '草稿', color: 'var(--text-secondary)', bg: 'var(--glass-bg-light)' },
-        'pending_review': { text: '审核中', color: '#FFD200', bg: 'rgba(245,158,11,0.15)' },
-        'approved': { text: '已发布', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
-        'rejected': { text: '已驳回', color: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
-        'published': { text: '已发布', color: '#10B981', bg: 'rgba(16,185,129,0.15)' }
+        'pending_review': { text: '审核中', color: 'var(--accent-gold)', bg: 'var(--accent-gold-subtle)' },
+        'approved': { text: '已发布', color: 'var(--accent-green)', bg: 'var(--accent-green-subtle)' },
+        'rejected': { text: '已驳回', color: 'var(--status-red)', bg: 'var(--status-red-subtle)' },
+        'published': { text: '已发布', color: 'var(--accent-green)', bg: 'var(--accent-green-subtle)' }
     };
     const config = configs[status] || configs['draft'];
     return (

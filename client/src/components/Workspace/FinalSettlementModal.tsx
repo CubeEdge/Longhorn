@@ -155,23 +155,23 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
             <div style={{
-                width: 600, background: '#1c1c1e', borderRadius: 16,
-                border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden',
-                boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
+                width: 600, background: 'var(--modal-bg)', borderRadius: 16,
+                border: '1px solid var(--modal-border)', overflow: 'hidden',
+                boxShadow: 'var(--glass-shadow-lg)',
                 display: 'flex', flexDirection: 'column', maxHeight: '90vh'
             }}>
                 {/* Header */}
-                <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--glass-bg-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <DollarSign size={20} color="#10B981" />
                         </div>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>最终费用结算</h3>
-                            <p style={{ margin: 0, fontSize: 12, color: '#888', marginTop: 4 }}>工单 {ticketNumber}</p>
+                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-main)' }}>最终费用结算</h3>
+                            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>工单 {ticketNumber}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                         <X size={24} />
                     </button>
                 </div>
@@ -180,7 +180,7 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
                 <div style={{ padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
                     {loading ? (
-                        <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>
+                        <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
                             <Loader2 size={32} className="animate-spin" style={{ margin: '0 auto 16px' }} />
                             加载中...
                         </div>
@@ -189,8 +189,8 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
                             {/* Warranty Status Summary */}
                             <div style={{
                                 padding: 16, borderRadius: 12,
-                                background: isWarranty ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)',
-                                border: `1px solid ${isWarranty ? '#10B981' : '#FFD200'}`
+                                background: isWarranty ? 'var(--accent-green-subtle)' : 'var(--accent-gold-subtle)',
+                                border: `1px solid ${isWarranty ? 'var(--accent-green)' : 'var(--accent-gold)'}`
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                                     <CheckCircle size={20} color={isWarranty ? '#10B981' : '#FFD200'} />
@@ -206,14 +206,14 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
                             </div>
 
                             {/* Cost Input Form */}
-                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
-                                <h4 style={{ margin: '0 0 16px 0', fontSize: 14, color: '#aaa', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ background: 'var(--glass-bg-light)', padding: 16, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                                <h4 style={{ margin: '0 0 16px 0', fontSize: 14, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <Calculator size={16} /> 实际维修费用
                                 </h4>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 6 }}>备件费用 (¥)</label>
+                                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6 }}>备件费用 (¥)</label>
                                         <input
                                             type="number"
                                             value={partsCost}
@@ -221,14 +221,14 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
                                             placeholder="0.00"
                                             disabled={isWarranty}
                                             style={{
-                                                width: '100%', padding: 10, background: isWarranty ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.3)',
-                                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff',
+                                                width: '100%', padding: 10, background: 'var(--input-bg)',
+                                                border: '1px solid var(--input-border)', borderRadius: 6, color: 'var(--text-main)',
                                                 fontSize: 14, outline: 'none'
                                             }}
                                         />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 6 }}>工时费用 (¥)</label>
+                                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6 }}>工时费用 (¥)</label>
                                         <input
                                             type="number"
                                             value={laborCost}
@@ -236,14 +236,14 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
                                             placeholder="0.00"
                                             disabled={isWarranty}
                                             style={{
-                                                width: '100%', padding: 10, background: isWarranty ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.3)',
-                                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff',
+                                                width: '100%', padding: 10, background: 'var(--input-bg)',
+                                                border: '1px solid var(--input-border)', borderRadius: 6, color: 'var(--text-main)',
                                                 fontSize: 14, outline: 'none'
                                             }}
                                         />
                                     </div>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 6 }}>其他费用 (¥)</label>
+                                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6 }}>其他费用 (¥)</label>
                                         <input
                                             type="number"
                                             value={otherCost}
@@ -251,8 +251,8 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
                                             placeholder="0.00"
                                             disabled={isWarranty}
                                             style={{
-                                                width: '100%', padding: 10, background: isWarranty ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.3)',
-                                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff',
+                                                width: '100%', padding: 10, background: 'var(--input-bg)',
+                                                border: '1px solid var(--input-border)', borderRadius: 6, color: 'var(--text-main)',
                                                 fontSize: 14, outline: 'none'
                                             }}
                                         />
@@ -262,11 +262,11 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
                                 {/* Total */}
                                 <div style={{
                                     marginTop: 16, padding: 12, borderRadius: 8,
-                                    background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.3)',
+                                    background: 'var(--accent-gold-subtle)', border: '1px solid var(--glass-border-accent)',
                                     display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                                 }}>
-                                    <span style={{ fontSize: 14, color: '#FFD700', fontWeight: 600 }}>实际总费用</span>
-                                    <span style={{ fontSize: 24, color: '#FFD700', fontWeight: 700 }}>
+                                    <span style={{ fontSize: 14, color: 'var(--accent-gold)', fontWeight: 600 }}>实际总费用</span>
+                                    <span style={{ fontSize: 24, color: 'var(--accent-gold)', fontWeight: 700 }}>
                                         ¥{totalCost.toFixed(2)}
                                     </span>
                                 </div>
@@ -274,20 +274,20 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
 
                             {/* PI Number (for non-warranty only) */}
                             {!isWarranty && (
-                                <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
-                                    <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: '#aaa', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ background: 'var(--glass-bg-light)', padding: 16, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                                    <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                                         <FileText size={16} /> PI 信息
                                     </h4>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 6 }}>PI 编号 *</label>
+                                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6 }}>PI 编号 *</label>
                                         <input
                                             type="text"
                                             value={piNumber}
                                             onChange={e => setPiNumber(e.target.value)}
                                             placeholder="请输入PI编号"
                                             style={{
-                                                width: '100%', padding: 10, background: 'rgba(0,0,0,0.3)',
-                                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff',
+                                                width: '100%', padding: 10, background: 'var(--input-bg)',
+                                                border: '1px solid var(--input-border)', borderRadius: 6, color: 'var(--text-main)',
                                                 fontSize: 14, outline: 'none'
                                             }}
                                         />
@@ -297,7 +297,7 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
 
                             {/* Note for warranty case */}
                             {isWarranty && (
-                                <div style={{ fontSize: 13, color: '#666', textAlign: 'center' }}>
+                                <div style={{ fontSize: 13, color: 'var(--text-tertiary)', textAlign: 'center' }}>
                                     保内维修无需填写费用，系统将自动记录为免费
                                 </div>
                             )}
@@ -306,8 +306,8 @@ export const FinalSettlementModal: React.FC<FinalSettlementModalProps> = ({
                 </div>
 
                 {/* Footer */}
-                <div style={{ padding: '20px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'flex-end', gap: 12, background: 'rgba(0,0,0,0.2)' }}>
-                    <button onClick={onClose} disabled={saving} style={{ padding: '10px 20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', borderRadius: 8 }}>取消</button>
+                <div style={{ padding: '20px 24px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: 12, background: 'var(--glass-bg-light)' }}>
+                    <button onClick={onClose} disabled={saving} style={{ padding: '10px 20px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 8 }}>取消</button>
                     <button
                         onClick={handleSubmit}
                         disabled={saving || loading}

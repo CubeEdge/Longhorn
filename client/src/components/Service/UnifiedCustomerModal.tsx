@@ -515,7 +515,6 @@ const UnifiedCustomerModal: React.FC<UnifiedCustomerModalProps> = ({
                                             <option value="STANDARD">Standard</option>
                                             <option value="VIP">VIP</option>
                                             <option value="VVIP">VVIP</option>
-                                            <option value="DIAMOND">Diamond</option>
                                         </select>
                                     </div>
                                 </div>

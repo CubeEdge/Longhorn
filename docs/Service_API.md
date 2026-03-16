@@ -1,12 +1,17 @@
 # 产品服务系统 - API 设计文档
 
-**版本**: 0.9.7 (P2 Integration)
+**版本**: 0.9.8 (P2 Integration)
 **状态**: 草稿
-**最后更新**: 2026-03-12
-**关联PRD**: Service_PRD.md v0.13.3 (P2)
+**最后更新**: 2026-03-15
+**关联PRD**: Service_PRD.md v0.14.1 (P2)
 **关联场景**: Service_UserScenarios.md v0.7.0
-**关联数据模型**: Service_DataModel.md v0.9.0 (P2)
+**关联数据模型**: Service_DataModel.md v0.9.3 (P2)
 
+> **v0.9.8 更新 (2026-03-15)**：
+> - **工单附件管理**: 新增 `POST /api/v1/tickets/:id/attachments` 和 `DELETE /api/v1/tickets/:id/attachments/:attachId` 端点，支持工单附件的上传和删除。
+> - **附件查询优化**: 工单详情接口 `/api/v1/tickets/:id` 现在返回所有附件（包括关联到活动的附件），不再限制 `activity_id IS NULL`。
+> - **权限控制**: 附件上传/删除权限：Admin/Exec/MS Lead/工单提交者。
+>
 > **v0.9.7 更新 (2026-03-12)**：
 > - **产品保修注册**: 新增 `/api/v1/products/register-warranty` 端点，支持产品保修注册及基本信息同步更新。
 > - **产品台账管理**: 新增产品台账详情 `/api/v1/admin/products/{id}/detail` 和列表 `/api/v1/admin/products` 端点。
@@ -4077,6 +4082,50 @@ Success (200 OK) or Validation Error (400 if reason missing).
     "snooze_until": "2026-03-01T09:00:00Z",
     "sla_paused": true
   }
+}
+```
+
+### 22.5 工单附件管理
+
+> **v0.9.8 新增**: 支持在工单创建后上传和删除附件。
+
+#### 22.5.1 上传附件
+
+**POST** `/api/v1/tickets/{id}/attachments`
+
+**权限**: Admin / Exec / MS Lead / 工单提交者
+
+**请求**: `multipart/form-data`
+- `file`: 附件文件（支持多文件，最多10个）
+
+```json
+// Response (201 Created)
+{
+  "success": true,
+  "data": [
+    {
+      "id": 123,
+      "file_name": "screenshot.png",
+      "file_size": 204800,
+      "file_type": "image/png",
+      "file_url": "/api/v1/system/attachments/123/download",
+      "thumbnail_url": "/api/v1/system/attachments/123/thumbnail"
+    }
+  ]
+}
+```
+
+#### 22.5.2 删除附件
+
+**DELETE** `/api/v1/tickets/{id}/attachments/{attachId}`
+
+**权限**: Admin / Exec / MS Lead / 附件上传者本人
+
+```json
+// Response
+{
+  "success": true,
+  "message": "附件已删除"
 }
 ```
 

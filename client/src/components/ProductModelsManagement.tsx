@@ -581,7 +581,7 @@ const ProductModelsManagement: React.FC = () => {
                     />
                     <div style={{
                         position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                        width: editingModel ? 900 : 520, maxHeight: '85vh',
+                        width: 900, maxHeight: '85vh',
                         background: 'var(--modal-bg)', borderRadius: 16,
                         boxShadow: 'var(--glass-shadow-lg)', border: '1px solid var(--glass-border)',
                         display: 'flex', flexDirection: 'column', zIndex: 10000,
@@ -618,7 +618,7 @@ const ProductModelsManagement: React.FC = () => {
                         {/* Modal Body - 左右分栏布局 */}
                         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
                             {/* 左侧 - 基本信息 */}
-                            <div className="custom-scroll" style={{ flex: 1, padding: 24, overflowY: 'auto', borderRight: editingModel ? '1px solid var(--glass-border)' : 'none' }}>
+                            <div className="custom-scroll" style={{ flex: 1, padding: 24, overflowY: 'auto', borderRight: '1px solid var(--glass-border)' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                                     {/* Hero Image Section */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -684,7 +684,7 @@ const ProductModelsManagement: React.FC = () => {
                                             />
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('product.material_id_prefix')}</label>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>物料ID前缀 <span style={{ color: '#EF4444' }}>*</span></label>
                                             <input
                                                 type="text" value={formData.material_id_prefix || ''}
                                                 onChange={(e) => setFormData({ ...formData, material_id_prefix: e.target.value })}
@@ -696,7 +696,7 @@ const ProductModelsManagement: React.FC = () => {
 
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('parts.category')} <span style={{ color: '#EF4444' }}>*</span></label>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>产品族群 <span style={{ color: '#EF4444' }}>*</span></label>
                                             <select
                                                 required value={formData.product_family}
                                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -709,7 +709,7 @@ const ProductModelsManagement: React.FC = () => {
                                             </select>
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{_t('customer.type.internal')} <span style={{ color: '#EF4444' }}>*</span></label>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>产品类型</label>
                                             <select
                                                 required value={formData.product_type}
                                                 onChange={(e) => setFormData({ ...formData, product_type: e.target.value })}
@@ -745,9 +745,8 @@ const ProductModelsManagement: React.FC = () => {
                                 </div>
                             </div>
                             
-                            {/* 右侧 - SKU体系（仅在编辑时显示） */}
-                            {editingModel && (
-                                <div className="custom-scroll" style={{ width: 320, padding: 24, background: 'var(--glass-bg-light)', overflowY: 'auto' }}>
+                            {/* 右侧 - SKU体系 */}
+                            <div className="custom-scroll" style={{ width: 320, padding: 24, background: 'var(--glass-bg-light)', overflowY: 'auto' }}>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <h4 style={{ margin: 0, fontSize: 15, color: 'var(--text-main)', fontWeight: 600 }}>SKU体系</h4>
@@ -794,16 +793,50 @@ const ProductModelsManagement: React.FC = () => {
                                             </div>
                                         )}
                                         
-                                        <button
-                                            className="btn-kine-lowkey"
-                                            style={{ padding: '8px 12px', fontSize: '0.8rem', marginTop: 8 }}
-                                            onClick={() => navigate('/admin/product-skus')}
-                                        >
-                                            <Plus size={14} style={{ marginRight: 6 }} /> 管理SKU
-                                        </button>
+                                        {editingModel ? (
+                                            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                                <button
+                                                    onClick={() => {
+                                                        // 打开添加SKU弹窗，并预填充当前型号
+                                                        navigate('/service/product-skus?action=add&modelId=' + editingModel?.id);
+                                                    }}
+                                                    style={{
+                                                        flex: 1, padding: '8px 12px', fontSize: '0.8rem',
+                                                        background: 'var(--accent-yellow)', color: '#000',
+                                                        border: 'none', borderRadius: 8, fontWeight: 600,
+                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                    }}
+                                                >
+                                                    <Plus size={14} style={{ marginRight: 6 }} /> 增加SKU
+                                                </button>
+                                                <button
+                                                    onClick={() => navigate('/service/product-skus')}
+                                                    style={{
+                                                        flex: 1, padding: '8px 12px', fontSize: '0.8rem',
+                                                        background: 'transparent', color: 'var(--text-secondary)',
+                                                        border: '1px solid var(--glass-border)', borderRadius: 8, fontWeight: 600,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    管理SKU
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div style={{ 
+                                                padding: 24, background: 'var(--glass-bg)', borderRadius: 12, 
+                                                border: '1px dashed var(--glass-border)', textAlign: 'center'
+                                            }}>
+                                                <Package size={32} opacity={0.2} style={{ margin: '0 auto 12px' }} />
+                                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                                                    请先创建产品型号
+                                                </p>
+                                                <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                                    保存后可在右侧添加SKU
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                            )}
                         </div>
 
                         {/* Modal Footer */}

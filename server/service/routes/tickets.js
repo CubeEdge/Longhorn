@@ -1378,11 +1378,11 @@ module.exports = function (db, authenticate, serviceUpload) {
                 return activity;
             });
 
-            // 3.5 Ticket-level attachments
+            // 3.5 Ticket-level attachments (包含所有属于该工单的附件，无论是否关联到活动)
             const ticketAttachments = db.prepare(`
-                SELECT id, file_name, file_size, file_type, uploaded_at
+                SELECT id, file_name, file_size, file_type, uploaded_at, activity_id
                 FROM ticket_attachments
-                WHERE ticket_id = ? AND activity_id IS NULL
+                WHERE ticket_id = ?
             `).all(id);
 
             const attachments = ticketAttachments.map(att => ({
@@ -2732,6 +2732,118 @@ module.exports = function (db, authenticate, serviceUpload) {
             return res.status(400).json({ success: false, error: `未知的操作: ${action}` });
         } catch (err) {
             console.error('[Tickets] Action error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * POST /api/v1/tickets/:id/attachments
+     * Upload attachments to ticket
+     */
+    router.post('/:id/attachments', authenticate, serviceUpload.array('file', 10), async (req, res) => {
+        try {
+            const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(req.params.id);
+            if (!ticket) {
+                return res.status(404).json({ success: false, error: '工单不存在' });
+            }
+
+            // 权限检查：Admin/Exec/MS Lead/原操作人可以上传
+            const canUpload = () => {
+                if (req.user.role === 'Admin' || req.user.role === 'Exec') return true;
+                const userDept = (req.user.department_code || '').toUpperCase();
+                if (req.user.role === 'Lead' && userDept === 'MS') return true;
+                if (ticket.submitted_by === req.user.id) return true;
+                return false;
+            };
+
+            if (!canUpload()) {
+                return res.status(403).json({ success: false, error: '无权上传附件' });
+            }
+
+            if (!req.files || req.files.length === 0) {
+                return res.status(400).json({ success: false, error: '没有上传文件' });
+            }
+
+            const attachments = [];
+            for (const file of req.files) {
+                const result = db.prepare(`
+                    INSERT INTO ticket_attachments (ticket_id, file_name, file_path, file_size, file_type, uploaded_by)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `).run(req.params.id, file.originalname, file.filename, file.size, file.mimetype, req.user.id);
+
+                // 更新工单附件计数
+                const countResult = db.prepare('SELECT COUNT(*) as count FROM ticket_attachments WHERE ticket_id = ?').get(req.params.id);
+                db.prepare('UPDATE tickets SET attachments_count = ? WHERE id = ?').run(countResult.count, req.params.id);
+
+                attachments.push({
+                    id: result.lastInsertRowid,
+                    file_name: file.originalname,
+                    file_size: file.size,
+                    file_type: file.mimetype,
+                    file_url: `/api/v1/system/attachments/${result.lastInsertRowid}/download`
+                });
+            }
+
+            res.status(201).json({ success: true, data: attachments });
+        } catch (err) {
+            console.error('[Tickets] Upload attachment error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * DELETE /api/v1/tickets/:id/attachments/:attachId
+     * Delete attachment from ticket
+     */
+    router.delete('/:id/attachments/:attachId', authenticate, async (req, res) => {
+        try {
+            const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(req.params.id);
+            if (!ticket) {
+                return res.status(404).json({ success: false, error: '工单不存在' });
+            }
+
+            const attachment = db.prepare('SELECT * FROM ticket_attachments WHERE id = ? AND ticket_id = ?').get(req.params.attachId, req.params.id);
+            if (!attachment) {
+                return res.status(404).json({ success: false, error: '附件不存在' });
+            }
+
+            // 权限检查：Admin/Exec/MS Lead/上传者本人可以删除
+            const canDelete = () => {
+                if (req.user.role === 'Admin' || req.user.role === 'Exec') return true;
+                const userDept = (req.user.department_code || '').toUpperCase();
+                if (req.user.role === 'Lead' && userDept === 'MS') return true;
+                if (attachment.uploaded_by === req.user.id) return true;
+                return false;
+            };
+
+            if (!canDelete()) {
+                return res.status(403).json({ success: false, error: '无权删除此附件' });
+            }
+
+            // 删除文件
+            try {
+                const fs = require('fs-extra');
+                const path = require('path');
+                const { SERVICE_TEMP_DIR } = require('../../index');
+                const filePath = path.join(SERVICE_TEMP_DIR, attachment.file_path);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
+            } catch (fileErr) {
+                console.error('[Tickets] Failed to delete file:', fileErr);
+                // 继续删除数据库记录
+            }
+
+            // 删除数据库记录
+            db.prepare('DELETE FROM ticket_attachments WHERE id = ?').run(req.params.attachId);
+
+            // 更新工单附件计数
+            const countResult = db.prepare('SELECT COUNT(*) as count FROM ticket_attachments WHERE ticket_id = ?').get(req.params.id);
+            db.prepare('UPDATE tickets SET attachments_count = ? WHERE id = ?').run(countResult.count, req.params.id);
+
+            res.json({ success: true, message: '附件已删除' });
+        } catch (err) {
+            console.error('[Tickets] Delete attachment error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });

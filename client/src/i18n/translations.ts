@@ -1741,7 +1741,7 @@ export const translations = {
         'ticket.creation.draft': '草稿',
         'ticket.creation.brief_input': '简要说明问题...',
         'ticket.creation.elaborate': '详细说明故障现象...',
-        'ticket.creation.ai_sandbox': 'AI 沙盒',
+        'ticket.creation.ai_sandbox': 'Bokeh 协助',
         'ticket.creation.ai_paste_hint': '粘贴原始信息、日志或拖入图片...',
         'action.autofill': '智能填充',
         'ticket.creation.generic_product': '未知型号',

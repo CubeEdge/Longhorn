@@ -1147,6 +1147,7 @@ export interface ActivityDetailDrawerProps {
   activity: Activity | null;
   onClose: () => void;
   ticketId?: number;  // 用于更正API调用
+  ticket?: any;  // 完整的工单数据，用于读取客户/产品信息
   onRefresh?: () => void;  // 更正后刷新活动列表
   onCorrectionRequest?: (request: CorrectionRequest) => void;  // 请求打开完整编辑器进行更正
   onKeyNodeCorrectionRequest?: (nodeType: 'op_receive' | 'op_shipping' | 'ms_review' | 'ms_closing', reason: string) => void;  // 关键节点更正请求
@@ -1156,6 +1157,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   activity,
   onClose,
   ticketId,
+  ticket,
   onRefresh,
   onCorrectionRequest,
   onKeyNodeCorrectionRequest
@@ -1217,6 +1219,19 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
     setCorrectionModal(true);
     setCorrectedContent(activity?.content || '');
     setCorrectionReason('');
+  };
+
+  // 检查是否可以更正创建工单活动
+  const canCorrectCreation = (): boolean => {
+    if (!user || !activity) return false;
+    // Admin/Exec 始终可以更正
+    if (user.role === 'Admin' || user.role === 'Exec') return true;
+    // MS Lead 可以更正
+    const userDept = (user.department_code || '').toUpperCase();
+    if (user.role === 'Lead' && userDept === 'MS') return true;
+    // 原操作人可以更正
+    if (activity.actor?.id && activity.actor.id === user.id) return true;
+    return false;
   };
 
   // 检查是否可以更正活动（权限检查）
@@ -1330,7 +1345,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
       <div style={{
         position: 'fixed',
         top: 60, right: 0, bottom: 0, width: 400,
-        background: 'var(--drawer-bg)',
+        background: 'var(--modal-bg)',
         backdropFilter: 'blur(20px)',
         boxShadow: 'var(--glass-shadow-lg)',
         borderLeft: '1px solid var(--drawer-border)',
@@ -1464,11 +1479,11 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                       {receiptNotes && (
                         <div style={{ fontSize: 13 }}>
                           <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>收货备注:</div>
-                          <div style={{ color: '#ddd' }}>{receiptNotes}</div>
+                          <div style={{ color: 'var(--text-main)' }}>{receiptNotes}</div>
                         </div>
                       )}
                       {!hasData && (
-                        <div style={{ fontSize: 13, color: '#666', fontStyle: 'italic' }}>已确认收货，无其他备注信息</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>已确认收货，无其他备注信息</div>
                       )}
                     </div>
                   );
@@ -1497,7 +1512,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                       {meta.shipping_method === 'express' && carrier && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                           <span style={{ color: 'var(--text-tertiary)' }}>快递公司</span>
-                          <span style={{ color: '#ddd' }}>{carrier}</span>
+                          <span style={{ color: 'var(--text-main)' }}>{carrier}</span>
                         </div>
                       )}
                       {meta.shipping_method === 'express' && meta.tracking_number && (
@@ -1510,7 +1525,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                       {meta.shipping_method === 'forwarder' && meta.forwarder_name && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                           <span style={{ color: 'var(--text-tertiary)' }}>货代名称</span>
-                          <span style={{ color: '#ddd' }}>{meta.forwarder_name}</span>
+                          <span style={{ color: 'var(--text-main)' }}>{meta.forwarder_name}</span>
                         </div>
                       )}
                       {meta.shipping_method === 'forwarder' && meta.forwarder_domestic_tracking && (
@@ -1523,7 +1538,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                       {meta.shipping_method === 'pickup' && meta.pickup_person && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                           <span style={{ color: 'var(--text-tertiary)' }}>提货人</span>
-                          <span style={{ color: '#ddd' }}>{meta.pickup_person}</span>
+                          <span style={{ color: 'var(--text-main)' }}>{meta.pickup_person}</span>
                         </div>
                       )}
                       {/* 合并发货 */}
@@ -1541,7 +1556,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                         </div>
                       )}
                       {!hasData && (
-                        <div style={{ fontSize: 13, color: '#666', fontStyle: 'italic' }}>已确认发货，无详细信息</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>已确认发货，无详细信息</div>
                       )}
                     </div>
                   );
@@ -1553,7 +1568,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     {meta.warranty_decision && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                         <span style={{ color: 'var(--text-tertiary)' }}>保修判定</span>
-                        <span style={{ color: meta.warranty_decision === 'in_warranty' ? '#10B981' : '#FFD700', fontWeight: 500 }}>
+                        <span style={{ color: meta.warranty_decision === 'in_warranty' ? '#10B981' : 'var(--text-main)', fontWeight: 500 }}>
                           {meta.warranty_decision === 'in_warranty' ? '保内' : (meta.warranty_decision === 'out_warranty' ? '保外' : meta.warranty_decision)}
                         </span>
                       </div>
@@ -1561,17 +1576,17 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     {meta.estimated_cost !== undefined && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                         <span style={{ color: 'var(--text-tertiary)' }}>预估费用</span>
-                        <span style={{ color: '#FFD700' }}>¥{meta.estimated_cost}</span>
+                        <span style={{ color: 'var(--text-main)' }}>¥{meta.estimated_cost}</span>
                       </div>
                     )}
                     {meta.review_notes && (
                       <div style={{ fontSize: 13 }}>
                         <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>审核备注:</div>
-                        <div style={{ color: '#ddd' }}>{meta.review_notes}</div>
+                        <div style={{ color: 'var(--text-secondary)' }}>{meta.review_notes}</div>
                       </div>
                     )}
                     {!meta.warranty_decision && meta.estimated_cost === undefined && !meta.review_notes && (
-                      <div style={{ fontSize: 13, color: '#666', fontStyle: 'italic' }}>暂无详细信息</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>暂无详细信息</div>
                     )}
                   </div>
                 )}
@@ -1582,13 +1597,13 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     {meta.settlement_type && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                         <span style={{ color: 'var(--text-tertiary)' }}>发货方式</span>
-                        <span style={{ color: '#ddd' }}>{meta.settlement_type}</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>{meta.settlement_type}</span>
                       </div>
                     )}
                     {meta.payment_confirmed !== undefined && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                         <span style={{ color: 'var(--text-tertiary)' }}>款项确认</span>
-                        <span style={{ color: meta.payment_confirmed ? '#10B981' : '#888' }}>
+                        <span style={{ color: meta.payment_confirmed ? '#10B981' : 'var(--text-secondary)' }}>
                           {meta.payment_confirmed ? '已确认' : '未确认'}
                         </span>
                       </div>
@@ -1596,17 +1611,17 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     {meta.actual_payment && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                         <span style={{ color: 'var(--text-tertiary)' }}>实收金额</span>
-                        <span style={{ color: '#FFD700' }}>¥{meta.actual_payment}</span>
+                        <span style={{ color: 'var(--text-main)' }}>¥{meta.actual_payment}</span>
                       </div>
                     )}
                     {meta.closing_notes && (
                       <div style={{ fontSize: 13 }}>
                         <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>留言备注:</div>
-                        <div style={{ color: '#ddd' }}>{meta.closing_notes}</div>
+                        <div style={{ color: 'var(--text-main)' }}>{meta.closing_notes}</div>
                       </div>
                     )}
                     {!meta.settlement_type && !meta.payment_confirmed && !meta.actual_payment && !meta.closing_notes && (
-                      <div style={{ fontSize: 13, color: '#666', fontStyle: 'italic' }}>暂无详细信息</div>
+                      <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>暂无详细信息</div>
                     )}
                   </div>
                 )}
@@ -1624,8 +1639,8 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             
             return (
               <div style={{
-                fontSize: 14, color: '#ddd', lineHeight: 1.6, wordBreak: 'break-word',
-                background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8
+                fontSize: 14, color: 'var(--text-main)', lineHeight: 1.6, wordBreak: 'break-word',
+                background: 'var(--glass-bg)', padding: 16, borderRadius: 8
               }} dangerouslySetInnerHTML={{ __html: displayContent }} />
             );
           })()}
@@ -1635,7 +1650,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             const meta = activity.metadata as any;
             const correctionCount = meta?._correction_count || 0;
             return (
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ background: 'var(--glass-bg)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Header with Correction Button */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10B981', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>
@@ -1664,12 +1679,12 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
                 <div style={{ fontSize: 13 }}>
                   <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>故障判定:</div>
-                  <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.diagnosis || '-'}</div>
+                  <div style={{ color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.diagnosis || '-'}</div>
                 </div>
 
                 <div style={{ fontSize: 13 }}>
                   <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>维修方案/建议:</div>
-                  <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.repair_advice || '-'}</div>
+                  <div style={{ color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.repair_advice || '-'}</div>
                 </div>
 
                 {(meta.technical_damage_status || meta.technical_warranty_suggestion) && (
@@ -1677,7 +1692,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     {meta.technical_damage_status && (
                       <div style={{ fontSize: 13 }}>
                         <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>损坏判定:</div>
-                        <div style={{ color: meta.technical_damage_status === 'physical_damage' ? '#EF4444' : (meta.technical_damage_status === 'no_damage' ? '#10B981' : '#FFD200'), fontWeight: 500 }}>
+                        <div style={{ color: meta.technical_damage_status === 'physical_damage' ? '#EF4444' : (meta.technical_damage_status === 'no_damage' ? '#10B981' : 'var(--text-main)'), fontWeight: 500 }}>
                           {meta.technical_damage_status === 'physical_damage' ? '人为损坏/物理损伤' : (meta.technical_damage_status === 'no_damage' ? '无人为损坏/正常故障' : '无法判定')}
                         </div>
                       </div>
@@ -1685,7 +1700,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     {meta.technical_warranty_suggestion && (
                       <div style={{ fontSize: 13 }}>
                         <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>保修建议:</div>
-                        <div style={{ color: meta.technical_warranty_suggestion === 'suggest_out_warranty' ? '#FFD700' : (meta.technical_warranty_suggestion === 'suggest_in_warranty' ? '#10B981' : '#3B82F6'), fontWeight: 500 }}>
+                        <div style={{ color: meta.technical_warranty_suggestion === 'suggest_out_warranty' ? 'var(--text-main)' : (meta.technical_warranty_suggestion === 'suggest_in_warranty' ? '#10B981' : '#3B82F6'), fontWeight: 500 }}>
                           {meta.technical_warranty_suggestion === 'suggest_out_warranty' ? '建议保外' : (meta.technical_warranty_suggestion === 'suggest_in_warranty' ? '建议保内' : '需进一步核实')}
                         </div>
                       </div>
@@ -1694,20 +1709,20 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 )}
 
                 {(meta.estimated_labor_hours > 0 || (meta.estimated_parts && meta.estimated_parts.length > 0)) && (
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 12, marginTop: 4 }}>
+                  <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 12, marginTop: 4 }}>
                     <div style={{ color: 'var(--text-tertiary)', marginBottom: 8, fontSize: 12, fontWeight: 600 }}>预估配件与工时</div>
                     {meta.estimated_labor_hours > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                        <span style={{ color: '#ccc' }}>预估工时</span>
-                        <span style={{ color: '#FFD700' }}>{meta.estimated_labor_hours} 小时</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>预估工时</span>
+                        <span style={{ color: 'var(--text-main)' }}>{meta.estimated_labor_hours} 小时</span>
                       </div>
                     )}
                     {meta.estimated_parts && meta.estimated_parts.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
                         {meta.estimated_parts.map((p: any, i: number) => (
                           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                            <span style={{ color: '#ccc', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name} {p.sku && `(${p.sku})`}</span>
-                            <span style={{ color: '#FFD700', paddingLeft: 8 }}>x{p.quantity}</span>
+                            <span style={{ color: 'var(--text-secondary)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name} {p.sku && `(${p.sku})`}</span>
+                            <span style={{ color: 'var(--text-main)', paddingLeft: 8 }}>x{p.quantity}</span>
                           </div>
                         ))}
                       </div>
@@ -1722,7 +1737,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
           {activity.activity_type === 'comment' && activity.metadata?.action === 'repair_complete' && (() => {
             const meta = activity.metadata as any;
             return (
-              <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ background: 'var(--glass-bg)', padding: 16, borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10B981', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>
                   <Wrench size={14} /> 维修记录细节
                 </div>
@@ -1730,14 +1745,14 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 {meta.repair_content && (
                   <div style={{ fontSize: 13 }}>
                     <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>维修工作详述:</div>
-                    <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.repair_content}</div>
+                    <div style={{ color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.repair_content}</div>
                   </div>
                 )}
 
                 {meta.test_result && (
                   <div style={{ fontSize: 13 }}>
                     <div style={{ color: 'var(--text-tertiary)', marginBottom: 4 }}>老化/测试结论:</div>
-                    <div style={{ color: '#ddd', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.test_result}</div>
+                    <div style={{ color: 'var(--text-main)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{meta.test_result}</div>
                   </div>
                 )}
               </div>
@@ -1756,7 +1771,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {/* Header with Correction Button */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#FFD200', fontWeight: 600, fontSize: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-main)', fontWeight: 600, fontSize: 14 }}>
                     <Wrench size={18} />
                     <span>OP维修记录</span>
                     {correctionCount > 0 && (
@@ -1789,13 +1804,13 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
                 {/* Repair Actions */}
                 {repairProcess.actions_taken && repairProcess.actions_taken.length > 0 && (
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
+                  <div style={{ background: 'var(--glass-bg)', padding: 16, borderRadius: 8 }}>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>维修操作</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {repairProcess.actions_taken.map((action: string, i: number) => (
                         <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                          <span style={{ color: '#FFD200', fontSize: 12, fontWeight: 600 }}>{i + 1}.</span>
-                          <span style={{ fontSize: 13, color: '#ddd', lineHeight: 1.5, flex: 1 }}>{action}</span>
+                          <span style={{ color: 'var(--text-main)', fontSize: 12, fontWeight: 600 }}>{i + 1}.</span>
+                          <span style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1 }}>{action}</span>
                         </div>
                       ))}
                     </div>
@@ -1804,18 +1819,18 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
                 {/* Parts Replaced */}
                 {repairProcess.parts_replaced && repairProcess.parts_replaced.length > 0 && (
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
+                  <div style={{ background: 'var(--glass-bg)', padding: 16, borderRadius: 8 }}>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>更换零件</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {repairProcess.parts_replaced.map((part: any, i: number) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(0,0,0,0.2)', borderRadius: 6 }}>
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'var(--glass-bg-light)', borderRadius: 6 }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <span style={{ fontSize: 13, color: '#ddd' }}>{part.name}</span>
-                            {part.part_number && <span style={{ fontSize: 11, color: '#666', fontFamily: 'monospace' }}>{part.part_number}</span>}
+                            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{part.name}</span>
+                            {part.part_number && <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace' }}>{part.part_number}</span>}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>x{part.quantity}</span>
-                            <span style={{ fontSize: 13, color: '#FFD200', fontWeight: 500 }}>¥{(part.unit_price * part.quantity).toFixed(2)}</span>
+                            <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>¥{(part.unit_price * part.quantity).toFixed(2)}</span>
                           </div>
                         </div>
                       ))}
@@ -1825,16 +1840,16 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
                 {/* Labor Charges */}
                 {laborCharges.length > 0 && (
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
+                  <div style={{ background: 'var(--glass-bg)', padding: 16, borderRadius: 8 }}>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>工时费用</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {laborCharges.map((labor: any, i: number) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
-                            <div style={{ fontSize: 13, color: '#ddd' }}>{labor.description || '维修工时'}</div>
-                            <div style={{ fontSize: 11, color: '#666' }}>{labor.hours}小时 x ¥{labor.rate}/小时</div>
+                            <div style={{ fontSize: 13, color: 'var(--text-main)' }}>{labor.description || '维修工时'}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{labor.hours}小时 x ¥{labor.rate}/小时</div>
                           </div>
-                          <span style={{ fontSize: 13, color: '#FFD200', fontWeight: 500 }}>¥{labor.total.toFixed(2)}</span>
+                          <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>¥{labor.total.toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
@@ -1843,17 +1858,17 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
                 {/* Conclusion */}
                 {(conclusion.summary || conclusion.test_result) && (
-                  <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
+                  <div style={{ background: 'var(--glass-bg)', padding: 16, borderRadius: 8 }}>
                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 12, fontWeight: 600, textTransform: 'uppercase' }}>维修结论</div>
                     {conclusion.summary && (
                       <div style={{ marginBottom: 8 }}>
-                        <div style={{ fontSize: 11, color: '#666' }}>总结</div>
-                        <div style={{ fontSize: 13, color: '#ddd', lineHeight: 1.5 }}>{conclusion.summary}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>总结</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-main)', lineHeight: 1.5 }}>{conclusion.summary}</div>
                       </div>
                     )}
                     {conclusion.test_result && (
                       <div>
-                        <div style={{ fontSize: 11, color: '#666' }}>测试结果</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>测试结果</div>
                         <div style={{ fontSize: 13, color: '#10B981', lineHeight: 1.5 }}>{conclusion.test_result}</div>
                       </div>
                     )}
@@ -1863,9 +1878,109 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             );
           })()}
 
+          {/* 创建工单活动详情 */}
+          {activity.activity_type === 'system_event' && (activity.metadata as any)?.event_type === 'creation' && (() => {
+            const meta = activity.metadata as any;
+            const ticketType = meta?.ticket_type || ticket?.ticket_type || 'rma';
+            const isRmaOrSvc = ticketType === 'rma' || ticketType === 'svc';
+            
+            // 优先从 ticket 读取数据，如果不存在则从 activity.metadata 读取
+            const customerName = ticket?.account?.name || ticket?.account_name || meta?.customer_name || '-';
+            const contactName = ticket?.contact?.name || ticket?.contact_name || meta?.contact_name || '-';
+            const dealerName = ticket?.dealer?.name || ticket?.dealer_name || meta?.dealer_name;
+            const productName = ticket?.product?.name || ticket?.product_name || meta?.product_name || '-';
+            const serialNumber = ticket?.serial_number || meta?.serial_number || '-';
+            const problemDescription = ticket?.problem_description || meta?.problem_description;
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* 更正按钮 - 移到右上角 */}
+                {canCorrectCreation() && onCorrectionRequest && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // 请求打开完整编辑器进行工单更正
+                        onCorrectionRequest({
+                          activityId: activity.id,
+                          activityType: 'ticket_creation',
+                          reason: '',
+                          originalContent: activity.content,
+                          metadata: activity.metadata
+                        });
+                        onClose();
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 11,
+                        background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)',
+                        borderRadius: 4, color: 'var(--accent-orange, #FFA500)', cursor: 'pointer', transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,165,0,0.2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,165,0,0.1)'}
+                    >
+                      <RefreshCw size={12} /> 更正
+                    </button>
+                  </div>
+                )}
+
+                {/* 分组1: 客户信息 */}
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>客户信息</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                      <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>客户名称</label>
+                      <div style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>{customerName}</div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                      <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>联系人</label>
+                      <div style={{ fontSize: 13, color: 'var(--text-main)' }}>{contactName}</div>
+                    </div>
+                    {dealerName && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                        <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>经销商</label>
+                        <div style={{ fontSize: 13, color: 'var(--text-main)' }}>{dealerName}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 分组2: 设备信息 (RMA/SVC) */}
+                {isRmaOrSvc && (
+                  <div>
+                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>设备信息</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                        <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>产品型号</label>
+                        <div style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>{productName}</div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                        <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>序列号</label>
+                        <div style={{ fontSize: 13, color: 'var(--text-main)', fontFamily: 'var(--font-mono, monospace)' }}>{serialNumber}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 分组3: 问题描述 */}
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>问题描述</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {problemDescription ? (
+                      <div style={{ padding: '10px 12px', background: 'var(--glass-bg)', borderRadius: 8 }}>
+                        <div style={{ fontSize: 13, color: 'var(--text-main)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{problemDescription}</div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic', padding: '8px 0' }}>暂无问题描述</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Field Updates (if any) */}
           {activity.activity_type.endsWith('_change') && activity.metadata && (
-            <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 8 }}>
+            <div style={{ background: 'var(--glass-bg)', padding: 16, borderRadius: 8 }}>
               <FieldUpdateContent content={activity.content} metadata={activity.metadata as unknown as FieldUpdateMetadata} />
             </div>
           )}
@@ -2000,14 +2115,14 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
       {/* 更正弹窗 */}
       {correctionModal && (
         <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+          position: 'fixed', inset: 0, background: 'var(--modal-overlay)', backdropFilter: 'blur(4px)',
           zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center'
         }} onClick={() => setCorrectionModal(false)}>
           <div style={{
-            background: 'var(--bg-secondary)', borderRadius: 12, 
+            background: 'var(--modal-bg)', borderRadius: 12, 
             width: isComplexActivityType(activity?.activity_type || '') ? 420 : 500, 
             maxWidth: '90vw',
-            border: '1px solid var(--glass-border)', boxShadow: '0 20px 40px var(--glass-shadow-lg)',
+            border: '1px solid var(--glass-border)', boxShadow: 'var(--glass-shadow-lg)',
             maxHeight: '80vh', display: 'flex', flexDirection: 'column'
           }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -2021,7 +2136,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             <div style={{ padding: 20, overflow: 'auto', flex: 1 }}>
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>活动类型</div>
-                <div style={{ fontSize: 14, color: 'var(--accent-blue)' }}>
+                <div style={{ fontSize: 14, color: 'var(--text-main)' }}>
                   {{
                     'op_repair_report': 'OP维修记录',
                     'diagnostic_report': '诊断报告',
@@ -2040,8 +2155,8 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
               {isKeyNodeActivity && (
                 <div style={{ 
                   fontSize: 13, color: 'var(--text-main)', marginBottom: 16, padding: 12, 
-                  background: 'rgba(59,130,246,0.1)', borderRadius: 8, 
-                  border: '1px solid rgba(59,130,246,0.2)',
+                  background: 'var(--accent-blue-subtle)', borderRadius: 8, 
+                  border: '1px solid var(--accent-blue-border)',
                   lineHeight: 1.6
                 }}>
                   确认后将打开对应的编辑界面，您可以在其中修改详细内容。
@@ -2052,8 +2167,8 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
               {!isKeyNodeActivity && isComplexActivityType(activity?.activity_type || '') && (
                 <div style={{ 
                   fontSize: 13, color: 'var(--text-main)', marginBottom: 16, padding: 12, 
-                  background: 'rgba(59,130,246,0.1)', borderRadius: 8, 
-                  border: '1px solid rgba(59,130,246,0.2)',
+                  background: 'var(--accent-blue-subtle)', borderRadius: 8, 
+                  border: '1px solid var(--accent-blue-border)',
                   lineHeight: 1.6
                 }}>
                   确认后将打开完整的编辑界面，您可以在其中修改详细内容。
@@ -2088,13 +2203,13 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   onChange={e => setCorrectionReason(e.target.value)}
                   placeholder="请说明更正原因，例如：快递单号填写错误、图片贴错等..."
                   style={{
-                    width: '100%', padding: 12, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)',
+                    width: '100%', padding: 12, background: 'var(--input-bg)', border: '1px solid var(--input-border)',
                     borderRadius: 8, color: 'var(--text-main)', fontSize: 13, resize: 'vertical', minHeight: 80
                   }}
                 />
               </div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 16, padding: 12, background: 'rgba(255,165,0,0.05)', borderRadius: 6, border: '1px solid rgba(255,165,0,0.1)' }}>
-                <strong style={{ color: 'var(--accent-orange, #FFA500)' }}>提示：</strong> 此操作将记录更正历史并在时间线上公示，原操作人将收到通知。
+              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 16, padding: 12, background: 'var(--badge-warning-bg)', borderRadius: 6, border: '1px solid var(--glass-border)' }}>
+                <strong style={{ color: 'var(--badge-warning-text)' }}>提示：</strong> 此操作将记录更正历史并在时间线上公示，原操作人将收到通知。
               </div>
               <div style={{ display: 'flex', gap: 12 }}>
                 <button
@@ -2107,8 +2222,8 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   onClick={isKeyNodeActivity ? handleKeyNodeCorrection : handleCorrection}
                   disabled={correcting || !correctionReason.trim()}
                   style={{
-                    flex: 1.5, padding: '10px', background: correcting || !correctionReason.trim() ? '#444' : '#FFA500',
-                    border: 'none', color: '#000', borderRadius: 8, fontWeight: 600, cursor: correcting || !correctionReason.trim() ? 'not-allowed' : 'pointer', fontSize: 14,
+                    flex: 1.5, padding: '10px', background: correcting || !correctionReason.trim() ? 'var(--glass-bg-hover)' : 'var(--accent-blue)',
+                    border: 'none', color: correcting || !correctionReason.trim() ? 'var(--text-secondary)' : '#000', borderRadius: 8, fontWeight: 600, cursor: correcting || !correctionReason.trim() ? 'not-allowed' : 'pointer', fontSize: 14,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
                   }}
                 >

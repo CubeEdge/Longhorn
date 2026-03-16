@@ -2051,14 +2051,32 @@ select.form-control option {
 [data-theme="light"] {
   /* Global form control fixes */
   .form-control {
-    background: var(--card-bg) !important;
+    background: var(--input-bg) !important;
     border-color: var(--input-border) !important;
     color: var(--text-main) !important;
     color-scheme: light !important;
   }
 
   select.form-control option {
-    background: var(--bg-content) !important;
+    background: var(--card-bg) !important;
+    color: var(--text-main) !important;
+  }
+  
+  /* Fix for select dropdown in light mode - ensure options are visible */
+  select option {
+    background: var(--card-bg) !important;
+    color: var(--text-main) !important;
+  }
+  
+  /* Fix for all select elements in light mode */
+  select {
+    background: var(--input-bg) !important;
+    color: var(--text-main) !important;
+    border-color: var(--input-border) !important;
+  }
+  
+  select * {
+    background: var(--card-bg) !important;
     color: var(--text-main) !important;
   }
   
@@ -2125,7 +2143,7 @@ select.form-control option {
   
   .markdown-content h3,
   .markdown-content h4 {
-    color: var(--accent-blue);
+    color: var(--text-main);
   }
   
   .markdown-content code {

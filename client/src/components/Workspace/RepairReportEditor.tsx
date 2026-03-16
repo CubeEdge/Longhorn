@@ -743,8 +743,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             ) : null}
 
                             {saving && (
-                                <div style={{ position: 'absolute', top: 120, right: 40, fontSize: 12, color: '#FFD200', display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,210,0,0.1)', padding: '4px 12px', borderRadius: 20, zIndex: 10 }}>
-                                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FFD200', animation: 'pulse 1.5s infinite' }} />
+                                <div style={{ position: 'absolute', top: 120, right: 40, fontSize: 12, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 4, background: 'var(--glass-bg-light)', padding: '4px 12px', borderRadius: 20, zIndex: 10 }}>
+                                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-gold)', animation: 'pulse 1.5s infinite' }} />
                                     草稿已自动保存
                                 </div>
                             )}
@@ -883,7 +883,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
                                                     <span style={{ flex: 1, color: 'var(--text-main)', fontSize: 13 }}>{part.name}</span>
                                                     {part.part_number && <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontFamily: 'monospace' }}>{part.part_number}</span>}
-                                                    <span style={{ color: '#FFD200', fontSize: 12, fontWeight: 500 }}>x{part.quantity}</span>
+                                                    <span style={{ color: 'var(--text-main)', fontSize: 12, fontWeight: 500 }}>x{part.quantity}</span>
                                                     <span style={{ color: 'var(--text-secondary)', fontSize: 11, padding: '2px 6px', background: 'var(--glass-border)', borderRadius: 4 }}>{part.status === 'new' ? '新件' : '翻新'}</span>
                                                 </div>
                                             ))}
@@ -934,7 +934,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                         onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, name: e.target.value })}
                                                         placeholder="零件名称"
                                                         disabled={!canEdit}
-                                                        style={{ flex: 1, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                        style={{ flex: 1, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
                                                     />
                                                     <input
                                                         type="text"
@@ -942,7 +942,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                         onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, part_number: e.target.value })}
                                                         placeholder="零件号"
                                                         disabled={!canEdit}
-                                                        style={{ width: 100, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                        style={{ width: 100, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
                                                     />
                                                     <input
                                                         type="number"
@@ -950,7 +950,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                         onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, quantity: parseInt(e.target.value) || 1 })}
                                                         disabled={!canEdit}
                                                         min={1}
-                                                        style={{ width: 50, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'center' }}
+                                                        style={{ width: 50, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'center' }}
                                                     />
                                                     <input
                                                         type="number"
@@ -959,18 +959,18 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                         disabled={!canEdit}
                                                         min={0}
                                                         step={0.01}
-                                                        style={{ width: 80, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
+                                                        style={{ width: 80, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
                                                     />
                                                     <select
                                                         value={part.status}
                                                         onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, status: e.target.value as 'new' | 'refurbished' })}
                                                         disabled={!canEdit}
-                                                        style={{ width: 70, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12 }}
+                                                        style={{ width: 70, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12 }}
                                                     >
                                                         <option value="new">新件</option>
                                                         <option value="refurbished">翻新</option>
                                                     </select>
-                                                    <div style={{ width: 80, textAlign: 'right', color: '#FFD700', fontWeight: 600, fontSize: 13 }}>
+                                                    <div style={{ width: 80, textAlign: 'right', color: 'var(--text-main)', fontWeight: 600, fontSize: 13 }}>
                                                         ¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}
                                                     </div>
                                                     {canEdit && (
@@ -1019,23 +1019,23 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                         onChange={e => updateLaborCharge(index, 'description', e.target.value)}
                                                         placeholder="工作内容描述"
                                                         disabled={!canEdit}
-                                                        style={{ flex: 1, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                        style={{ flex: 1, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
                                                     />
                                                     <input
                                                         type="number"
                                                         value={charge.hours}
                                                         onChange={e => updateLaborCharge(index, 'hours', parseFloat(e.target.value) || 0)}
                                                         disabled={!canEdit}
-                                                        style={{ width: 70, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'center' }}
+                                                        style={{ width: 70, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'center' }}
                                                     />
                                                     <input
                                                         type="number"
                                                         value={charge.rate}
                                                         onChange={e => updateLaborCharge(index, 'rate', parseFloat(e.target.value) || 0)}
                                                         disabled={!canEdit}
-                                                        style={{ width: 80, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
+                                                        style={{ width: 80, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
                                                     />
-                                                    <div style={{ width: 80, textAlign: 'right', color: '#FFD700', fontWeight: 600, fontSize: 13 }}>
+                                                    <div style={{ width: 80, textAlign: 'right', color: 'var(--text-main)', fontWeight: 600, fontSize: 13 }}>
                                                         ¥{Number(charge.total || 0).toFixed(2)}
                                                     </div>
                                                     {canEdit && (
@@ -1065,7 +1065,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                         value={reportData.content.logistics.shipping_fee}
                                                         onChange={e => updateContent('logistics.shipping_fee', parseFloat(e.target.value) || 0)}
                                                         disabled={!canEdit}
-                                                        style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                        style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
                                                     />
                                                 </div>
                                                 <div>
@@ -1076,53 +1076,53 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                         onChange={e => updateContent('logistics.shipping_method', e.target.value)}
                                                         disabled={!canEdit}
                                                         placeholder="如：运费、包装费、检测费..."
-                                                        style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                        style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
                                                     />
                                                 </div>
                                             </div>
                                         </FeeSubSection>
 
                                         {/* Fee Summary */}
-                                        <div style={{ marginTop: 16, padding: 16, background: 'var(--accent-gold-subtle)', borderRadius: 8, border: '1px solid rgba(255,210,0,0.2)' }}>
+                                        <div style={{ marginTop: 16, padding: 16, background: 'var(--glass-bg-light)', borderRadius: 8, border: '1px solid var(--glass-border)' }}>
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)' }}>
                                                     <span>零件合计</span>
-                                                    <span>¥{Number(reportData.parts_total || 0).toFixed(2)}</span>
+                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>¥{Number(reportData.parts_total || 0).toFixed(2)}</span>
                                                 </div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)' }}>
                                                     <span>工时合计</span>
-                                                    <span>¥{Number(reportData.labor_total || 0).toFixed(2)}</span>
+                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>¥{Number(reportData.labor_total || 0).toFixed(2)}</span>
                                                 </div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)' }}>
                                                     <span>其他费用</span>
-                                                    <span>¥{Number(reportData.content.logistics?.shipping_fee || 0).toFixed(2)}</span>
+                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>¥{Number(reportData.content.logistics?.shipping_fee || 0).toFixed(2)}</span>
                                                 </div>
-                                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 10, marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                        <span style={{ color: '#FFD700', fontWeight: 600, fontSize: 14 }}>总计</span>
+                                                        <span style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: 14 }}>总计</span>
                                                         <select
                                                             value={reportData.currency}
                                                             onChange={e => setReportData((prev: ReportData) => ({ ...prev, currency: e.target.value }))}
                                                             disabled={!canEdit}
-                                                            style={{ padding: '4px 8px', background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12 }}
+                                                            style={{ padding: '4px 8px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12 }}
                                                         >
                                                             <option value="CNY">CNY</option>
                                                             <option value="USD">USD</option>
                                                             <option value="EUR">EUR</option>
                                                         </select>
                                                     </div>
-                                                    <span style={{ color: '#FFD700', fontSize: 18, fontWeight: 700 }}>
+                                                    <span style={{ color: 'var(--text-main)', fontSize: 18, fontWeight: 700 }}>
                                                         {reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}
                                                         {Number(reportData.total_cost || 0).toFixed(2)}
                                                     </span>
                                                 </div>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 8, borderTop: '1px solid var(--glass-border)' }}>
                                                     <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>支付状态</span>
                                                     <select
                                                         value={reportData.payment_status}
                                                         onChange={e => setReportData((prev: ReportData) => ({ ...prev, payment_status: e.target.value as 'pending' | 'paid' | 'waived' }))}
                                                         disabled={!canEdit}
-                                                        style={{ padding: '6px 12px', background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                        style={{ padding: '6px 12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
                                                     >
                                                         <option value="pending">待支付</option>
                                                         <option value="paid">已支付</option>
@@ -1134,7 +1134,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     </Section>
 
                                     {/* 维修保修条款 - 放在报告最后 */}
-                                    <div style={{ marginTop: 16, padding: 16, background: 'var(--glass-bg-light)', borderRadius: 8, border: '1px dashed rgba(255,255,255,0.1)' }}>
+                                    <div style={{ marginTop: 16, padding: 16, background: 'var(--glass-bg)', borderRadius: 8, border: '1px dashed var(--glass-border)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                                             <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>维修保修条款</span>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1144,13 +1144,13 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                     value={reportData.content.warranty_terms.repair_warranty_days}
                                                     onChange={e => updateContent('warranty_terms.repair_warranty_days', parseInt(e.target.value) || 90)}
                                                     disabled={!canEdit}
-                                                    style={{ width: 50, padding: '4px 6px', background: 'var(--glass-bg-light)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, textAlign: 'center' }}
+                                                    style={{ width: 50, padding: '4px 6px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, textAlign: 'center' }}
                                                 />
                                                 <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>天</span>
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.8 }}>
-                                            本次维修服务自客户签收之日起享有 <strong style={{ color: '#F59E0B' }}>{reportData.content.warranty_terms.repair_warranty_days || 90}</strong> 天质保期，仅限于本次维修所涉及的部件及服务。质保不包括：人为损坏、流体侵入、擅自拆修或改装、电压异常等非正常使用导致的损坏。如有疑问，请联系售后服务。
+                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+                                            本次维修服务自客户签收之日起享有 <strong style={{ color: 'var(--accent-blue)' }}>{reportData.content.warranty_terms.repair_warranty_days || 90}</strong> 天质保期，仅限于本次维修所涉及的部件及服务。质保不包括：人为损坏、流体侵入、擅自拆修或改装、电压异常等非正常使用导致的损坏。如有疑问，请联系售后服务。
                                         </div>
                                     </div>
                                 </>
@@ -1228,7 +1228,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 onClick={exportPDF}
                                 style={{
                                     padding: '10px 20px', background: 'var(--glass-border)',
-                                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8,
+                                    border: '1px solid var(--glass-border)', borderRadius: 8,
                                     color: 'var(--text-main)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                                     display: 'flex', alignItems: 'center', gap: 10, transition: 'all 0.2s'
                                 }}
@@ -1270,8 +1270,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
 
                 {/* PDF Settings Panel */}
                 {showPdfSettings && (
-                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: 440, background: '#2c2c2e', borderRadius: 12, padding: 24, border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--modal-overlay)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 440, background: 'var(--modal-bg)', borderRadius: 12, padding: 24, border: '1px solid var(--glass-border)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--text-main)' }}>PDF导出设置</h3>
                                 <button onClick={() => setShowPdfSettings(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={18} /></button>
@@ -1281,7 +1281,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>纸张尺寸</label>
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     {[{ value: 'a4', label: 'A4' }, { value: 'letter', label: 'Letter' }].map(opt => (
-                                        <button key={opt.value} onClick={() => setPdfSettings(prev => ({ ...prev, format: opt.value as any }))} style={{ flex: 1, padding: '10px', borderRadius: 8, background: pdfSettings.format === opt.value ? 'rgba(255,210,0,0.1)' : 'var(--glass-border)', border: `1px solid ${pdfSettings.format === opt.value ? 'rgba(255,210,0,0.4)' : 'var(--glass-border)'}`, color: pdfSettings.format === opt.value ? '#FFD200' : '#888', fontSize: 14, fontWeight: pdfSettings.format === opt.value ? 600 : 400, cursor: 'pointer' }}>{opt.label}</button>
+                                        <button key={opt.value} onClick={() => setPdfSettings(prev => ({ ...prev, format: opt.value as any }))} style={{ flex: 1, padding: '10px', borderRadius: 8, background: pdfSettings.format === opt.value ? 'var(--accent-gold-subtle)' : 'var(--glass-bg-light)', border: `1px solid ${pdfSettings.format === opt.value ? 'var(--accent-gold-muted)' : 'var(--glass-border)'}`, color: pdfSettings.format === opt.value ? 'var(--text-main)' : 'var(--text-secondary)', fontSize: 14, fontWeight: pdfSettings.format === opt.value ? 600 : 400, cursor: 'pointer' }}>{opt.label}</button>
                                     ))}
                                 </div>
                             </div>
@@ -1290,7 +1290,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>方向</label>
                                 <div style={{ display: 'flex', gap: 8 }}>
                                     {[{ value: 'portrait', label: '纵向' }, { value: 'landscape', label: '横向' }].map(opt => (
-                                        <button key={opt.value} onClick={() => setPdfSettings(prev => ({ ...prev, orientation: opt.value as any }))} style={{ flex: 1, padding: '10px', borderRadius: 8, background: pdfSettings.orientation === opt.value ? 'rgba(255,210,0,0.1)' : 'var(--glass-border)', border: `1px solid ${pdfSettings.orientation === opt.value ? 'rgba(255,210,0,0.4)' : 'var(--glass-border)'}`, color: pdfSettings.orientation === opt.value ? '#FFD200' : '#888', fontSize: 14, fontWeight: pdfSettings.orientation === opt.value ? 600 : 400, cursor: 'pointer' }}>{opt.label}</button>
+                                        <button key={opt.value} onClick={() => setPdfSettings(prev => ({ ...prev, orientation: opt.value as any }))} style={{ flex: 1, padding: '10px', borderRadius: 8, background: pdfSettings.orientation === opt.value ? 'var(--accent-gold-subtle)' : 'var(--glass-bg-light)', border: `1px solid ${pdfSettings.orientation === opt.value ? 'var(--accent-gold-muted)' : 'var(--glass-border)'}`, color: pdfSettings.orientation === opt.value ? 'var(--text-main)' : 'var(--text-secondary)', fontSize: 14, fontWeight: pdfSettings.orientation === opt.value ? 600 : 400, cursor: 'pointer' }}>{opt.label}</button>
                                     ))}
                                 </div>
                             </div>
@@ -1299,7 +1299,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>语言</label>
                                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                     {[{ value: 'original', label: '原文' }, { value: 'zh-CN', label: '中文' }, { value: 'en-US', label: 'English' }, { value: 'ja-JP', label: '日本語' }].map(opt => (
-                                        <button key={opt.value} onClick={() => setPdfSettings(prev => ({ ...prev, language: opt.value as any }))} style={{ padding: '8px 16px', borderRadius: 6, background: pdfSettings.language === opt.value ? 'rgba(255,210,0,0.1)' : 'var(--glass-border)', border: `1px solid ${pdfSettings.language === opt.value ? 'rgba(255,210,0,0.4)' : 'var(--glass-border)'}`, color: pdfSettings.language === opt.value ? '#FFD200' : '#888', fontSize: 13, cursor: 'pointer' }}>{opt.label}</button>
+                                        <button key={opt.value} onClick={() => setPdfSettings(prev => ({ ...prev, language: opt.value as any }))} style={{ padding: '8px 16px', borderRadius: 6, background: pdfSettings.language === opt.value ? 'var(--accent-gold-subtle)' : 'var(--glass-bg-light)', border: `1px solid ${pdfSettings.language === opt.value ? 'var(--accent-gold-muted)' : 'var(--glass-border)'}`, color: pdfSettings.language === opt.value ? 'var(--text-main)' : 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>{opt.label}</button>
                                     ))}
                                 </div>
                                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>提示: AI翻译功能开发中...</div>
@@ -1314,8 +1314,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 </label>
                             </div>
 
-                            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'flex-end' }}>
-                                <button onClick={() => setShowPdfSettings(false)} style={{ padding: '10px 24px', background: '#FFD200', border: 'none', borderRadius: 8, color: '#000', fontWeight: 600, cursor: 'pointer' }}>完成</button>
+                            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end' }}>
+                                <button onClick={() => setShowPdfSettings(false)} style={{ padding: '10px 24px', background: 'var(--accent-gold)', border: 'none', borderRadius: 8, color: '#000', fontWeight: 600, cursor: 'pointer' }}>完成</button>
                             </div>
                         </div>
                     </div>
