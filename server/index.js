@@ -323,6 +323,21 @@ try { db.prepare("ALTER TABLE system_settings ADD COLUMN notification_refresh_in
 // Migration for RMA Finance Confirmation Setting
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN require_finance_confirmation BOOLEAN DEFAULT 1").run(); } catch (e) { }
 
+// Migration for Inquiry Ticket SLA Settings
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN inquiry_sla_enabled BOOLEAN DEFAULT 1").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN inquiry_auto_close_days INTEGER DEFAULT 5").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN inquiry_sla_hours INTEGER DEFAULT 24").run(); } catch (e) { }
+
+// Migration for RMA SLA Settings
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN rma_sla_enabled BOOLEAN DEFAULT 1").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN rma_auto_close_days INTEGER DEFAULT 7").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN rma_sla_hours INTEGER DEFAULT 24").run(); } catch (e) { }
+
+// Migration for SVC SLA Settings
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN svc_sla_enabled BOOLEAN DEFAULT 1").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN svc_auto_close_days INTEGER DEFAULT 7").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN svc_sla_hours INTEGER DEFAULT 24").run(); } catch (e) { }
+
 // Migration for RMA Shipping Methods (P2 Phase 2)
 try { db.prepare("ALTER TABLE tickets ADD COLUMN shipping_method TEXT DEFAULT 'express'").run(); } catch (e) { }
 try { db.prepare("ALTER TABLE tickets ADD COLUMN forwarder_domestic_tracking TEXT").run(); } catch (e) { }
@@ -2020,7 +2035,17 @@ app.post('/api/admin/permissions', authenticate, (req, res) => {
 
     let expiresAt = null;
     if (expiry_option === '7days') expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
-    if (expiry_option === '1month') expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    else if (expiry_option === '1month') expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
+    else if (expiry_option && expiry_option !== 'permanent') {
+        try {
+            const parsedDate = new Date(expiry_option);
+            if (!isNaN(parsedDate.getTime())) {
+                expiresAt = parsedDate.toISOString();
+            }
+        } catch (e) {
+            console.error('[Permissions] Custom date parse error:', e);
+        }
+    }
 
     db.prepare(`
         INSERT INTO file_permissions (user_id, folder_path, access_type, expires_at, path_hash)

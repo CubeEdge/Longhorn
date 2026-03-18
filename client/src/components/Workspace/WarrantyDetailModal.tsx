@@ -90,7 +90,7 @@ export const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({
         const map: Record<string, string> = {
             'iot_activation': 'IoT激活日期',
             'invoice': '销售发票日期',
-            'registration': '官网注册日期',
+            'registration': '人工注册日期',
             'direct_ship': '直销发货日期+7天',
             'dealer_fallback': '经销商发货日期+90天',
             'damage_void': '人为损坏（保修失效）',
@@ -157,7 +157,7 @@ export const WarrantyDetailModal: React.FC<WarrantyDetailModalProps> = ({
     return (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000,
-            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)',
+            background: 'var(--glass-bg)', backdropFilter: 'blur(12px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
             <div style={{

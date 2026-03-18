@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Plus, X, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { User, Plus, X, Search, ChevronDown, ChevronRight, CheckCircle, RefreshCcw } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -17,6 +17,8 @@ interface ParticipantsSidebarProps {
     ticketId: number;
     participants: any[];
     onUpdate: () => void;
+    isAdmin?: boolean;
+    isMsLead?: boolean;
 }
 
 interface UserOption {
@@ -33,7 +35,9 @@ const FREQ_THRESHOLD = 2;
 export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
     ticketId,
     participants,
-    onUpdate
+    onUpdate,
+    isAdmin = false,
+    isMsLead = false
 }) => {
     const { user: currentUserProfile } = useAuthStore();
     const [showInvite, setShowInvite] = useState(false);
@@ -41,10 +45,15 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
     const [allUsers, setAllUsers] = useState<UserOption[]>([]);
     const [inviteStats, setInviteStats] = useState<Record<number, number>>({});
     const [searchQuery, setSearchQuery] = useState('');
+    const [showTransfer, setShowTransfer] = useState(false);
+    const [transferReason, setTransferReason] = useState('');
+    const [transferSearchQuery, setTransferSearchQuery] = useState('');
+    const [selectedTransferUser, setSelectedTransferUser] = useState<number | null>(null);
+    const [isTransferring, setIsTransferring] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!showInvite) return;
+        if (!showInvite && !showTransfer) return;
         const fetchUsers = async () => {
             try {
                 const token = localStorage.getItem('token');
@@ -69,7 +78,7 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
             }
         };
         fetchUsers();
-    }, [showInvite]);
+    }, [showInvite, showTransfer]);
 
     // Click outside to close
     useEffect(() => {
@@ -109,6 +118,26 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
             onUpdate();
         } catch (e) {
             console.error('Remove participant failed', e);
+        }
+    };
+
+    const handleTransfer = async () => {
+        if (!selectedTransferUser || !transferReason.trim()) return;
+        setIsTransferring(true);
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`/api/v1/tickets/${ticketId}/transfer`, {
+                to_user_id: selectedTransferUser,
+                reason: transferReason.trim()
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            onUpdate();
+            setShowTransfer(false);
+            setTransferReason('');
+            setSelectedTransferUser(null);
+        } catch (e: any) {
+            alert(e.response?.data?.error || '转交失败');
+        } finally {
+            setIsTransferring(false);
         }
     };
 
@@ -372,9 +401,28 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                                     {(p.name || '?')[0].toUpperCase()}
                                 </div>
 
-                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>{p.name}</span>
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                                    <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                                     {getRoleBadge(p.role)}
+                                    {p.role === 'assignee' && (
+                                        <span style={{ fontSize: 11, opacity: 0.6, padding: '0 4px', background: 'rgba(0,0,0,0.1)', borderRadius: 3 }}>
+                                            {allUsers.find(u => u.id === p.user_id)?.department || p.department_name || p.department || '-'}
+                                        </span>
+                                    )}
+                                    {p.role === 'assignee' && (isAdmin || isMsLead || p.user_id === currentUserProfile?.id) && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setShowTransfer(true); }}
+                                            className="transfer-btn"
+                                            style={{
+                                                fontSize: 10, padding: '1px 5px', borderRadius: 3,
+                                                background: 'rgba(59, 130, 246, 0.1)', color: '#3B82F6',
+                                                border: '1px solid rgba(59, 130, 246, 0.2)', cursor: 'pointer',
+                                                marginLeft: 'auto', flexShrink: 0
+                                            }}
+                                        >
+                                            转交
+                                        </button>
+                                    )}
                                 </div>
 
                                 <button
@@ -423,6 +471,139 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                     )}
                 </div>
             </>)}
+
+            {/* Inline Transfer Panel - Optimized UI */}
+            {showTransfer && !collapsed && (
+                <div style={{
+                    margin: '0 12px 12px', padding: '16px',
+                    background: 'var(--card-bg-light)',
+                    border: '1px solid var(--accent-yellow)',
+                    borderRadius: 16,
+                    display: 'flex', flexDirection: 'column', gap: 14,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                    animation: 'fadeIn 0.2s ease-out',
+                    position: 'relative',
+                    zIndex: 10
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 800, fontSize: 13, color: 'var(--accent-yellow)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                             <RefreshCcw size={14} /> 转交工单
+                        </span>
+                        <div 
+                            onClick={() => { setShowTransfer(false); setSelectedTransferUser(null); setTransferReason(''); setTransferSearchQuery(''); }}
+                            style={{ cursor: 'pointer', opacity: 0.6, padding: 4 }}
+                        >
+                            <X size={16} />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {/* Internal Search for Transfer */}
+                        <div style={{ position: 'relative' }}>
+                            <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }} />
+                            <input 
+                                value={transferSearchQuery}
+                                onChange={e => setTransferSearchQuery(e.target.value)}
+                                placeholder="搜索市场部同事..."
+                                style={{
+                                    width: '100%', padding: '8px 10px 8px 30px', borderRadius: 8,
+                                    background: 'rgba(0,0,0,0.1)', border: '1px solid var(--glass-border)',
+                                    color: 'var(--text-main)', fontSize: 12, outline: 'none'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ 
+                            background: 'rgba(0,0,0,0.05)', borderRadius: 10, border: '1px solid var(--glass-border)',
+                            maxHeight: 160, overflowY: 'auto', padding: '4px'
+                        }}>
+                            {allUsers.filter(u => {
+                                const isMS = (u.department_name?.includes('市场') || u.department_name?.includes('MS') || (u.department ||'').includes('市场') || (u.department ||'').includes('MS'));
+                                const matchesSearch = u.name.toLowerCase().includes(transferSearchQuery.toLowerCase());
+                                const isNotCurrent = !participants.some(p => p.role === 'assignee' && p.user_id === u.id);
+                                return isMS && matchesSearch && isNotCurrent;
+                            }).length > 0 ? (
+                                allUsers.filter(u => {
+                                    const isMS = (u.department_name?.includes('市场') || u.department_name?.includes('MS') || (u.department ||'').includes('市场') || (u.department ||'').includes('MS'));
+                                    const matchesSearch = u.name.toLowerCase().includes(transferSearchQuery.toLowerCase());
+                                    const isNotCurrent = !participants.some(p => p.role === 'assignee' && p.user_id === u.id);
+                                    return isMS && matchesSearch && isNotCurrent;
+                                }).map(user => (
+                                    <div
+                                        key={user.id}
+                                        onClick={() => setSelectedTransferUser(user.id)}
+                                        style={{
+                                            padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', gap: 10,
+                                            background: selectedTransferUser === user.id ? 'rgba(255, 210, 0, 0.15)' : 'transparent',
+                                            transition: 'all 0.1s'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: 30, height: 30, borderRadius: '50%',
+                                            background: selectedTransferUser === user.id ? 'var(--accent-yellow)' : 'rgba(255,255,255,0.05)',
+                                            color: selectedTransferUser === user.id ? '#000' : 'var(--text-main)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: 12, fontWeight: 800,
+                                            border: '1px solid var(--glass-border)'
+                                        }}>
+                                            {user.name[0]?.toUpperCase()}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {user.name}
+                                            </div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
+                                                {user.department_name || user.department || '市场部'}
+                                            </div>
+                                        </div>
+                                        {selectedTransferUser === user.id && <CheckCircle size={14} color="var(--accent-yellow)" />}
+                                    </div>
+                                ))
+                            ) : (
+                                <div style={{ padding: '20px', textAlign: 'center', fontSize: 12, color: 'var(--text-tertiary)' }}>
+                                    未找到其他市场部成员
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <textarea 
+                        style={{ 
+                            width: '100%', padding: '10px 12px', borderRadius: 10, 
+                            background: 'rgba(0,0,0,0.1)', border: '1px solid var(--glass-border)',
+                            color: 'var(--text-main)', outline: 'none', minHeight: 70, resize: 'none',
+                            fontSize: 12, lineHeight: 1.5
+                        }}
+                        placeholder="请输入必要的转交理由以同步上下文 (必填)..."
+                        value={transferReason}
+                        onChange={e => setTransferReason(e.target.value)}
+                    />
+
+                    <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                        <button 
+                            onClick={() => { setShowTransfer(false); setSelectedTransferUser(null); setTransferReason(''); setTransferSearchQuery(''); }}
+                            style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid var(--glass-border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                        >
+                            取消
+                        </button>
+                        <button 
+                            onClick={handleTransfer}
+                            disabled={isTransferring || !selectedTransferUser || !transferReason.trim()}
+                            style={{ 
+                                flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', 
+                                background: (isTransferring || !selectedTransferUser || !transferReason.trim()) ? 'var(--text-tertiary)' : 'var(--accent-yellow)', 
+                                color: (isTransferring || !selectedTransferUser || !transferReason.trim()) ? '#fff' : '#000', 
+                                cursor: 'pointer', fontSize: 13, fontWeight: 800,
+                                transition: 'all 0.2s',
+                                boxShadow: (isTransferring || !selectedTransferUser || !transferReason.trim()) ? 'none' : '0 4px 12px rgba(255, 210, 0, 0.2)'
+                            }}
+                        >
+                            {isTransferring ? '处理中...' : '确认转交'}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

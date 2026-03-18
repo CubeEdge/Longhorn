@@ -135,7 +135,7 @@ module.exports = function (db, authenticate) {
                 name_zh,
                 name_en,
                 model_code,
-                material_id_prefix,
+                material_id,
                 product_family,
                 product_type,
                 description,
@@ -163,7 +163,7 @@ module.exports = function (db, authenticate) {
 
             const result = db.prepare(`
                 INSERT INTO product_models (
-                    name_zh, name_en, brand, model_code, material_id_prefix,
+                    name_zh, name_en, brand, model_code, material_id,
                     product_family, product_type, description, hero_image,
                     is_active, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
@@ -172,7 +172,7 @@ module.exports = function (db, authenticate) {
                 name_en || null,
                 brand || 'Kinefinity',
                 model_code || null,
-                material_id_prefix || null,
+                material_id || null,
                 product_family,
                 product_type || 'CAMERA',
                 description || null,
@@ -206,7 +206,7 @@ module.exports = function (db, authenticate) {
                 name_zh,
                 name_en,
                 model_code,
-                material_id_prefix,
+                material_id,
                 product_family,
                 product_type,
                 description,
@@ -250,7 +250,7 @@ module.exports = function (db, authenticate) {
                     name_en = COALESCE(?, name_en),
                     brand = COALESCE(?, brand),
                     model_code = ?,
-                    material_id_prefix = ?,
+                    material_id = ?,
                     product_family = COALESCE(?, product_family),
                     product_type = COALESCE(?, product_type),
                     description = ?,
@@ -263,7 +263,7 @@ module.exports = function (db, authenticate) {
                 name_en,
                 brand,
                 model_code !== undefined ? model_code : null,
-                material_id_prefix !== undefined ? material_id_prefix : null,
+                material_id !== undefined ? material_id : null,
                 product_family,
                 product_type,
                 description !== undefined ? description : null,

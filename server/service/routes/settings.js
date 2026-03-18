@@ -67,6 +67,21 @@ module.exports = (db, authenticate, backupService) => {
                 
                 // Normalize RMA Finance Confirmation Setting
                 settings.require_finance_confirmation = settings.require_finance_confirmation !== 0;
+
+                // Normalize Inquiry Ticket SLA Settings
+                settings.inquiry_sla_enabled = settings.inquiry_sla_enabled !== 0;
+                settings.inquiry_auto_close_days = parseInt(settings.inquiry_auto_close_days) || 5;
+                settings.inquiry_sla_hours = parseInt(settings.inquiry_sla_hours) || 24;
+
+                // Normalize RMA Ticket SLA Settings
+                settings.rma_sla_enabled = settings.rma_sla_enabled !== 0;
+                settings.rma_auto_close_days = parseInt(settings.rma_auto_close_days) || 7;
+                settings.rma_sla_hours = parseInt(settings.rma_sla_hours) || 24;
+
+                // Normalize SVC Ticket SLA Settings
+                settings.svc_sla_enabled = settings.svc_sla_enabled !== 0;
+                settings.svc_auto_close_days = parseInt(settings.svc_auto_close_days) || 7;
+                settings.svc_sla_hours = parseInt(settings.svc_sla_hours) || 24;
             }
 
             providers.forEach(p => {
@@ -128,6 +143,19 @@ module.exports = (db, authenticate, backupService) => {
                         secondary_backup_frequency = @secondary_backup_frequency,
                         secondary_backup_retention_days = @secondary_backup_retention_days,
                         require_finance_confirmation = @require_finance_confirmation,
+                        
+                        inquiry_sla_enabled = @inquiry_sla_enabled,
+                        inquiry_auto_close_days = @inquiry_auto_close_days,
+                        inquiry_sla_hours = @inquiry_sla_hours,
+
+                        rma_sla_enabled = @rma_sla_enabled,
+                        rma_auto_close_days = @rma_auto_close_days,
+                        rma_sla_hours = @rma_sla_hours,
+
+                        svc_sla_enabled = @svc_sla_enabled,
+                        svc_auto_close_days = @svc_auto_close_days,
+                        svc_sla_hours = @svc_sla_hours,
+                        
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = @id
                 `).run({
@@ -147,7 +175,16 @@ module.exports = (db, authenticate, backupService) => {
                     secondary_backup_enabled: settings.secondary_backup_enabled ? 1 : 0,
                     secondary_backup_frequency: parseInt(settings.secondary_backup_frequency) || 1440,
                     secondary_backup_retention_days: parseInt(settings.secondary_backup_retention_days) || 30,
-                    require_finance_confirmation: settings.require_finance_confirmation !== false ? 1 : 0
+                    require_finance_confirmation: settings.require_finance_confirmation !== false ? 1 : 0,
+                    inquiry_sla_enabled: settings.inquiry_sla_enabled !== false ? 1 : 0,
+                    inquiry_auto_close_days: parseInt(settings.inquiry_auto_close_days) || 5,
+                    inquiry_sla_hours: parseInt(settings.inquiry_sla_hours) || 24,
+                    rma_sla_enabled: settings.rma_sla_enabled !== false ? 1 : 0,
+                    rma_auto_close_days: parseInt(settings.rma_auto_close_days) || 7,
+                    rma_sla_hours: parseInt(settings.rma_sla_hours) || 24,
+                    svc_sla_enabled: settings.svc_sla_enabled !== false ? 1 : 0,
+                    svc_auto_close_days: parseInt(settings.svc_auto_close_days) || 7,
+                    svc_sla_hours: parseInt(settings.svc_sla_hours) || 24
                 });
 
                 // Reload Backup Service

@@ -15,7 +15,7 @@ interface ProductModel {
     name_en: string;
     brand: string;
     model_code: string;
-    material_id_prefix: string;
+    material_id: string;
     product_family: string;
     product_type: string;
     description: string;
@@ -96,7 +96,7 @@ const ProductModelDetailPage: React.FC = () => {
                 name_en: model.name_en,
                 brand: model.brand,
                 model_code: model.model_code,
-                material_id_prefix: model.material_id_prefix,
+                material_id: model.material_id,
                 product_family: model.product_family,
                 product_type: model.product_type,
                 description: model.description,
@@ -252,7 +252,7 @@ const ProductModelDetailPage: React.FC = () => {
                                                     name_en: model.name_en,
                                                     brand: model.brand,
                                                     model_code: model.model_code,
-                                                    material_id_prefix: model.material_id_prefix,
+                                                    material_id: model.material_id,
                                                     product_family: model.product_family,
                                                     product_type: model.product_type,
                                                     description: model.description,
@@ -418,8 +418,8 @@ const ProductModelDetailPage: React.FC = () => {
                                     <div className="value" style={{ fontWeight: 600, fontSize: '1rem' }}>{model.model_code}</div>
                                 </div>
                                 <div className="info-item">
-                                    <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>物料号前缀</div>
-                                    <div className="value" style={{ fontWeight: 600, fontSize: '1rem' }}>{model.material_id_prefix || '-'}</div>
+                                    <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>物料号 (Material ID)</div>
+                                    <div className="value" style={{ fontWeight: 600, fontSize: '1rem' }}>{model.material_id || '-'}</div>
                                 </div>
                                 <div className="info-item">
                                     <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>品牌 (Brand)</div>
@@ -636,10 +636,10 @@ const ProductModelDetailPage: React.FC = () => {
                                             />
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>物料号前缀</label>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>物料ID</label>
                                             <input
-                                                type="text" value={editFormData.material_id_prefix || ''}
-                                                onChange={(e) => setEditFormData({ ...editFormData, material_id_prefix: e.target.value })}
+                                                type="text" value={editFormData.material_id || ''}
+                                                onChange={(e) => setEditFormData({ ...editFormData, material_id: e.target.value })}
                                                 style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
                                                 placeholder="例如: 9-010-001"
                                             />

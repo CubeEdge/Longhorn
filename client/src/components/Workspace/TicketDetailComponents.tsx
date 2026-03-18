@@ -319,7 +319,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
 
   // Define activity type categories
   // Key outputs: user-driven important outputs that should appear in "讨论与关键节点"
-  const COMMENT_TYPES = ['comment', 'diagnostic_report', 'op_repair_report'];
+  const COMMENT_TYPES = ['comment', 'diagnostic_report', 'op_repair_report', 'reply'];
   const KEY_OUTPUT_TYPES = ['document_published', 'document_recalled']; // PI/维修报告发布撤回
   const SYSTEM_TYPES = ['status_change', 'assignment_change', 'field_update', 'system_event', 'creation', 'assignment', 'priority_change', 'soft_delete'];
 
@@ -368,129 +368,152 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   // 重要：关键节点时间应使用最新变更时间，而非第一次提交时间
   const generateKeyNodeActivities = (): Activity[] => {
     if (!ticket) return [];
+    
+    const type = ticket.ticket_type ? ticket.ticket_type.toLowerCase() : '';
     const keyNodes: Activity[] = [];
-    const rmaFlow = ['submitted', 'op_receiving', 'op_diagnosing', 'ms_review', 'op_repairing', 'ms_closing', 'op_shipping', 'op_shipping_transit', 'resolved'];
-    const currentIndex = rmaFlow.indexOf(ticket.current_node);
     
     // 辅助函数：从活动列表中找到所有匹配条件的活动，取最新的一个
-    // 注意：activities 已按 created_at DESC 排序，所以第一个就是最新的
     const findLatestActivity = (predicate: (a: Activity) => boolean): Activity | undefined => {
       return activities.find(predicate);
     };
 
-    // 1. OP 收货信息（op_receiving/submitted → op_diagnosing 之后）
-    if (currentIndex > rmaFlow.indexOf('op_receiving')) {
-      // 从活动中找到收货信息（优先专用类型，其次节点转换）- 取最新的
-      const receiveActivity = findLatestActivity(a => a.activity_type === 'receiving_info') ||
-                              findNodeTransitionActor('op_receiving', 'op_diagnosing') ||
-                              findNodeTransitionActor('submitted', 'op_diagnosing');
-      keyNodes.push({
-        id: -1001,
-        activity_type: 'key_node_op_receive',
-        content: '完成收货入库',
-        created_at: receiveActivity?.created_at || ticket.updated_at || ticket.created_at,
-        actor: receiveActivity?.actor || null,
-        visibility: 'internal',
-        metadata: { 
-          node_type: 'op_receive',
-          original_activity_id: receiveActivity?.id,
-          ...(receiveActivity?.activity_type === 'receiving_info' ? (receiveActivity?.metadata || {}) : {})
-        }
-      } as Activity);
-    }
-
-    // 2. MS 审核信息（ms_review 完成后）
-    if (ticket.ms_review || currentIndex > rmaFlow.indexOf('ms_review')) {
-      // 查找审核操作人：优先 field_update(ms_review)，其次节点转换 - 取最新的
-      const reviewActivity = findLatestActivity(a => 
-        a.activity_type === 'field_update' && (a.metadata as any)?.field_name === 'ms_review'
-      ) || findNodeTransitionActor('ms_review', 'op_repairing');
+    if (type === 'rma') {
+      const rmaFlow = ['submitted', 'op_receiving', 'op_diagnosing', 'ms_review', 'op_repairing', 'ms_closing', 'op_shipping', 'op_shipping_transit', 'resolved'];
+      const currentIndex = rmaFlow.indexOf(ticket.current_node);
       
-      // ms_review 的实际字段映射（处理JSON字符串情况）
-      let msReviewData: any = {};
-      if (ticket.ms_review) {
-        msReviewData = typeof ticket.ms_review === 'string' 
-          ? JSON.parse(ticket.ms_review) 
-          : ticket.ms_review;
+      // 1. OP 收货信息（op_receiving/submitted → op_diagnosing 之后）
+      if (currentIndex > rmaFlow.indexOf('op_receiving')) {
+        const receiveActivity = findLatestActivity(a => a.activity_type === 'receiving_info') ||
+                                findNodeTransitionActor('op_receiving', 'op_diagnosing') ||
+                                findNodeTransitionActor('submitted', 'op_diagnosing');
+        keyNodes.push({
+          id: -1001,
+          activity_type: 'key_node_op_receive',
+          content: '完成收货入库',
+          created_at: receiveActivity?.created_at || ticket.updated_at || ticket.created_at,
+          actor: receiveActivity?.actor || null,
+          visibility: 'internal',
+          metadata: { 
+            node_type: 'op_receive',
+            original_activity_id: receiveActivity?.id,
+            ...(receiveActivity?.activity_type === 'receiving_info' ? (receiveActivity?.metadata || {}) : {})
+          }
+        } as Activity);
       }
-      
-      // 映射保修决策：warranty_valid -> in_warranty, warranty_expired/warranty_void_damage -> out_warranty
-      const warrantyDecision = msReviewData.final_decision === 'warranty_valid' 
-        ? 'in_warranty' 
-        : (msReviewData.final_decision === 'warranty_expired' || msReviewData.final_decision === 'warranty_void_damage' 
-          ? 'out_warranty' 
-          : msReviewData.final_decision);
-      
-      keyNodes.push({
-        id: -1002,
-        activity_type: 'key_node_ms_review',
-        content: '完成商务审核',
-        created_at: reviewActivity?.created_at || ticket.updated_at || ticket.created_at,
-        actor: reviewActivity?.actor || null,
-        visibility: 'internal',
-        metadata: { 
-          node_type: 'ms_review', 
-          sensitive: true,
-          // 映射实际字段名
-          warranty_decision: warrantyDecision,
-          charge_decision: msReviewData.final_decision === 'warranty_valid' ? 'free' : 'charge',
-          estimated_cost: msReviewData.estimated_cost_max || msReviewData.estimated_cost_min,
-          customer_confirmed: msReviewData.customer_confirmed,
-          review_notes: msReviewData.decision_remark
-        }
-      } as Activity);
-    }
 
-    // 3. MS 结案信息（ms_closing 完成后）
-    if (ticket.final_settlement || currentIndex > rmaFlow.indexOf('ms_closing')) {
-      // 查找结案操作人：优先 field_update(final_settlement)，其次节点转换 - 取最新的
-      const closingActivity = findLatestActivity(a => 
-        a.activity_type === 'field_update' && (a.metadata as any)?.field_name === 'final_settlement'
-      ) || findNodeTransitionActor('ms_closing', 'op_shipping');
-      
-      // 解析 final_settlement
-      const settlementData = parseFinalSettlement(ticket.final_settlement);
-      keyNodes.push({
-        id: -1003,
-        activity_type: 'key_node_ms_closing',
-        content: '完成结案确认',
-        created_at: closingActivity?.created_at || ticket.updated_at || ticket.created_at,
-        actor: closingActivity?.actor || null,
-        visibility: 'internal',
-        metadata: { 
-          node_type: 'ms_closing', 
-          sensitive: true,
-          // 映射实际字段名
-          settlement_type: settlementData.shipping_combine === 'standalone' ? '独立发货' : 
-                          (settlementData.shipping_combine === 'with_order' ? '随订单发货' : '随其他RMA'),
-          payment_confirmed: settlementData.payment_confirmed,
-          actual_payment: settlementData.actual_payment,
-          closing_notes: settlementData.handover_notes
+      // 2. MS 审核信息（ms_review 完成后）
+      if (ticket.ms_review || currentIndex > rmaFlow.indexOf('ms_review')) {
+        const reviewActivity = findLatestActivity(a => 
+          a.activity_type === 'field_update' && (a.metadata as any)?.field_name === 'ms_review'
+        ) || findNodeTransitionActor('ms_review', 'op_repairing');
+        
+        let msReviewData: any = {};
+        if (ticket.ms_review) {
+          try {
+            msReviewData = typeof ticket.ms_review === 'string' 
+              ? JSON.parse(ticket.ms_review) 
+              : ticket.ms_review;
+          } catch (e) { msReviewData = {}; }
         }
-      } as Activity);
-    }
+        
+        const warrantyDecision = msReviewData.final_decision === 'warranty_valid' 
+          ? 'in_warranty' 
+          : (msReviewData.final_decision === 'warranty_expired' || msReviewData.final_decision === 'warranty_void_damage' 
+            ? 'out_warranty' 
+            : msReviewData.final_decision);
+        
+        keyNodes.push({
+          id: -1002,
+          activity_type: 'key_node_ms_review',
+          content: '完成商务审核',
+          created_at: reviewActivity?.created_at || ticket.updated_at || ticket.created_at,
+          actor: reviewActivity?.actor || null,
+          visibility: 'internal',
+          metadata: { 
+            node_type: 'ms_review', 
+            sensitive: true,
+            warranty_decision: warrantyDecision,
+            charge_decision: msReviewData.final_decision === 'warranty_valid' ? 'free' : 'charge',
+            estimated_cost: msReviewData.estimated_cost_max || msReviewData.estimated_cost_min,
+            customer_confirmed: msReviewData.customer_confirmed,
+            review_notes: msReviewData.decision_remark
+          }
+        } as Activity);
+      }
 
-    // 4. OP 发货信息（op_shipping 完成后）
-    if (currentIndex >= rmaFlow.indexOf('resolved') || ticket.current_node === 'op_shipping_transit') {
-      // 从活动中找到发货信息 - 取最新的
-      const shippingActivity = findLatestActivity(a => a.activity_type === 'shipping_info');
-      keyNodes.push({
-        id: -1004,
-        activity_type: 'key_node_op_shipping',
-        content: shippingActivity ? '发货信息已录入' : '完成发货',
-        created_at: shippingActivity?.created_at || ticket.updated_at || ticket.created_at,
-        actor: shippingActivity?.actor || null,
-        visibility: 'internal',
-        metadata: { 
-          node_type: 'op_shipping',
-          shipping_method: ticket.shipping_method,
-          ...(shippingActivity?.metadata || {})
-        }
-      } as Activity);
+      // 3. MS 结案信息（ms_closing 完成后）
+      if (ticket.final_settlement || currentIndex > rmaFlow.indexOf('ms_closing')) {
+        const closingActivity = findLatestActivity(a => 
+          a.activity_type === 'field_update' && (a.metadata as any)?.field_name === 'final_settlement'
+        ) || findNodeTransitionActor('ms_closing', 'op_shipping');
+        
+        const settlementData = parseFinalSettlement(ticket.final_settlement);
+        keyNodes.push({
+          id: -1003,
+          activity_type: 'key_node_ms_closing',
+          content: '完成结案确认',
+          created_at: closingActivity?.created_at || ticket.updated_at || ticket.created_at,
+          actor: closingActivity?.actor || null,
+          visibility: 'internal',
+          metadata: { 
+            node_type: 'ms_closing', 
+            sensitive: true,
+            settlement_type: settlementData.shipping_combine === 'standalone' ? '独立发货' : 
+                            (settlementData.shipping_combine === 'with_order' ? '随订单发货' : '随其他RMA'),
+            payment_confirmed: settlementData.payment_confirmed,
+            actual_payment: settlementData.actual_payment,
+            closing_notes: settlementData.handover_notes
+          }
+        } as Activity);
+      }
+
+      // 4. OP 发货信息（op_shipping 完成后）
+      if (currentIndex >= rmaFlow.indexOf('resolved') || ticket.current_node === 'op_shipping_transit') {
+        const shippingActivity = findLatestActivity(a => a.activity_type === 'shipping_info');
+        keyNodes.push({
+          id: -1004,
+          activity_type: 'key_node_op_shipping',
+          content: shippingActivity ? '发货信息已录入' : '完成发货',
+          created_at: shippingActivity?.created_at || ticket.updated_at || ticket.created_at,
+          actor: shippingActivity?.actor || null,
+          visibility: 'internal',
+          metadata: { 
+            node_type: 'op_shipping',
+            shipping_method: ticket.shipping_method,
+            ...(shippingActivity?.metadata || {})
+          }
+        } as Activity);
+      }
+    } else if (type === 'inquiry') {
+      const inquiryFlow = ['submitted', 'handling', 'awaiting_customer', 'resolved', 'closed'];
+      const currentIndex = inquiryFlow.indexOf(ticket.current_node);
+
+      // 对于咨询工单，问题确认为“已解决”即为结案节点
+      if (currentIndex >= inquiryFlow.indexOf('resolved')) {
+        const resolveActivity = findLatestActivity(a => 
+          (a.activity_type === 'status_change' && (a.metadata as any)?.to_node === 'resolved') ||
+          (a.activity_type === 'comment' && (a.content || '').includes('【确认解决】'))
+        );
+        
+        keyNodes.push({
+          id: -1101,
+          activity_type: 'key_node_ms_closing', 
+          content: '确认问题解决并结案',
+          created_at: resolveActivity?.created_at || ticket.updated_at || ticket.created_at,
+          actor: resolveActivity?.actor || null,
+          visibility: 'internal',
+          metadata: { 
+            node_type: 'ms_closing',
+            is_inquiry: true,
+            closing_notes: (resolveActivity?.content || '').includes('【确认解决】') ? resolveActivity?.content : ''
+          }
+        } as Activity);
+      }
     }
 
     return keyNodes;
   };
+
 
   const keyNodeActivities = generateKeyNodeActivities();
 
@@ -639,11 +662,20 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
     const isKeyNode = activity.activity_type.startsWith('key_node_');
     const keyNodeType = activity.metadata?.node_type as 'op_receive' | 'op_shipping' | 'ms_review' | 'ms_closing' | undefined;
     
-    // 检测是否为重要节点（需要 Kine Yellow 圆环标记）
+    // 检测是否为重要节点（需要圆环标记：黄色为官方，蓝色为客户）
+    const isCustomerFeedback = (activity.content || '').includes('【客户反馈】');
+    const isOfficialReply = (activity.content || '').includes('【正式回复】') || 
+                          (activity.content || '').includes('【官方回复】') ||
+                          (activity.content || '').includes('[Official Reply]');
+    const isResolveNode = (activity.content || '').includes('【确认解决】');
+
     const isImportantNode = isKeyNode || 
       activity.activity_type === 'op_repair_report' || 
       activity.activity_type === 'diagnostic_report' ||
-      activity.activity_type === 'creation';
+      activity.activity_type === 'creation' ||
+      (activity.activity_type === 'comment' && (
+        isCustomerFeedback || isOfficialReply || isResolveNode
+      ));
 
     // 关键节点渲染 - 改为和普通活动类似的格式，点击打开侧滑详情
     if (isKeyNode && keyNodeType) {
@@ -796,14 +828,22 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
           <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono, monospace)', minWidth: '80px', whiteSpace: 'nowrap' }}>
             {formattedDate}
           </span>
-          {/* 重要节点（维修记录、诊断报告）显示 Kine Yellow 空心圆环标记 */}
+          {/* 重要节点显示增强环 */}
           {isImportantNode && !isKeyNode ? (
             <div style={{ 
               width: 18, height: 18,
               borderRadius: '50%',
-              border: '2px solid #FFD700',
-              opacity: 0.9
-            }} />
+              border: `2px solid ${isCustomerFeedback ? '#3B82F6' : '#FFD700'}`,
+              opacity: 0.9,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: isCustomerFeedback ? 'rgba(59,130,246,0.05)' : 'rgba(255,215,0,0.05)'
+            }}>
+              {isCustomerFeedback ? (
+                <User size={10} color="#3B82F6" strokeWidth={3} />
+              ) : (
+                <CheckCircle size={10} color="#FFD700" strokeWidth={3} />
+              )}
+            </div>
           ) : (
             <span style={{ color, display: 'flex', alignItems: 'center', opacity: 0.8 }}>
               {getTypeIcon(displayType)}
@@ -831,7 +871,15 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
                 <OpRepairReportContent metadata={activity.metadata as any} />
               ) : (
                 <div
-                  style={{ color: isSystemEvent ? 'var(--text-tertiary)' : 'var(--text-secondary)', wordBreak: 'break-word', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 13 }}
+                  style={{ 
+                    color: isSystemEvent ? 'var(--text-tertiary)' : 'var(--text-secondary)', 
+                    wordBreak: 'break-word', 
+                    whiteSpace: isImportantNode ? 'pre-wrap' : 'nowrap', 
+                    overflow: isImportantNode ? 'visible' : 'hidden', 
+                    textOverflow: isImportantNode ? 'unset' : 'ellipsis', 
+                    fontSize: 13,
+                    flex: 1
+                  }}
                   dangerouslySetInnerHTML={{
                     __html: (activity.content_html || activity.content || '').replace(/<[^>]+>/g, ' ')
                   }}
@@ -1172,8 +1220,11 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   const [correcting, setCorrecting] = useState(false);
 
   // 判断是否为复杂类型（需要打开完整编辑器）
-  const isComplexActivityType = (type: string): boolean => {
-    return ['op_repair_report', 'diagnostic_report'].includes(type);
+  const isComplexActivityType = (type: string, activity?: any): boolean => {
+    if (['op_repair_report', 'diagnostic_report'].includes(type)) return true;
+    // 工单创建事件也属于复杂类型
+    if (type === 'system_event' && activity?.metadata?.event_type === 'creation') return true;
+    return false;
   };
 
   // 判断是否为关键节点
@@ -1235,9 +1286,9 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
   };
 
   // 检查是否可以更正活动（权限检查）
-  const canCorrectActivity = (act: Activity): boolean => {
+    const canCorrectActivity = (act: Activity): boolean => {
     if (!user || !ticketId) return false;
-    const correctableTypes = ['op_repair_report', 'diagnostic_report', 'shipping_info', 'comment', 'internal_note'];
+    const correctableTypes = ['op_repair_report', 'diagnostic_report', 'shipping_info', 'comment', 'internal_note', 'reply'];
     if (!correctableTypes.includes(act.activity_type)) return false;
     
     // 判断活动类型属于哪个部门
@@ -1283,11 +1334,12 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
     if (!activity || !ticketId || !correctionReason.trim()) return;
     
     // 复杂类型：请求父组件打开完整编辑器
-    if (isComplexActivityType(activity.activity_type)) {
+    if (isComplexActivityType(activity.activity_type, activity)) {
       if (onCorrectionRequest) {
+        const isCreation = activity.activity_type === 'system_event' && (activity.metadata as any)?.event_type === 'creation';
         onCorrectionRequest({
           activityId: activity.id,
-          activityType: activity.activity_type,
+          activityType: isCreation ? 'ticket_creation' : activity.activity_type,
           reason: correctionReason.trim(),
           originalContent: activity.content,
           metadata: activity.metadata
@@ -1364,10 +1416,11 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
 
         {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* User Info - 系统事件不显示操作人；document_published/document_recalled 应显示实际发布者 */}
+          {/* User Info - 系统事件不显示操作人；document_published/document_recalled 应显示实际发布者；工单创建应显示提交者 */}
           {(() => {
-            // 注意：document_published/document_recalled 虽然是系统记录的事件，但应显示实际发布者
-            const isSystemEvent = ['status_change', 'assignment', 'assignment_change', 'field_update', 'system_event'].includes(activity.activity_type);
+            const isCreation = activity.activity_type === 'system_event' && (activity.metadata as any)?.event_type === 'creation';
+            const isSystemEvent = ['status_change', 'assignment', 'assignment_change', 'field_update', 'system_event'].includes(activity.activity_type) && !isCreation;
+            
             return isSystemEvent ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3B82F6', fontWeight: 600, fontSize: 14 }}>
@@ -1884,31 +1937,26 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             const ticketType = meta?.ticket_type || ticket?.ticket_type || 'rma';
             const isRmaOrSvc = ticketType === 'rma' || ticketType === 'svc';
             
-            // 优先从 ticket 读取数据，如果不存在则从 activity.metadata 读取
+            // 优先从 ticket 读取数据
             const customerName = ticket?.account?.name || ticket?.account_name || meta?.customer_name || '-';
             const contactName = ticket?.contact?.name || ticket?.contact_name || meta?.contact_name || '-';
             const dealerName = ticket?.dealer?.name || ticket?.dealer_name || meta?.dealer_name;
             const productName = ticket?.product?.name || ticket?.product_name || meta?.product_name || '-';
             const serialNumber = ticket?.serial_number || meta?.serial_number || '-';
             const problemDescription = ticket?.problem_description || meta?.problem_description;
+            
+            // 保修状态
+            const isWarranty = ticket?.is_warranty === 1 || meta?.is_warranty === 1;
 
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {/* 更正按钮 - 移到右上角 */}
-                {canCorrectCreation() && onCorrectionRequest && (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                {/* Header with Correction Button */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                  {canCorrectCreation() && onCorrectionRequest && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // 请求打开完整编辑器进行工单更正
-                        onCorrectionRequest({
-                          activityId: activity.id,
-                          activityType: 'ticket_creation',
-                          reason: '',
-                          originalContent: activity.content,
-                          metadata: activity.metadata
-                        });
-                        onClose();
+                        openCorrectionModal();
                       }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', fontSize: 11,
@@ -1920,25 +1968,35 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     >
                       <RefreshCw size={12} /> 更正
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* 分组1: 客户信息 */}
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>客户信息</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
-                      <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>客户名称</label>
-                      <div style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>{customerName}</div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
-                      <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>联系人</label>
-                      <div style={{ fontSize: 13, color: 'var(--text-main)' }}>{contactName}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>客户与联系人</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>
+                          {customerName} · {contactName}
+                        </div>
+                        {ticket?.account_service_tier && (
+                          <span style={{
+                            fontSize: 10, padding: '1px 6px', borderRadius: 4,
+                            background: (ticket.account_service_tier as string) === 'DIAMOND' ? 'linear-gradient(135deg, #b9f2ff, #29abe2)' : 'rgba(255,255,255,0.1)',
+                            color: (ticket.account_service_tier as string) === 'DIAMOND' ? '#000' : 'var(--text-tertiary)',
+                            fontWeight: 800
+                          }}>
+                            {String(ticket.account_service_tier)}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {dealerName && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>经销商</label>
-                        <div style={{ fontSize: 13, color: 'var(--text-main)' }}>{dealerName}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-main)' }}>{dealerName}{ticket?.dealer_code ? ` (${ticket.dealer_code})` : ''}</div>
                       </div>
                     )}
                   </div>
@@ -1949,13 +2007,23 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   <div>
                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>设备信息</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>产品型号</label>
                         <div style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>{productName}</div>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>序列号</label>
-                        <div style={{ fontSize: 13, color: 'var(--text-main)', fontFamily: 'var(--font-mono, monospace)' }}>{serialNumber}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ fontSize: 13, color: 'var(--text-main)', fontFamily: 'var(--font-mono, monospace)' }}>{serialNumber}</div>
+                          <span style={{ 
+                            fontSize: 10, padding: '2px 8px', borderRadius: 4, 
+                            background: isWarranty ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                            color: isWarranty ? '#10B981' : '#EF4444',
+                            fontWeight: 600
+                          }}>
+                            {isWarranty ? '保内' : '保外'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1964,15 +2032,13 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                 {/* 分组3: 问题描述 */}
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>问题描述</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {problemDescription ? (
-                      <div style={{ padding: '10px 12px', background: 'var(--glass-bg)', borderRadius: 8 }}>
-                        <div style={{ fontSize: 13, color: 'var(--text-main)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{problemDescription}</div>
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic', padding: '8px 0' }}>暂无问题描述</div>
-                    )}
-                  </div>
+                  {problemDescription ? (
+                    <div style={{ padding: '12px 14px', background: 'var(--glass-bg)', borderRadius: 8, border: '1px solid var(--glass-border)' }}>
+                      <div style={{ fontSize: 13, color: 'var(--text-main)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{problemDescription}</div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontStyle: 'italic' }}>暂无问题描述</div>
+                  )}
                 </div>
               </div>
             );
@@ -2127,7 +2193,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
           }} onClick={e => e.stopPropagation()}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <h3 style={{ margin: 0, fontSize: 16, color: 'var(--text-main)', fontWeight: 600 }}>
-                {isComplexActivityType(activity?.activity_type || '') ? '确认更正' : '更正活动记录'}
+                {isComplexActivityType(activity?.activity_type || '', activity) ? '更正工单信息' : '更正活动记录'}
               </h3>
               <button onClick={() => setCorrectionModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: 4 }}>
                 <X size={18} />
@@ -2135,8 +2201,8 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             </div>
             <div style={{ padding: 20, overflow: 'auto', flex: 1 }}>
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>活动类型</div>
-                <div style={{ fontSize: 14, color: 'var(--text-main)' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>待更正项目</div>
+                <div style={{ fontSize: 14, color: 'var(--text-main)', fontWeight: 500 }}>
                   {{
                     'op_repair_report': 'OP维修记录',
                     'diagnostic_report': '诊断报告',
@@ -2147,7 +2213,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     'key_node_op_shipping': '发货信息',
                     'key_node_ms_review': '商务审核',
                     'key_node_ms_closing': '结案确认'
-                  }[activity?.activity_type || ''] || activity?.activity_type}
+                  }[activity?.activity_type || ''] || ((activity?.metadata as any)?.event_type === 'creation' ? '工单初始信息' : activity?.activity_type)}
                 </div>
               </div>
               
@@ -2155,28 +2221,32 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
               {isKeyNodeActivity && (
                 <div style={{ 
                   fontSize: 13, color: 'var(--text-main)', marginBottom: 16, padding: 12, 
-                  background: 'var(--accent-blue-subtle)', borderRadius: 8, 
-                  border: '1px solid var(--accent-blue-border)',
+                  background: 'rgba(59,130,246,0.08)', borderRadius: 8, 
+                  border: '1px solid rgba(59,130,246,0.2)',
                   lineHeight: 1.6
                 }}>
-                  确认后将打开对应的编辑界面，您可以在其中修改详细内容。
+                  确认原因后将打开对应的编辑界面，您可以在其中修改详细内容。
                 </div>
               )}
               
-              {/* 复杂类型的提示说明 */}
-              {!isKeyNodeActivity && isComplexActivityType(activity?.activity_type || '') && (
+              {/* 复杂类型的提示说明：例如工单创建详情 */}
+              {!isKeyNodeActivity && isComplexActivityType(activity?.activity_type || '', activity) && (
                 <div style={{ 
-                  fontSize: 13, color: 'var(--text-main)', marginBottom: 16, padding: 12, 
-                  background: 'var(--accent-blue-subtle)', borderRadius: 8, 
-                  border: '1px solid var(--accent-blue-border)',
-                  lineHeight: 1.6
+                  fontSize: 13, color: 'var(--text-main)', marginBottom: 16, padding: '12px 16px', 
+                  background: 'rgba(59,130,246,0.08)', borderRadius: 10, 
+                  border: '1px solid rgba(59,130,246,0.2)',
+                  lineHeight: 1.6, display: 'flex', gap: 10
                 }}>
-                  确认后将打开完整的编辑界面，您可以在其中修改详细内容。
+                  <div style={{ color: 'var(--accent-blue)', marginTop: 2 }}><RefreshCw size={16} /></div>
+                  <div>
+                    <div style={{ fontWeight: 600, color: 'var(--accent-blue)', marginBottom: 2 }}>即将打开完整编辑器</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>确认原因后将进入侧边栏编辑模式，您可以修改所有基础信息。</div>
+                  </div>
                 </div>
               )}
               
-              {/* 内容编辑区 - 仅简单类型显示（非关键节点且非复杂类型） */}
-              {!isKeyNodeActivity && !isComplexActivityType(activity?.activity_type || '') && (
+              {/* 内容编辑区 - 仅简单类型显示（普通评论、备注等） */}
+              {!isKeyNodeActivity && !isComplexActivityType(activity?.activity_type || '', activity) && (
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8 }}>内容（可编辑）</label>
                   <textarea
@@ -2189,7 +2259,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                     }}
                   />
                   {correctedContent !== (activity?.content || '') && (
-                    <div style={{ fontSize: 11, color: 'var(--accent-orange, #FFA500)', marginTop: 6 }}>
+                    <div style={{ fontSize: 11, color: 'var(--accent-orange)', marginTop: 6 }}>
                       内容已修改
                     </div>
                   )}

@@ -298,7 +298,7 @@ const UnifiedCustomerModal: React.FC<UnifiedCustomerModalProps> = ({
                     });
                     const contactId = primaryContactRes.data.data?.[0]?.id;
                     
-                    await axios.put(`/api/v1/tickets/${ticketId}`, {
+                    await axios.patch(`/api/v1/tickets/${ticketId}`, {
                         account_id: accountId,
                         contact_id: contactId,
                         reporter_name: primaryContact?.name

@@ -1068,7 +1068,7 @@ const WorkspacePage: React.FC = () => {
                         <td style={{ padding: '16px', overflow: 'hidden' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, fontSize: '0.9rem' }}>
                             <span style={{ color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                              {ticket.account_name || ticket.contact_name || ticket.reporter_name || '-'}
+                              {ticket.account_name || ticket.contact_name || ticket.reporter_snapshot?.name || ticket.reporter_name || '-'}
                               {ticket.product_name && <span style={{ color: 'var(--text-tertiary)', marginLeft: 4 }}>· {ticket.product_name}</span>}
                             </span>
                             {ticket.account?.service_tier && ['VIP', 'VVIP'].includes(ticket.account.service_tier) && (

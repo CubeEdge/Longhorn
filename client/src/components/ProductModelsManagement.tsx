@@ -18,8 +18,8 @@ interface ProductModel {
     name_en?: string;
     brand?: string;
     model_code?: string;
-    material_id_prefix?: string;
-    product_family: 'A' | 'B' | 'C' | 'D';
+    material_id?: string;
+    product_family: 'A' | 'B' | 'C' | 'D' | 'E';
     product_type: string;
     description: string;
     hero_image?: string;
@@ -46,9 +46,10 @@ interface ProductSku {
 
 const PRODUCT_FAMILY_MAP = {
     'A': { code: 'A', name: 'Current Cine Cameras', label: '在售电影机', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
-    'B': { code: 'B', name: 'Archived Cine Cameras', label: '历史机型', color: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' },
+    'B': { code: 'B', name: 'Broadcast Camera', label: '广播摄像机', color: 'bg-orange-500/20 text-orange-400 border border-orange-500/30' },
     'C': { code: 'C', name: 'Eagle e-Viewfinder', label: '电子寻像器', color: 'bg-green-500/20 text-green-400 border border-green-500/30' },
-    'D': { code: 'D', name: 'Universal Accessories', label: '通用配件', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/30' }
+    'D': { code: 'D', name: 'Archived Cine Cameras', label: '历史机型', color: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' },
+    'E': { code: 'E', name: 'Universal Accessories', label: '通用配件', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/30' }
 };
 
 const PRODUCT_TYPE_OPTIONS = [
@@ -105,7 +106,7 @@ const ProductModelsManagement: React.FC = () => {
         name_en: '',
         brand: 'Kinefinity',
         model_code: '',
-        material_id_prefix: '',
+        material_id: '',
         product_family: 'A',
         product_type: 'CAMERA',
         description: '',
@@ -159,7 +160,7 @@ const ProductModelsManagement: React.FC = () => {
                 name_en: model.name_en || '',
                 brand: model.brand || 'Kinefinity',
                 model_code: model.model_code || '',
-                material_id_prefix: model.material_id_prefix || '',
+                material_id: model.material_id || '',
                 product_family: model.product_family,
                 product_type: model.product_type,
                 description: model.description || '',
@@ -174,7 +175,7 @@ const ProductModelsManagement: React.FC = () => {
                 name_en: '',
                 brand: 'Kinefinity',
                 model_code: '',
-                material_id_prefix: '',
+                material_id: '',
                 product_family: 'A',
                 product_type: 'CAMERA',
                 description: '',
@@ -519,7 +520,7 @@ const ProductModelsManagement: React.FC = () => {
                                     </td>
                                     <td style={{ padding: 16 }}>
                                         <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{model.brand}</div>
-                                        <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{model.material_id_prefix ? `${_t('product.material_id_prefix')}: ${model.material_id_prefix}` : '-'}</div>
+                                        <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{model.material_id ? `${_t('product.material_id')}: ${model.material_id}` : '-'}</div>
                                     </td>
                                     <td style={{ padding: 16 }}>
                                         <div className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${PRODUCT_FAMILY_MAP[model.product_family]?.color || 'bg-gray-500/10 text-gray-400'}`} style={{ marginBottom: 4 }}>
@@ -684,10 +685,10 @@ const ProductModelsManagement: React.FC = () => {
                                             />
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>物料ID前缀 <span style={{ color: '#EF4444' }}>*</span></label>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>物料ID <span style={{ color: '#EF4444' }}>*</span></label>
                                             <input
-                                                type="text" value={formData.material_id_prefix || ''}
-                                                onChange={(e) => setFormData({ ...formData, material_id_prefix: e.target.value })}
+                                                type="text" value={formData.material_id || ''}
+                                                onChange={(e) => setFormData({ ...formData, material_id: e.target.value })}
                                                 style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
                                                 placeholder={_t('product.material_id_hint')}
                                             />

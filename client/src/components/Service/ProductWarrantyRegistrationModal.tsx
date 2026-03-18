@@ -16,7 +16,7 @@ export interface WarrantyRegistrationData {
     selectedModelName: string;
     selectedSkuId?: number | '';
     selectedProductLine: 'Camera' | 'EVF' | 'Accessory';
-    selectedProductFamily: 'A' | 'B' | 'C' | 'D';
+    selectedProductFamily: 'A' | 'B' | 'C' | 'D' | 'E';
 }
 
 interface ProductWarrantyRegistrationModalProps {
@@ -30,9 +30,17 @@ interface ProductWarrantyRegistrationModalProps {
     // 从ProductModal传入的预填字段
     prefillData?: {
         productLine?: 'Camera' | 'EVF' | 'Accessory';
-        productFamily?: 'A' | 'B' | 'C' | 'D';
+        productFamily?: 'A' | 'B' | 'C' | 'D' | 'E';
         skuId?: number;
         salesChannel?: 'DIRECT' | 'DEALER';
+    };
+    // 更改模式：预加载已有保修数据
+    existingWarrantyData?: {
+        saleSource?: 'invoice' | 'customer_statement';
+        saleDate?: string;
+        warrantyMonths?: number;
+        dealerId?: number;
+        ownerId?: number;
     };
 }
 
@@ -84,8 +92,10 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
     productName,
     isNewProduct = false,  // 默认为仅注册保修
     onRegistered,
-    prefillData
+    prefillData,
+    existingWarrantyData
 }) => {
+    const isModifyMode = !!existingWarrantyData;
     const { token } = useAuthStore();
     const [loading, setLoading] = useState(false);
     const [, setFetchingProduct] = useState(false);
@@ -114,7 +124,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
     
     // Product line and family (for creating new products)
     const [selectedProductLine, setSelectedProductLine] = useState<'Camera' | 'EVF' | 'Accessory'>('Camera');
-    const [selectedProductFamily, setSelectedProductFamily] = useState<'A' | 'B' | 'C' | 'D'>('A');
+    const [selectedProductFamily, setSelectedProductFamily] = useState<'A' | 'B' | 'C' | 'D' | 'E'>('A');
 
     // Customer search
     const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
@@ -128,6 +138,14 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
             fetchProductDetails();
             fetchReferenceData();
             fetchProductCatalogs();
+            // 更改模式：预加载已有保修数据
+            if (existingWarrantyData) {
+                if (existingWarrantyData.saleSource) setSaleSource(existingWarrantyData.saleSource);
+                if (existingWarrantyData.saleDate) setSaleDate(existingWarrantyData.saleDate);
+                if (existingWarrantyData.warrantyMonths) setWarrantyMonths(existingWarrantyData.warrantyMonths);
+                if (existingWarrantyData.dealerId) setSelectedDealerId(existingWarrantyData.dealerId);
+                if (existingWarrantyData.ownerId) setSelectedOwnerId(existingWarrantyData.ownerId);
+            }
         }
     }, [isOpen, serialNumber]);
 
@@ -472,10 +490,10 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                         </div>
                         <div>
                             <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-                                {isNewProduct ? '产品入库并注册保修' : '产品保修注册'}
+                                {isModifyMode ? '更改保修信息' : (isNewProduct ? '产品入库并注册保修' : '产品保修注册')}
                             </h3>
                             <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', marginTop: 4, letterSpacing: '-0.01em' }}>
-                                {isNewProduct ? '请完善产品信息和保修资料' : '请完善保修注册信息'}
+                                {isModifyMode ? '请修改保修注册信息，更改将被记录' : (isNewProduct ? '请完善产品信息和保修资料' : '请完善保修注册信息')}
                             </p>
                         </div>
                     </div>
@@ -496,137 +514,8 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                     <>
                         {/* Body - Two Column Layout */}
                         <div style={{ padding: 24, overflowY: 'auto', flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                            {/* Left Column - Product Info & Ownership */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                                {/* Product Info Section */}
-                                <div style={{
-                                    background: 'var(--glass-bg-light)', padding: 20, borderRadius: 12,
-                                    border: '1px solid var(--glass-border)'
-                                }}>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 }}>
-                                        产品信息
-                                    </div>
-
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                        {/* Serial Number */}
-                                        <div>
-                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>序列号</div>
-                                            <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-main)', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
-                                                {serialNumber}
-                                            </div>
-                                        </div>
-
-                                        {/* Product Model */}
-                                        <div>
-                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                                                产品型号 <span style={{ color: '#EF4444' }}>*</span>
-                                            </div>
-                                            <div style={{ position: 'relative' }}>
-                                                <Box size={18} style={{
-                                                    position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
-                                                    color: 'var(--text-tertiary)', pointerEvents: 'none'
-                                                }} />
-                                                <select
-                                                    value={selectedModelName}
-                                                    onChange={(e) => {
-                                                        setSelectedModelName(e.target.value);
-                                                        setSelectedSkuId(''); // Reset SKU when model changes
-                                                    }}
-                                                    style={{
-                                                        width: '100%', height: 48, padding: '0 16px', paddingLeft: 44,
-                                                        background: 'var(--glass-bg)', border: `1px solid ${selectedModelName ? 'rgba(16,185,129,0.5)' : 'var(--glass-border)'} `,
-                                                        borderRadius: 10, color: 'var(--text-main)', fontSize: 14, outline: 'none',
-                                                        cursor: 'pointer', appearance: 'none'
-                                                    }}
-                                                >
-                                                    <option value="" disabled>请选择产品型号</option>
-                                                    {models.map(m => (
-                                                        <option key={m.id} value={m.name_zh}>{m.name_zh}</option>
-                                                    ))}
-                                                </select>
-                                                <ChevronDown size={18} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
-                                            </div>
-                                        </div>
-
-                                        {/* Product SKU */}
-                                        <div>
-                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                                                产品SKU <span style={{ color: '#EF4444' }}>*</span>
-                                            </div>
-                                            <div style={{ position: 'relative' }}>
-                                                <select
-                                                    value={selectedSkuId || ''}
-                                                    onChange={(e) => setSelectedSkuId(e.target.value ? parseInt(e.target.value) : '')}
-                                                    disabled={!selectedModelName}
-                                                    style={{
-                                                        width: '100%', height: 48, padding: '0 16px',
-                                                        background: 'var(--glass-bg)', border: `1px solid ${selectedSkuId ? 'rgba(16,185,129,0.5)' : 'var(--glass-border)'} `,
-                                                        borderRadius: 10, color: 'var(--text-main)', fontSize: 14, outline: 'none',
-                                                        cursor: 'pointer', appearance: 'none', opacity: !selectedModelName ? 0.5 : 1
-                                                    }}
-                                                >
-                                                    <option value="">{selectedModelName ? '选择适用的 SKU' : '选定型号后可选'}</option>
-                                                    {skus.filter(s => {
-                                                        const model = models.find(m => m.name_zh === selectedModelName);
-                                                        return model && s.model_id === model.id;
-                                                    }).map(s => (
-                                                        <option key={s.id} value={s.id}>{s.display_name} ({s.sku_code})</option>
-                                                    ))}
-                                                </select>
-                                                <ChevronDown size={18} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
-                                            </div>
-                                        </div>
-
-                                        {/* Product Line & Family - Side by Side */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                            <div>
-                                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                                                    产品线 <span style={{ color: '#EF4444' }}>*</span>
-                                                </div>
-                                                <div style={{ position: 'relative' }}>
-                                                    <select
-                                                        value={selectedProductLine}
-                                                        onChange={(e) => setSelectedProductLine(e.target.value as 'Camera' | 'EVF' | 'Accessory')}
-                                                        style={{
-                                                            width: '100%', height: 48, padding: '0 12px',
-                                                            background: 'var(--glass-bg)', border: '1px solid rgba(16,185,129,0.5)',
-                                                            borderRadius: 10, color: 'var(--text-main)', fontSize: 13, outline: 'none',
-                                                            cursor: 'pointer', appearance: 'none'
-                                                        }}
-                                                    >
-                                                        <option value="Camera">Camera（相机）</option>
-                                                        <option value="EVF">EVF（电子寻像器）</option>
-                                                        <option value="Accessory">Accessory（配件）</option>
-                                                    </select>
-                                                    <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                                                    产品族群 <span style={{ color: '#EF4444' }}>*</span>
-                                                </div>
-                                                <div style={{ position: 'relative' }}>
-                                                    <select
-                                                        value={selectedProductFamily}
-                                                        onChange={(e) => setSelectedProductFamily(e.target.value as 'A' | 'B' | 'C' | 'D')}
-                                                        style={{
-                                                            width: '100%', height: 48, padding: '0 12px',
-                                                            background: 'var(--glass-bg)', border: '1px solid rgba(16,185,129,0.5)',
-                                                            borderRadius: 10, color: 'var(--text-main)', fontSize: 13, outline: 'none',
-                                                            cursor: 'pointer', appearance: 'none'
-                                                        }}
-                                                    >
-                                                        <option value="A">A - 在售电影机</option>
-                                                        <option value="B">B - 历史机型</option>
-                                                        <option value="C">C - 电子寻像器</option>
-                                                        <option value="D">D - 通用配件</option>
-                                                    </select>
-                                                    <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                            {/* Left Column - Warranty Info Only */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
                                 {/* Ownership Info - 销售经销商和当前所有者 */}
                                 <div style={{
@@ -782,32 +671,6 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Remarks - 备注放在左侧底部 */}
-                                <div style={{
-                                    background: 'var(--glass-bg-light)', padding: 20, borderRadius: 12,
-                                    border: '1px solid var(--glass-border)'
-                                }}>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
-                                        备注
-                                    </div>
-                                    <textarea
-                                        value={remarks}
-                                        onChange={(e) => setRemarks(e.target.value)}
-                                        placeholder="特殊情况说明（可选）"
-                                        rows={3}
-                                        style={{
-                                            width: '100%', padding: '12px',
-                                            background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
-                                            borderRadius: 8, color: 'var(--text-main)', fontSize: 13, outline: 'none',
-                                            resize: 'vertical'
-                                        }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Right Column - Warranty Info Only */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                                 {/* Warranty Registration Info Card */}
                                 <div style={{
                                     background: 'var(--glass-bg-light)', padding: 20, borderRadius: 12,
@@ -940,19 +803,6 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                     )}
                                 </div>
 
-                                {/* Warning - 警告信息放在右侧 */}
-                                <div style={{
-                                    background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)',
-                                    borderRadius: 12, padding: 16
-                                }}>
-                                    <div style={{ fontSize: 13, color: '#f59e0b', lineHeight: 1.5 }}>
-                                        <strong>⚠️ 需要注册保修核心信息</strong><br />
-                                        <span style={{ color: 'rgba(245, 158, 11, 0.85)', fontSize: 12 }}>
-                                            该产品没有保修依据，请确定保修凭证以计算保修期。
-                                        </span>
-                                    </div>
-                                </div>
-
                                 {/* Error */}
                                 {error && (
                                     <div style={{
@@ -962,6 +812,160 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                         {error}
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Right Column - Product Info & Ownership */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                {/* Product Info Section */}
+                                <div style={{
+                                    background: 'var(--glass-bg-light)', padding: 20, borderRadius: 12,
+                                    border: '1px solid var(--glass-border)'
+                                }}>
+
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                        {/* Serial Number */}
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>序列号</div>
+                                            <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-main)', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
+                                                {serialNumber}
+                                            </div>
+                                        </div>
+
+                                        {/* Product Model */}
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                                                产品型号 <span style={{ color: '#EF4444' }}>*</span>
+                                            </div>
+                                            <div style={{ position: 'relative' }}>
+                                                <Box size={18} style={{
+                                                    position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+                                                    color: 'var(--text-tertiary)', pointerEvents: 'none'
+                                                }} />
+                                                <select
+                                                    value={selectedModelName}
+                                                    onChange={(e) => {
+                                                        setSelectedModelName(e.target.value);
+                                                        setSelectedSkuId(''); // Reset SKU when model changes
+                                                    }}
+                                                    style={{
+                                                        width: '100%', height: 48, padding: '0 16px', paddingLeft: 44,
+                                                        background: 'var(--glass-bg)', border: `1px solid ${selectedModelName ? 'rgba(16,185,129,0.5)' : 'var(--glass-border)'} `,
+                                                        borderRadius: 10, color: 'var(--text-main)', fontSize: 14, outline: 'none',
+                                                        cursor: 'pointer', appearance: 'none'
+                                                    }}
+                                                >
+                                                    <option value="" disabled>请选择产品型号</option>
+                                                    {models.map(m => (
+                                                        <option key={m.id} value={m.name_zh}>{m.name_zh}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown size={18} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                                            </div>
+                                        </div>
+
+                                        {/* Product SKU */}
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                                                产品SKU <span style={{ color: '#EF4444' }}>*</span>
+                                            </div>
+                                            <div style={{ position: 'relative' }}>
+                                                <select
+                                                    value={selectedSkuId || ''}
+                                                    onChange={(e) => setSelectedSkuId(e.target.value ? parseInt(e.target.value) : '')}
+                                                    disabled={!selectedModelName}
+                                                    style={{
+                                                        width: '100%', height: 48, padding: '0 16px',
+                                                        background: 'var(--glass-bg)', border: `1px solid ${selectedSkuId ? 'rgba(16,185,129,0.5)' : 'var(--glass-border)'} `,
+                                                        borderRadius: 10, color: 'var(--text-main)', fontSize: 14, outline: 'none',
+                                                        cursor: 'pointer', appearance: 'none', opacity: !selectedModelName ? 0.5 : 1
+                                                    }}
+                                                >
+                                                    <option value="">{selectedModelName ? '选择适用的 SKU' : '选定型号后可选'}</option>
+                                                    {skus.filter(s => {
+                                                        const model = models.find(m => m.name_zh === selectedModelName);
+                                                        return model && s.model_id === model.id;
+                                                    }).map(s => (
+                                                        <option key={s.id} value={s.id}>{s.display_name} ({s.sku_code})</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown size={18} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                                            </div>
+                                        </div>
+
+                                        {/* Product Line & Family - Side by Side */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                                                    产品线 <span style={{ color: '#EF4444' }}>*</span>
+                                                </div>
+                                                <div style={{ position: 'relative' }}>
+                                                    <select
+                                                        value={selectedProductLine}
+                                                        onChange={(e) => setSelectedProductLine(e.target.value as 'Camera' | 'EVF' | 'Accessory')}
+                                                        style={{
+                                                            width: '100%', height: 48, padding: '0 12px',
+                                                            background: 'var(--glass-bg)', border: '1px solid rgba(16,185,129,0.5)',
+                                                            borderRadius: 10, color: 'var(--text-main)', fontSize: 13, outline: 'none',
+                                                            cursor: 'pointer', appearance: 'none'
+                                                        }}
+                                                    >
+                                                        <option value="Camera">Camera（相机）</option>
+                                                        <option value="EVF">EVF（电子寻像器）</option>
+                                                        <option value="Accessory">Accessory（配件）</option>
+                                                    </select>
+                                                    <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
+                                                    产品族群 <span style={{ color: '#EF4444' }}>*</span>
+                                                </div>
+                                                <div style={{ position: 'relative' }}>
+                                                    <select
+                                                        value={selectedProductFamily}
+                                                        onChange={(e) => setSelectedProductFamily(e.target.value as 'A' | 'B' | 'C' | 'D' | 'E')}
+                                                        style={{
+                                                            width: '100%', height: 48, padding: '0 12px',
+                                                            background: 'var(--glass-bg)', border: '1px solid rgba(16,185,129,0.5)',
+                                                            borderRadius: 10, color: 'var(--text-main)', fontSize: 13, outline: 'none',
+                                                            cursor: 'pointer', appearance: 'none'
+                                                        }}
+                                                    >
+                                                        <option value="A">A - 在售电影机</option>
+                                                        <option value="B">B - 广播摄像机</option>
+                                                        <option value="C">C - 电子寻像器</option>
+                                                        <option value="D">D - 历史机型</option>
+                                                        <option value="E">E - 通用配件</option>
+                                                    </select>
+                                                    <ChevronDown size={16} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Remarks - 备注放在左侧底部 */}
+                                <div style={{
+                                    background: 'var(--glass-bg-light)', padding: 20, borderRadius: 12,
+                                    border: '1px solid var(--glass-border)'
+                                }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-tertiary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        备注
+                                    </div>
+                                    <textarea
+                                        value={remarks}
+                                        onChange={(e) => setRemarks(e.target.value)}
+                                        placeholder="特殊情况说明（可选）"
+                                        rows={3}
+                                        style={{
+                                            width: '100%', padding: '12px',
+                                            background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                                            borderRadius: 8, color: 'var(--text-main)', fontSize: 13, outline: 'none',
+                                            resize: 'vertical'
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
 

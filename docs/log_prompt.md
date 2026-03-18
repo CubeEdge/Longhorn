@@ -1,5 +1,17 @@
 # Prompt Logs
 
+## 2026-03-18 10:40 (耗时: 10m)
+
+**User Prompt**:
+强制执行 `/upd` 更新远程服务器：使用 `--clean` 参数进行远程部署，并确保 PM2 成功重载。
+
+**Agent Response**:
+1. **版本管理**: 将 `client` 版本递增至 `12.3.146`，`server` 版本递增至 `1.8.17`。
+2. **全量构建**: 在本地成功执行 `npm run build`，确保产出完整。
+3. **清理部署 (Critical)**: 执行 `./scripts/deploy.sh --clean`。该模式下会先清理远程服务器的旧 `dist` 目录，再进行全量同步，有效避免冗余文件残留。
+4. **服务重载**: 校验部署脚本，确认 PM2 已成功 reload 进程，系统服务已恢复最新状态。
+5. **日志归档**: 同步更新了 `log_prompt.md`, `log_dev.md` 及 `log_backlog.md`。
+
 ## 2026-03-12 23:15 (耗时: 45m 0s)
 
 **User Prompt**:

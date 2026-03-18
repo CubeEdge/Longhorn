@@ -31,6 +31,7 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({
     const [attachments, setAttachments] = useState<File[]>([]);
     const [snDiffers, setSnDiffers] = useState(false);
     const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('express');
+    const [isCustomerFeedback, setIsCustomerFeedback] = useState(false);
 
     // 编辑模式：预填数据
     useEffect(() => {
@@ -263,6 +264,15 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({
                             style={inputStyle}
                             rows={3}
                         />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--accent-blue)', cursor: 'pointer', marginTop: 8 }}>
+                            <input
+                                type="checkbox"
+                                checked={isCustomerFeedback}
+                                onChange={e => setIsCustomerFeedback(e.target.checked)}
+                                style={{ accentColor: 'var(--accent-blue)' }}
+                            />
+                            这是客户的反馈理由 (自动添加【客户反馈】标记)
+                        </label>
                     </div>
                 </div>
             );
@@ -448,7 +458,8 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({
             } else if (currentNode === 'ms_review') {
                 logContent = `【批准维修】商业方案与报价已获客户确认`;
             } else if (currentNode === 'ms_closing') {
-                logContent = `【结案确认】\n备注：${formData.closing_comment || '无'}`;
+                const prefix = isCustomerFeedback ? '【客户反馈】' : '';
+                logContent = `【结案确认】\n备注：${prefix}${formData.closing_comment || '无'}`;
             } else if (currentNode === 'ge_review') {
                 logContent = `【财务收款确认】财务部已核实并确认相关款项核销到账`;
             } else if (currentNode === 'op_receiving' || currentNode === 'submitted') {

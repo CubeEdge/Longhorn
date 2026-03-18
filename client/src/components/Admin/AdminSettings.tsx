@@ -44,6 +44,19 @@ interface SystemSettings {
     secondary_backup_retention_days: number;
     // RMA Workflow Settings
     require_finance_confirmation?: boolean; // RMA过保工单是否需要财务确认
+
+    // SLA Settings
+    inquiry_sla_enabled?: boolean;
+    inquiry_auto_close_days?: number;
+    inquiry_sla_hours?: number;
+
+    rma_sla_enabled?: boolean;
+    rma_auto_close_days?: number;
+    rma_sla_hours?: number;
+
+    svc_sla_enabled?: boolean;
+    svc_auto_close_days?: number;
+    svc_sla_hours?: number;
 }
 
 type AdminTab = 'general' | 'intelligence' | 'health' | 'audit' | 'backup' | 'prompts' | 'users';
@@ -1344,6 +1357,69 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, hideTabBar = 
                                                     activeColor="#FFD700" 
                                                 />
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {/* SLA 与 时效管理配置 */}
+                                    {isSuperAdmin && (
+                                        <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginTop: 16 }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', padding: '12px 20px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(52, 152, 219, 0.03)' }}>
+                                                SLA 时效管理
+                                            </div>
+                                            
+                                            {[
+                                                { type: 'inquiry', name: '咨询工单 (Inquiry)' },
+                                                { type: 'rma', name: '返厂工单 (RMA)' },
+                                                { type: 'svc', name: '维修单 (SVC)' }
+                                            ].map((item, idx) => {
+                                                const prefix = item.type;
+                                                const enabledKey = `${prefix}_sla_enabled` as keyof SystemSettings;
+                                                const closeKey = `${prefix}_auto_close_days` as keyof SystemSettings;
+                                                const hoursKey = `${prefix}_sla_hours` as keyof SystemSettings;
+                                                
+                                                return (
+                                                    <div key={prefix} style={{ padding: '16px 20px', borderBottom: idx < 2 ? '1px solid var(--glass-border)' : 'none' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                                            <div>
+                                                                <div className="setting-label" style={{ fontSize: '0.95rem', color: 'var(--accent-blue)' }}>{item.name}</div>
+                                                                <div className="setting-desc">设置该工单类型的全局时效策略开关与基准。</div>
+                                                            </div>
+                                                            <Switch 
+                                                                checked={settings[enabledKey] !== false} 
+                                                                onChange={v => setSettings({ ...settings, [enabledKey]: v })} 
+                                                                activeColor="#3498db" 
+                                                            />
+                                                        </div>
+                                                        
+                                                        {settings[enabledKey] !== false && (
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12, padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
+                                                                <div className="setting-field" style={{ margin: 0 }}>
+                                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>默认自动结案时长 (天)</label>
+                                                                    <input 
+                                                                        type="number" 
+                                                                        min={1} 
+                                                                        value={settings[closeKey] as number || (prefix === 'inquiry' ? 5 : 7)} 
+                                                                        onChange={e => setSettings({ ...settings, [closeKey]: Math.max(1, parseInt(e.target.value) || 1) })}
+                                                                        className="text-input"
+                                                                        style={{ padding: '6px 10px', fontSize: '0.85rem' }}
+                                                                    />
+                                                                </div>
+                                                                <div className="setting-field" style={{ margin: 0 }}>
+                                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>默认节点超时阈值 (小时)</label>
+                                                                    <input 
+                                                                        type="number" 
+                                                                        min={1} 
+                                                                        value={settings[hoursKey] as number || 24} 
+                                                                        onChange={e => setSettings({ ...settings, [hoursKey]: Math.max(1, parseInt(e.target.value) || 1) })}
+                                                                        className="text-input"
+                                                                        style={{ padding: '6px 10px', fontSize: '0.85rem' }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
 

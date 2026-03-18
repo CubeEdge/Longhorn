@@ -26,6 +26,14 @@ interface ProductSku {
     spec_label?: string;
     sku_image?: string;
     is_active: boolean;
+    weight_kg?: number;
+    volume_cum?: number;
+    length_cm?: number;
+    width_cm?: number;
+    depth_cm?: number;
+    is_dangerous_goods: boolean;
+    upc?: string;
+    sn_prefix?: string;
     created_at: string;
     // Joined fields
     name_zh?: string;
@@ -62,7 +70,15 @@ const ProductSkusManagement: React.FC = () => {
         display_name_en: '',
         spec_label: '',
         sku_image: '',
-        is_active: true
+        is_active: true,
+        weight_kg: undefined,
+        volume_cum: undefined,
+        length_cm: undefined,
+        width_cm: undefined,
+        depth_cm: undefined,
+        is_dangerous_goods: false,
+        upc: '',
+        sn_prefix: ''
     });
 
     const fetchData = async () => {
@@ -108,7 +124,15 @@ const ProductSkusManagement: React.FC = () => {
                 display_name_en: sku.display_name_en || '',
                 spec_label: sku.spec_label || '',
                 sku_image: sku.sku_image || '',
-                is_active: !!sku.is_active
+                is_active: !!sku.is_active,
+                weight_kg: sku.weight_kg,
+                volume_cum: sku.volume_cum,
+                length_cm: sku.length_cm,
+                width_cm: sku.width_cm,
+                depth_cm: sku.depth_cm,
+                is_dangerous_goods: !!sku.is_dangerous_goods,
+                upc: sku.upc || '',
+                sn_prefix: sku.sn_prefix || ''
             });
         } else {
             setEditingSku(null);
@@ -120,7 +144,15 @@ const ProductSkusManagement: React.FC = () => {
                 display_name_en: '',
                 spec_label: '',
                 sku_image: '',
-                is_active: true
+                is_active: true,
+                weight_kg: undefined,
+                volume_cum: undefined,
+                length_cm: undefined,
+                width_cm: undefined,
+                depth_cm: undefined,
+                is_dangerous_goods: false,
+                upc: '',
+                sn_prefix: ''
             });
         }
         setIsModalOpen(true);
@@ -474,6 +506,73 @@ const ProductSkusManagement: React.FC = () => {
                                             }}
                                         />
                                     </div>
+
+                                    {/* 物理属性 - 新增 */}
+                                    <div style={{ padding: 16, background: 'var(--glass-bg-hover)', borderRadius: 12, border: '1px solid var(--glass-border)', marginTop: 8 }}>
+                                        <h5 style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: 600 }}>物理属性 (Physical Attributes)</h5>
+                                        
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>重量 (kg)</label>
+                                                <input
+                                                    type="number" step="0.001" value={formData.weight_kg ?? ''}
+                                                    onChange={e => setFormData({ ...formData, weight_kg: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                                                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>体积 (m³)</label>
+                                                <input
+                                                    type="number" step="0.000001" value={formData.volume_cum ?? ''}
+                                                    onChange={e => setFormData({ ...formData, volume_cum: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                                                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>外箱尺寸 (L x W x D cm)</label>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                                                <input
+                                                    type="number" placeholder="L" value={formData.length_cm ?? ''}
+                                                    onChange={e => setFormData({ ...formData, length_cm: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                                                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                                />
+                                                <input
+                                                    type="number" placeholder="W" value={formData.width_cm ?? ''}
+                                                    onChange={e => setFormData({ ...formData, width_cm: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                                                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                                />
+                                                <input
+                                                    type="number" placeholder="D" value={formData.depth_cm ?? ''}
+                                                    onChange={e => setFormData({ ...formData, depth_cm: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                                                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 业务标识 - 新增 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>UPC 条码</label>
+                                            <input
+                                                type="text" value={formData.upc || ''}
+                                                onChange={e => setFormData({ ...formData, upc: e.target.value })}
+                                                placeholder="Universal Product Code"
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>SN 前缀</label>
+                                            <input
+                                                type="text" value={formData.sn_prefix || ''}
+                                                onChange={e => setFormData({ ...formData, sn_prefix: e.target.value.toUpperCase() })}
+                                                placeholder="例: KE8"
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -515,7 +614,7 @@ const ProductSkusManagement: React.FC = () => {
                                     <div style={{ 
                                         padding: 16, background: 'var(--glass-bg)', borderRadius: 12, border: '1px solid var(--glass-border)'
                                     }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                                             <input
                                                 type="checkbox" id="sku_active_modal" checked={formData.is_active}
                                                 onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
@@ -525,8 +624,18 @@ const ProductSkusManagement: React.FC = () => {
                                                 {_t('product.on_sale')}
                                             </label>
                                         </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <input
+                                                type="checkbox" id="sku_dangerous_modal" checked={formData.is_dangerous_goods}
+                                                onChange={e => setFormData({ ...formData, is_dangerous_goods: e.target.checked })}
+                                                style={{ width: 18, height: 18, accentColor: '#EF4444' }}
+                                            />
+                                            <label htmlFor="sku_dangerous_modal" style={{ fontSize: '0.9rem', color: 'var(--text-main)', cursor: 'pointer' }}>
+                                                危险品 (Dangerous Goods)
+                                            </label>
+                                        </div>
                                         <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 8, marginLeft: 30 }}>
-                                            下架后该SKU将不在新建工单时显示
+                                            危险品标识将影响物流运输处理和仓储规范。
                                         </p>
                                     </div>
                                 </div>

@@ -60,9 +60,10 @@ interface ProductDetailModalProps {
 
 const PRODUCT_FAMILY_MAP: Record<string, { label: string; color: string }> = {
     'A': { label: '在售电影机', color: '#3B82F6' },
-    'B': { label: '历史机型', color: '#6B7280' },
+    'B': { label: '广播摄像机', color: '#F59E0B' },
     'C': { label: '电子寻像器', color: '#10B981' },
-    'D': { label: '通用配件', color: '#8B5CF6' }
+    'D': { label: '历史机型', color: '#6B7280' },
+    'E': { label: '通用配件', color: '#8B5CF6' }
 };
 
 const WARRANTY_SOURCE_MAP: Record<string, string> = {

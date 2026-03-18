@@ -13,6 +13,11 @@
 > - 完善保修注册字段：`warranty_source`, `warranty_start_date`, `warranty_end_date`, `warranty_status`
 > - 新增销售信息字段：`sales_invoice_date`, `registration_date`, `sales_invoice_proof`
 >
+> **v0.9.5 更新 (产品台账属性增强)**：
+> - 重命名：`material_id_prefix` → `material_id` (物料 ID/SaaS ID)
+> - `product_skus` 新增物理属性：重量、长、宽、深、体积
+> - `product_skus` 新增业务标识：UPC (商品码)、SN Prefix (序列号前缀)、Dangerous Goods (危险品标识)
+>
 > **v0.9.2 更新 (审计与删除)**：
 > - 新增工单审计字段：`is_deleted`, `deleted_at`, `deleted_by`, `delete_reason`
 > - 完善 `ticket_activities`：明确 `field_update` 类型必须包含 `reason` (修正理由)
@@ -77,7 +82,7 @@ product_models (产品型号/系列)
 ├── name_en: VARCHAR(255) -- 英文名称
 ├── brand: VARCHAR(100) DEFAULT 'Kinefinity' -- 品牌
 ├── model_code: VARCHAR(100) UNIQUE -- 型号短码 (如 ME8K)
-├── material_id_prefix: VARCHAR(50) -- ERP 9系列前缀 (如 9-010)
+├── material_id: VARCHAR(50) -- 物料 ID / SaaS ID (如 9-010-001)
 ├── product_family: ENUM('A', 'B', 'C', 'D') -- 产品族群 (见 PRD 1.5.2)
 ├── product_type: VARCHAR(50) DEFAULT 'CAMERA' -- 设备类型
 ├── description: TEXT -- 描述
@@ -99,6 +104,14 @@ product_skus (产品规格/套装 SKU)
 ├── display_name: VARCHAR(255) NOT NULL -- 套装显示名称 (如 MAVO Edge 8K 基础套装)
 ├── display_name_en: VARCHAR(255) -- 英文显示名称
 ├── spec_label: VARCHAR(255) -- 规格描述 (如 Space Grey / E Mount)
+├── weight_kg: DECIMAL(10,2) -- 重量 (kg)
+├── volume_cum: DECIMAL(10,6) -- 体积 (m³)
+├── length_cm: DECIMAL(10,2) -- 长度 (cm)
+├── width_cm: DECIMAL(10,2) -- 宽度 (cm)
+├── depth_cm: DECIMAL(10,2) -- 深度 (cm)
+├── is_dangerous_goods: BOOLEAN DEFAULT false -- 是否为危险品
+├── upc: VARCHAR(50) -- 全球商品代码 (UPC/EAN)
+├── sn_prefix: VARCHAR(50) -- 序列号前缀规范
 ├── sku_image: TEXT -- 套装图片 URL
 ├── is_active: BOOLEAN DEFAULT true
 ├── created_at: TIMESTAMP
@@ -298,7 +311,7 @@ account_devices (账户设备关联 / Installed_Base)
 ├── warranty_source: ENUM('iot', 'invoice', 'registration', 'direct_sale', 'fallback') -- 保修依据来源
 │   -- iot: IoT 首次开机时间
 │   -- invoice: 发票日期
-│   -- registration: 用户注册日期
+│   -- registration: 人工注册日期
 │   -- direct_sale: 直销发货日期
 │   -- fallback: SN 出厂日期 + 180天
 ├── warranty_start_date: DATE -- 保修起算日期
@@ -311,7 +324,7 @@ account_devices (账户设备关联 / Installed_Base)
 ├── invoice_attachment_id: INT -- 发票附件ID
 │
 ├── // 注册信息 (用于保修计算)
-├── registration_date: DATE -- 用户注册日期
+├── registration_date: DATE -- 人工注册日期
 ├── registration_source: VARCHAR(50) -- 注册来源 (Kine App / Web)
 │
 ├── // 状态
@@ -333,7 +346,7 @@ UNIQUE KEY (account_id, serial_number)
 **保修计算瀑布流逻辑**（优先级从高到低）：
 1. **IoT 首次开机** → `warranty_start_date = iot_data.first_boot`
 2. **发票日期** → `warranty_start_date = invoice_date`
-3. **用户注册日期** → `warranty_start_date = registration_date`
+3. **人工注册日期** → `warranty_start_date = registration_date`
 4. **直销发货日期** → `warranty_start_date = direct_sale_date`
 5. **兜底逻辑** → `warranty_start_date = sn_manufacture_date + 180天`
 

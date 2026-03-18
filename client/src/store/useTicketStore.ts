@@ -23,9 +23,14 @@ interface TicketStore {
     isOpen: boolean;
     ticketType: TicketType;
     drafts: Record<TicketType, TicketDraft>;
+    
+    // Correction Mode State
+    isCorrection: boolean;
+    targetTicketId: number | null;
+    correctionReason: string;
 
     // Actions
-    openModal: (type: TicketType) => void;
+    openModal: (type: TicketType, correctionData?: { ticketId: number; reason: string; draft: TicketDraft }) => void;
     closeModal: () => void;
     updateDraft: (type: TicketType, data: Partial<TicketDraft>) => void;
     clearDraft: (type: TicketType) => void;
@@ -43,9 +48,39 @@ export const useTicketStore = create<TicketStore>()(
             isOpen: false,
             ticketType: 'Inquiry',
             drafts: initialDrafts,
+            isCorrection: false,
+            targetTicketId: null,
+            correctionReason: '',
 
-            openModal: (type) => set({ isOpen: true, ticketType: type }),
-            closeModal: () => set({ isOpen: false }),
+            openModal: (type, correctionData) => {
+                if (correctionData) {
+                    set((state) => ({
+                        isOpen: true,
+                        ticketType: type,
+                        isCorrection: true,
+                        targetTicketId: correctionData.ticketId,
+                        correctionReason: correctionData.reason,
+                        drafts: {
+                            ...state.drafts,
+                            [type]: correctionData.draft
+                        }
+                    }));
+                } else {
+                    set({ 
+                        isOpen: true, 
+                        ticketType: type, 
+                        isCorrection: false, 
+                        targetTicketId: null, 
+                        correctionReason: '' 
+                    });
+                }
+            },
+            closeModal: () => set({ 
+                isOpen: false, 
+                isCorrection: false, 
+                targetTicketId: null, 
+                correctionReason: '' 
+            }),
             updateDraft: (type, data) => set((state) => ({
                 drafts: {
                     ...state.drafts,

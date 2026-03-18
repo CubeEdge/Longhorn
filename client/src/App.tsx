@@ -12,7 +12,6 @@ import {
   Star,
   Trash2,
   User,
-  Network,
   LayoutDashboard,
   ClipboardList,
   MessageCircleQuestion,
@@ -768,16 +767,7 @@ const Sidebar: React.FC<{
               </>
             )}
 
-            {/* Lead: Department Dashboard */}
-            {role === 'Lead' && (
-              <>
-                <div style={{ height: '1px', background: 'var(--glass-bg-hover)', margin: '12px 16px' }} />
-                <Link to="/department-dashboard" className={`sidebar-item ${location.pathname === '/department-dashboard' ? 'active' : ''} `} onClick={onClose}>
-                  <Network size={20} />
-                  <span>{t('admin.dept_manage')}</span>
-                </Link>
-              </>
-            )}
+            {/* Lead: Department Dashboard - Removed to hide dept management from files sidebar */}
           </>
         )}
       </nav>
@@ -1329,26 +1319,8 @@ const TopBar: React.FC<{
             {user?.username?.substring(0, 1).toUpperCase() || '?'}
           </div>
 
-          {/* Version Display - Client & Server (Two rows) */}
-          <div className="hidden-mobile" style={{
-            color: 'var(--status-green)',
-            fontWeight: 700,
-            fontSize: '0.75rem',
-            background: 'var(--badge-success-bg)',
-            padding: '2px 8px',
-            borderRadius: '6px',
-            marginRight: '12px',
-            border: '1px solid var(--glass-border)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            lineHeight: '1.2'
-          }}>
-            <div style={{ opacity: 0.9 }}>v{typeof __APP_FULL_VERSION__ !== 'undefined' ? __APP_FULL_VERSION__ : '11.3.1 (dev)'}</div>
-            {serverVersion && (
-              <div style={{ opacity: 0.6, fontSize: '0.7rem' }}>s{serverVersion}</div>
-            )}
-          </div>
+          {/* Version Display moved to Dropdown Menu */}
+
 
           {/* User Dropdown Menu */}
           {showDropdown && (
@@ -1514,24 +1486,32 @@ const TopBar: React.FC<{
                 {t('auth.logout')}
               </button>
 
-              {/* Version Info */}
+              {/* Version Info - Moved from TopBar */}
               <div style={{
-                padding: '8px 12px',
+                padding: '10px 12px',
                 borderTop: '1px solid var(--glass-border)',
                 marginTop: '4px',
-                fontSize: '0.75rem',
-                color: 'var(--text-tertiary)',
-                textAlign: 'center',
-                fontFamily: 'monospace'
+                display: 'flex',
+                justifyContent: 'center'
               }}>
-                {/* @ts-ignore */}
-                <div style={{ marginBottom: 4 }}>Longhorn {window.__APP_FULL_VERSION__ || 'v1.5.16'}</div>
-                {/* @ts-ignore */}
-                <div style={{ opacity: 0.8 }}>Code: {window.__APP_COMMIT_TIME__ || '2026-02-04 22:20'}</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--status-green)' }}></span>
-                  {/* @ts-ignore */}
-                  <span style={{ color: 'var(--status-green)', fontWeight: 600 }}>v{window.__APP_VERSION__ || '1.1.7'}</span>
+                <div style={{
+                  color: 'var(--status-green)',
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  background: 'var(--badge-success-bg)',
+                  padding: '4px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--glass-border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  lineHeight: '1.3',
+                  width: '100%'
+                }}>
+                  <div style={{ opacity: 0.9 }}>v{typeof __APP_FULL_VERSION__ !== 'undefined' ? __APP_FULL_VERSION__ : (window as any).__APP_FULL_VERSION__ || '11.3.1 (dev)'}</div>
+                  {serverVersion && (
+                    <div style={{ opacity: 0.6, fontSize: '0.7rem' }}>s{serverVersion}</div>
+                  )}
                 </div>
               </div>
             </div>

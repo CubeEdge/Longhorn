@@ -338,35 +338,43 @@ const DepartmentManagement: React.FC = () => {
                                         if (grantExpiry !== 'permanent') e.currentTarget.style.background = 'var(--glass-bg-light)';
                                     }}
                                 >{t('time.forever')}</button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const custom = prompt(t('dept.prompt_custom_expiry'), '3months');
-                                        if (custom) {
-                                            setGrantExpiry(custom);
-                                        }
-                                    }}
-                                    style={{
-                                        padding: '10px',
-                                        background: !['7days', '1month', 'permanent'].includes(grantExpiry) ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
-                                        border: '1px solid var(--glass-border)',
-                                        borderLeft: !['7days', '1month', 'permanent'].includes(grantExpiry) ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
-                                        borderRadius: '8px',
-                                        color: 'var(--text-main)',
-                                        fontWeight: !['7days', '1month', 'permanent'].includes(grantExpiry) ? 700 : 600,
-                                        cursor: 'pointer',
-                                        fontSize: '0.85rem',
-                                        transition: 'all 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (['7days', '1month', 'permanent'].includes(grantExpiry)) e.currentTarget.style.background = 'var(--glass-bg-hover)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (['7days', '1month', 'permanent'].includes(grantExpiry)) e.currentTarget.style.background = 'var(--glass-bg-light)';
-                                    }}
-                                >
-                                    {t('time.custom')}
-                                </button>
+                                <div style={{ position: 'relative' }}>
+                                    <button
+                                        type="button"
+                                        style={{
+                                            padding: '10px',
+                                            width: '100%',
+                                            height: '100%',
+                                            background: !['7days', '1month', 'permanent'].includes(grantExpiry) ? 'rgba(255, 210, 0, 0.15)' : 'var(--glass-bg-light)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderLeft: !['7days', '1month', 'permanent'].includes(grantExpiry) ? '4px solid var(--accent-blue)' : '1px solid var(--glass-bg-hover)',
+                                            borderRadius: '8px',
+                                            color: 'var(--text-main)',
+                                            fontWeight: !['7days', '1month', 'permanent'].includes(grantExpiry) ? 700 : 600,
+                                            cursor: 'pointer',
+                                            fontSize: '0.85rem',
+                                            transition: 'all 0.2s',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (['7days', '1month', 'permanent'].includes(grantExpiry)) e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (['7days', '1month', 'permanent'].includes(grantExpiry)) e.currentTarget.style.background = 'var(--glass-bg-light)';
+                                        }}
+                                    >
+                                        {!['7days', '1month', 'permanent'].includes(grantExpiry) ? grantExpiry : t('time.custom')}
+                                    </button>
+                                    <input
+                                        type="date"
+                                        value={!['7days', '1month', 'permanent'].includes(grantExpiry) ? grantExpiry : ''}
+                                        onChange={e => setGrantExpiry(e.target.value)}
+                                        style={{
+                                            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                                            opacity: 0, cursor: 'pointer'
+                                        }}
+                                    />
+                                </div>
                             </div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>

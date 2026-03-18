@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     X, Save, Loader2, MessageSquare, ShieldCheck, Wrench,
-    FileText, Sparkles, Search, User,
-    ChevronDown, Plus, AlertTriangle
+    FileText, Sparkles, Plus, AlertTriangle, Image, Video,
+    ChevronDown
 } from 'lucide-react';
 import axios from 'axios';
 import { useTicketStore, type TicketType } from '../../store/useTicketStore';
@@ -12,206 +12,132 @@ import { useNavigate } from 'react-router-dom';
 import { ProductWarrantyRegistrationModal } from './ProductWarrantyRegistrationModal';
 import ProductModal from '../Workspace/ProductModal';
 
-// ---- Internal Components ----
+import { CRMLookup } from './CRMLookup';
 
-/**
- * CRM Search Component for Accounts/Contacts
- */
-const CRMLookup: React.FC<{
-    onSelect: (account: any, contact?: any) => void;
-    currentAccountId?: number;
-    currentContactId?: number;
-}> = ({ onSelect, currentAccountId, currentContactId }) => {
-    const { token } = useAuthStore();
-    const { t } = useLanguage();
-    const [query, setQuery] = useState('');
-    const [results, setResults] = useState<any[]>([]);
-    const [searching, setSearching] = useState(false);
-    const [showResults, setShowResults] = useState(false);
-    const [selectedAccount, setSelectedAccount] = useState<any>(null);
-    const [selectedContact, setSelectedContact] = useState<any>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
+// ---- Main Modal Component ----
 
-    const handleSearch = useCallback(async (q: string) => {
-        if (!q.trim()) {
-            setResults([]);
-            return;
-        }
-        setSearching(true);
-        try {
-            const res = await axios.get(`/api/v1/accounts?search=${encodeURIComponent(q)}&page_size=10`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.data.success) {
-                setResults(res.data.data);
-            }
-        } catch (err) {
-            console.error('CRM search failed:', err);
-        } finally {
-            setSearching(false);
-        }
-    }, [token]);
+const AttachmentThumbnail: React.FC<{ file: File; onRemove: () => void }> = ({ file, onRemove }) => {
+    const isImage = file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+    const isVideo = file.type.startsWith('video/') || file.name.toLowerCase().endsWith('.h265') || file.name.toLowerCase().endsWith('.hevc');
+    const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+    const isH265 = file.name.toLowerCase().endsWith('.h265') || file.name.toLowerCase().endsWith('.hevc');
+    
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (query) handleSearch(query);
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [query, handleSearch]);
-
-    // Handle initial state if IDs are provided
-    useEffect(() => {
-        if (currentAccountId && !selectedAccount) {
-            // Fetch account details
-            axios.get(`/api/v1/accounts/${currentAccountId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            }).then(res => {
-                if (res.data.success) setSelectedAccount(res.data.data);
-            }).catch(() => { });
+        if ((isImage && !isHeic) || (isVideo && !isH265)) {
+            const url = URL.createObjectURL(file);
+            setPreviewUrl(url);
+            return () => URL.revokeObjectURL(url);
         }
-        if (currentContactId && !selectedContact) {
-            axios.get(`/api/v1/contacts/${currentContactId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            }).then(res => {
-                if (res.data.success) setSelectedContact(res.data.data);
-            }).catch(() => { });
-        }
-    }, [currentAccountId, currentContactId, token]);
-
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                setShowResults(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    }, [file]);
 
     return (
-        <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-            {!selectedAccount ? (
-                <div style={{ position: 'relative' }}>
-                    <Search
-                        size={16}
-                        style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }}
-                    />
-                    <input
-                        type="text"
-                        placeholder={t('account.searchPlaceholder') || 'Search Customer Account/Company...'}
-                        value={query}
-                        onChange={(e) => {
-                            setQuery(e.target.value);
-                            setShowResults(true);
-                        }}
-                        onFocus={() => setShowResults(true)}
-                        style={{
-                            width: '100%', height: '52px', background: 'var(--glass-bg-light)',
-                            border: '1px solid var(--glass-border)', borderRadius: '14px',
-                            padding: '0 12px 0 42px', color: 'var(--text-main)', fontSize: '16px', outline: 'none'
-                        }}
-                    />
-                    {searching && (
-                        <Loader2
-                            size={16}
-                            className="animate-spin"
-                            style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-blue)' }}
-                        />
-                    )}
-
-                    {showResults && results.length > 0 && (
-                        <div style={{
-                            position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4,
-                            background: 'var(--modal-bg)', border: '1px solid var(--modal-border)',
-                            borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.5)', zIndex: 10000,
-                            maxHeight: 300, overflowY: 'auto', padding: '6px'
-                        }}>
-                            {results.map(account => (
-                                <div
-                                    key={account.id}
-                                    onClick={() => {
-                                        setSelectedAccount(account);
-                                        setShowResults(false);
-                                        onSelect(account);
-                                    }}
-                                    style={{
-                                        padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
-                                        display: 'flex', flexDirection: 'column', gap: 2,
-                                        transition: 'background 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <span style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '14px' }}>{account.name}</span>
-                                        <span style={{
-                                            fontSize: 10, padding: '1px 6px', borderRadius: 4,
-                                            background: account.account_type === 'DEALER' ? 'rgba(168,85,247,0.2)' : 'rgba(59,130,246,0.2)',
-                                            color: account.account_type === 'DEALER' ? '#a855f7' : '#3b82f6',
-                                            border: `1px solid ${account.account_type === 'DEALER' ? 'rgba(168,85,247,0.3)' : 'rgba(59,130,246,0.3)'}`
-                                        }}>
-                                            {account.account_type}
-                                        </span>
-                                    </div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', gap: 8 }}>
-                                        <span>#{account.account_number}</span>
-                                        {account.city && <span>📍 {account.city}</span>}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+        <div style={{
+            width: 80, height: 80, borderRadius: 12, background: 'var(--glass-bg)',
+            border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden'
+        }}>
+            {previewUrl ? (
+                isImage ? <img src={previewUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <video src={previewUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-                <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '8px 12px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)',
-                    borderRadius: 10, width: '100%'
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                            width: 32, height: 32, borderRadius: 8, background: 'rgba(59,130,246,0.2)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6'
-                        }}>
-                            <User size={18} />
-                        </div>
-                        <div>
-                            <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '14px' }}>{selectedAccount.name}</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                                {selectedAccount.account_number} · {selectedAccount.account_type}
-                            </div>
-                        </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    {isImage ? <Image size={24} style={{ color: '#FFD200' }} />
+                    : isVideo ? <Video size={24} style={{ color: '#FFD200' }} />
+                    : <FileText size={24} style={{ color: 'var(--text-secondary)' }} />}
+                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 6px' }}>
+                        {file.name}
                     </div>
-                    <button
-                        onClick={() => {
-                            setSelectedAccount(null);
-                            setSelectedContact(null);
-                            onSelect(null);
-                        }}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}
-                    >
-                        <X size={16} />
-                    </button>
                 </div>
             )}
+            <button onClick={onRemove} style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%', color: '#fff', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <X size={12} />
+            </button>
         </div>
     );
 };
 
-// ---- Main Modal Component ----
+const ExistingAttachmentThumbnail: React.FC<{ attachment: any; onRemove: () => void }> = ({ attachment, onRemove }) => {
+    const isImage = attachment.file_type?.startsWith('image/') || attachment.filename?.toLowerCase().endsWith('.heic') || attachment.filename?.toLowerCase().endsWith('.heif');
+    const isVideo = attachment.file_type?.startsWith('video/') || attachment.filename?.toLowerCase().endsWith('.h265') || attachment.filename?.toLowerCase().endsWith('.hevc');
+    
+    return (
+        <div style={{
+            width: 80, height: 80, borderRadius: 12, background: 'var(--glass-bg)',
+            border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden'
+        }}>
+            {isImage ? <img src={attachment.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : isVideo ? <video src={attachment.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <FileText size={24} style={{ color: 'var(--text-secondary)' }} />
+                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 6px' }}>
+                        {attachment.filename}
+                    </div>
+                </div>
+            )}
+            <div style={{ position: 'absolute', top: 4, left: 4, background: '#FFD200', color: '#000', fontSize: 8, padding: '2px 4px', borderRadius: 4, fontWeight: 800 }}>EXISTING</div>
+            <button onClick={onRemove} style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%', color: '#fff', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <X size={12} />
+            </button>
+        </div>
+    );
+};
 
 const TicketCreationModal: React.FC = () => {
-    const { isOpen, ticketType: initialType, drafts, closeModal, updateDraft, clearDraft, openModal } = useTicketStore();
+    const { 
+        isOpen, ticketType: initialType, drafts, closeModal, updateDraft, clearDraft, openModal,
+        isCorrection, targetTicketId, correctionReason 
+    } = useTicketStore();
     const { token } = useAuthStore();
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
     const [products, setProducts] = useState<any[]>([]);
-    const [attachments, setAttachments] = useState<File[]>([]);
-    const [ghostFields, setGhostFields] = useState<Set<string>>(new Set());
     const [snLoading, setSnLoading] = useState(false);
     const [machineInfo, setMachineInfo] = useState<any>(null);
+    const [existingAttachments, setExistingAttachments] = useState<any[]>([]);
+
+    // Draft-isolated states
+    const [attachmentsMap, setAttachmentsMap] = useState<Record<string, File[]>>({});
+    const [ghostFieldsMap, setGhostFieldsMap] = useState<Record<string, Set<string>>>({});
+    const [aiInputMap, setAiInputMap] = useState<Record<string, string>>({});
+    const [aiLogMap, setAiLogMap] = useState<Record<string, string[]>>({});
+
+    const attachments = attachmentsMap[initialType] || [];
+    const setAttachments = (files: File[] | ((prev: File[]) => File[])) => {
+        setAttachmentsMap(prev => {
+            const curr = prev[initialType] || [];
+            const next = typeof files === 'function' ? files(curr) : files;
+            return { ...prev, [initialType]: next };
+        });
+    };
+    
+    const ghostFields = ghostFieldsMap[initialType] || new Set<string>();
+    const setGhostFields = (updateFn: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+        setGhostFieldsMap(prev => {
+            const curr = prev[initialType] || new Set<string>();
+            const next = typeof updateFn === 'function' ? updateFn(curr) : updateFn;
+            return { ...prev, [initialType]: next };
+        });
+    };
+
+    const aiInput = aiInputMap[initialType] || '';
+    const setAiInput = (val: string) => {
+        setAiInputMap(prev => ({ ...prev, [initialType]: val }));
+    };
+
+    const aiLog = aiLogMap[initialType] || [];
+    const setAiLog = (log: string[] | ((prev: string[]) => string[])) => {
+        setAiLogMap(prev => {
+            const curr = prev[initialType] || [];
+            const next = typeof log === 'function' ? log(curr) : log;
+            return { ...prev, [initialType]: next };
+        });
+    };
 
     // Warranty check state (for RMA tickets)
     const [warrantyCheckStatus, setWarrantyCheckStatus] = useState<'unchecked' | 'valid' | 'needs_registration'>('unchecked');
@@ -219,10 +145,7 @@ const TicketCreationModal: React.FC = () => {
     const [showProductModal, setShowProductModal] = useState(false);
     const [, setCheckingWarranty] = useState(false);
 
-    // AI Assist State
-    const [aiInput, setAiInput] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
-    const [aiLog, setAiLog] = useState<string[]>([]);
 
     const draft = drafts[initialType];
 
@@ -233,13 +156,24 @@ const TicketCreationModal: React.FC = () => {
                 try {
                     const prodRes = await axios.get('/api/v1/system/products', { headers: { Authorization: `Bearer ${token}` } });
                     if (prodRes.data.success) setProducts(prodRes.data.data);
+
+                    // Load existing attachments for correction
+                    if (isCorrection && targetTicketId) {
+                        const ticketRes = await axios.get(`/api/v1/tickets/${targetTicketId}`, { headers: { Authorization: `Bearer ${token}` } });
+                        if (ticketRes.data.success) {
+                            // Only count attachments that don't belong to other specific activities (or keep all ticket-level ones)
+                            setExistingAttachments(ticketRes.data.attachments || []);
+                        }
+                    }
                 } catch (err) {
                     console.error('Failed to fetch modal data:', err);
                 }
             };
             fetchInitialData();
+        } else {
+            setExistingAttachments([]);
         }
-    }, [isOpen, token]);
+    }, [isOpen, token, isCorrection, targetTicketId]);
 
     const handleFieldChange = (field: string, value: any, isAi = false) => {
         updateDraft(initialType, { [field]: value });
@@ -338,10 +272,30 @@ const TicketCreationModal: React.FC = () => {
         setAttachments(prev => prev.filter((_, i) => i !== index));
     };
 
+    const removeExistingAttachment = async (attachId: number) => {
+        if (!confirm('确定要删除此附件吗？此操作不可撤销。')) return;
+        
+        try {
+            const res = await axios.delete(`/api/v1/tickets/${targetTicketId}/attachments/${attachId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.data.success) {
+                setExistingAttachments(prev => prev.filter(a => a.id !== attachId));
+            }
+        } catch (err) {
+            console.error('Failed to delete attachment:', err);
+            alert('删除附件失败');
+        }
+    };
+
     const handleAiParse = async () => {
         if (!aiInput.trim()) return;
         setAiLoading(true);
-        setAiLog(['🤖 Analyzing your input...', '🔍 Extracting key information...']);
+        const isZh = language === 'zh';
+        setAiLog([
+            isZh ? '🤖 正在分析您的输入...' : '🤖 Analyzing your input...', 
+            isZh ? '🔍 正在提取关键信息...' : '🔍 Extracting key information...'
+        ]);
 
         try {
             const res = await axios.post('/api/ai/ticket_parse', {
@@ -354,7 +308,7 @@ const TicketCreationModal: React.FC = () => {
             if (res.data.success) {
                 const result = res.data.data;
                 const newLogs = [...aiLog];
-                newLogs.push('✅ Extraction complete.');
+                newLogs.push(isZh ? '✅ 提取完成。' : '✅ Extraction complete.');
 
                 const updates: any = {};
                 const fieldsToMarkGhost: string[] = [];
@@ -377,14 +331,14 @@ const TicketCreationModal: React.FC = () => {
                     if (matchedProduct) {
                         updates.product_id = matchedProduct.id;
                         fieldsToMarkGhost.push('product_id');
-                        newLogs.push(`📦 Matched product: ${matchedProduct.name}`);
+                        newLogs.push(isZh ? `📦 匹配到产品: ${matchedProduct.name}` : `📦 Matched product: ${matchedProduct.name}`);
                     }
                 }
 
                 if (result.serial_number) {
                     updates.serial_number = result.serial_number;
                     fieldsToMarkGhost.push('serial_number');
-                    newLogs.push(`🔢 Found S/N: ${result.serial_number}`);
+                    newLogs.push(isZh ? `🔢 找到序列号: ${result.serial_number}` : `🔢 Found S/N: ${result.serial_number}`);
                 }
 
                 // Problem Description
@@ -405,7 +359,7 @@ const TicketCreationModal: React.FC = () => {
             }
         } catch (err) {
             console.error('AI Parse Failed:', err);
-            setAiLog(prev => [...prev, '❌ AI analysis failed. Please fill manually.']);
+            setAiLog(prev => [...prev, isZh ? '❌ AI 分析失败。请手动填写。' : '❌ AI analysis failed. Please fill manually.']);
         } finally {
             setAiLoading(false);
         }
@@ -454,19 +408,36 @@ const TicketCreationModal: React.FC = () => {
             };
             formData.append('ticket_type', typeMap[initialType]);
 
-            const res = await axios.post('/api/v1/tickets', formData, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
-                }
-            });
+            // If Correction, use PATCH and add audit info
+            let res;
+            if (isCorrection) {
+                formData.append('change_reason', correctionReason);
+                formData.append('is_modal_edit', 'true');
+                res = await axios.patch(`/api/v1/tickets/${targetTicketId}`, formData, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+            } else {
+                res = await axios.post('/api/v1/tickets', formData, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+            }
 
             if (res.data.success) {
-                clearDraft(initialType);
-                setAttachments([]);
-                setAiInput('');
+                if (!isCorrection) {
+                    clearDraft(initialType);
+                    setAttachments([]);
+                    setAiInput('');
+                }
                 closeModal();
-                navigate(`/service/tickets/${res.data.data.id}`);
+                navigate(`/service/tickets/${isCorrection ? targetTicketId : res.data.data.id}`, { replace: true });
+                // If it's correction of current page, we might need a refresh
+                if (isCorrection) window.location.reload();
             }
         } catch (err: any) {
             console.error('Failed to create ticket:', err);
@@ -508,33 +479,36 @@ const TicketCreationModal: React.FC = () => {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     background: 'rgba(255,255,255,0.02)'
                 }}>
-                    <div style={{ display: 'flex', gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', marginRight: 8 }}>
+                            {isCorrection ? (language === 'zh' ? '更正工单信息' : 'Correct Ticket') : (language === 'zh' ? '创建工单' : 'Create Ticket')}
+                        </div>
                         {typeOptions.map(opt => (
                             <button
                                 key={opt.key}
                                 onClick={() => {
-                                    // PRD §4.3: Carry over core fields when switching type
-                                    const currentDraft = drafts[initialType];
-                                    const sharedFields = ['customer_name', 'customer_contact', 'account_id', 'contact_id', 'product_id', 'serial_number', 'problem_summary', 'problem_description'];
-                                    const updates: any = {};
-                                    sharedFields.forEach(f => {
-                                        if (currentDraft[f] !== undefined) updates[f] = currentDraft[f];
-                                    });
-                                    updateDraft(opt.key, updates);
+                                    if (isCorrection) return;
                                     openModal(opt.key);
                                 }}
+                                disabled={isCorrection}
                                 style={{
-                                    padding: '12px 28px', borderRadius: 16, border: 'none',
+                                    padding: '10px 24px', borderRadius: 12, border: 'none',
                                     background: initialType === opt.key ? opt.color : 'var(--glass-bg-light)',
                                     color: initialType === opt.key ? '#000' : 'var(--text-tertiary)',
-                                    fontWeight: 700, fontSize: '15px', display: 'flex', alignItems: 'center', gap: 10,
-                                    cursor: 'pointer', transition: 'all 0.3s'
+                                    fontWeight: 700, fontSize: '14px', display: 'flex', alignItems: 'center', gap: 8,
+                                    cursor: isCorrection ? 'not-allowed' : 'pointer', transition: 'all 0.3s',
+                                    opacity: isCorrection && initialType !== opt.key ? 0.4 : 1
                                 }}
                             >
-                                <opt.icon size={20} />
+                                <opt.icon size={18} />
                                 {opt.label}
                             </button>
                         ))}
+                        {isCorrection && (
+                            <div style={{ padding: '6px 12px', background: 'rgba(255,165,0,0.1)', border: '1px solid rgba(255,165,0,0.3)', borderRadius: 8, color: '#FFA500', fontSize: 12, fontWeight: 600 }}>
+                                {language === 'zh' ? '更正模式' : 'Correction Mode'}
+                            </div>
+                        )}
                     </div>
                     <button
                         onClick={closeModal}
@@ -591,9 +565,10 @@ const TicketCreationModal: React.FC = () => {
                                     const items = e.clipboardData?.items;
                                     if (items) {
                                         for (const item of items) {
-                                            if (item.type.startsWith('image/')) {
+                                            const file = item.getAsFile();
+                                            if (item.type.startsWith('image/') || 
+                                                (file && (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif') || file.name.toLowerCase().endsWith('.h265') || file.name.toLowerCase().endsWith('.hevc')))) {
                                                 e.preventDefault();
-                                                const file = item.getAsFile();
                                                 if (file) {
                                                     setAttachments(prev => [...prev, file]);
                                                 }
@@ -611,50 +586,7 @@ const TicketCreationModal: React.FC = () => {
                                 }}
                             />
 
-                            {/* Drag & Drop Overlay Hint - simplified */}
-
-                            {/* Attachment preview */}
-                            {attachments.length > 0 && (
-                                <div style={{
-                                    position: 'absolute', bottom: 70, left: 24, right: 24,
-                                    display: 'flex', flexWrap: 'wrap', gap: 8
-                                }}>
-                                    {attachments.map((file, idx) => {
-                                        const isImage = file.type.startsWith('image/');
-                                        const imageUrl: string | undefined = isImage ? URL.createObjectURL(file) : undefined;
-                                        return (
-                                            <div key={idx} style={{
-                                                display: 'flex', alignItems: 'center', gap: 6,
-                                                padding: '6px 10px', background: 'rgba(255, 215, 0, 0.15)',
-                                                borderRadius: 8, border: '1px solid rgba(255, 215, 0, 0.3)',
-                                                fontSize: 12, color: '#FFD700',
-                                                cursor: isImage ? 'pointer' : 'default'
-                                            }} onClick={() => {
-                                                if (imageUrl) {
-                                                    window.open(imageUrl, '_blank');
-                                                }
-                                            }}>
-                                                {isImage && imageUrl ? (
-                                                    <img src={imageUrl} alt={file.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: 'cover' }} />
-                                                ) : null}
-                                                <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {file.name}
-                                                </span>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setAttachments(prev => prev.filter((_, i) => i !== idx));
-                                                    }}
-                                                    style={{
-                                                        background: 'none', border: 'none', color: '#FFD700',
-                                                        cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1
-                                                    }}
-                                                >×</button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                            {/* Drag & Drop Overlay Hint - simplified - Removed attachment list from here to avoid redundancy with right blueprint */}
                             <button
                                 onClick={handleAiParse}
                                 disabled={aiLoading || !aiInput.trim()}
@@ -702,7 +634,7 @@ const TicketCreationModal: React.FC = () => {
                                             onSelect={async (acc) => {
                                                 if (acc) {
                                                     handleFieldChange('account_id', acc.id);
-                                                    if (acc.email) handleFieldChange('customer_contact', acc.email, true);
+                                                    if ((acc as any).email) handleFieldChange('customer_contact', (acc as any).email, true);
                                                     
                                                     // 加载该账户的联系人，查找主联系人
                                                     try {
@@ -786,11 +718,13 @@ const TicketCreationModal: React.FC = () => {
                                                 style={{
                                                     width: '100%', height: 44, borderRadius: 12, padding: '0 14px',
                                                     color: 'var(--text-main)', fontSize: 15, outline: 'none', appearance: 'none',
+                                                    backgroundColor: 'var(--glass-bg-light)',
+                                                    border: '1px solid var(--glass-border)',
                                                     ...ghostStyle('product_id')
                                                 }}
                                             >
-                                                <option value="">{t('ticket.creation.select_product') || 'Select Catalog Product...'}</option>
-                                                {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                <option value="" style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>{t('ticket.creation.select_product') || 'Select Catalog Product...'}</option>
+                                                {products.map(p => <option key={p.id} value={p.id} style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>{p.name}</option>)}
                                             </select>
                                             <ChevronDown size={18} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
                                             {ghostFields.has('product_id') && <div style={{ position: 'absolute', right: 36, top: -10, background: '#3b82f6', color: '#fff', fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 800 }}>AI MATCHED</div>}
@@ -948,20 +882,19 @@ const TicketCreationModal: React.FC = () => {
                                                 <Plus size={28} />
                                                 <input type="file" multiple onChange={handleFileSelect} style={{ display: 'none' }} />
                                             </label>
+                                            {existingAttachments.map((attach) => (
+                                                <ExistingAttachmentThumbnail
+                                                    key={attach.id}
+                                                    attachment={attach}
+                                                    onRemove={() => removeExistingAttachment(attach.id)}
+                                                />
+                                            ))}
                                             {attachments.map((file, i) => (
-                                                <div key={i} style={{
-                                                    width: 80, height: 80, borderRadius: 12, background: 'var(--glass-bg)',
-                                                    border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column',
-                                                    alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden'
-                                                }}>
-                                                    <FileText size={24} style={{ color: 'var(--text-secondary)' }} />
-                                                    <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4, width: '100%', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 6px' }}>
-                                                        {file.name}
-                                                    </div>
-                                                    <button onClick={() => removeAttachment(i)} style={{ position: 'absolute', top: 4, right: 4, background: 'var(--glass-bg-light)', border: 'none', borderRadius: '50%', color: 'var(--text-secondary)', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                                                        <X size={10} />
-                                                    </button>
-                                                </div>
+                                                <AttachmentThumbnail 
+                                                    key={`new-${i}`} 
+                                                    file={file} 
+                                                    onRemove={() => removeAttachment(i)} 
+                                                />
                                             ))}
                                         </div>
                                     </div>
@@ -1003,8 +936,8 @@ const TicketCreationModal: React.FC = () => {
                                 opacity: loading ? 0.6 : 1, boxShadow: '0 8px 20px rgba(255, 215, 0, 0.3)'
                             }}
                         >
-                            {loading ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-                            {t('action.create_ticket_now') || '马上创建工单'}
+                            {loading ? <Loader2 size={20} className="animate-spin" /> : (isCorrection ? <Save size={20} /> : <Plus size={20} />)}
+                            {isCorrection ? (language === 'zh' ? '提交更正' : 'Submit Correction') : (t('action.create_ticket_now') || '马上创建工单')}
                         </button>
                     </div>
                 </div>

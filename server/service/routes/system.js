@@ -16,7 +16,14 @@ module.exports = function (db, authenticate) {
      */
     router.get('/public-settings', (req, res) => {
         try {
-            const settings = db.prepare('SELECT system_name, ai_search_history_limit, show_daily_word, notification_refresh_interval, require_finance_confirmation FROM system_settings LIMIT 1').get();
+            const settings = db.prepare(`
+                SELECT system_name, ai_search_history_limit, show_daily_word, notification_refresh_interval, require_finance_confirmation,
+                       inquiry_sla_enabled, inquiry_auto_close_days, inquiry_sla_hours,
+                       rma_sla_enabled, rma_auto_close_days, rma_sla_hours,
+                       svc_sla_enabled, svc_auto_close_days, svc_sla_hours
+                FROM system_settings LIMIT 1
+            `).get();
+
             res.json({
                 success: true,
                 data: {
@@ -24,7 +31,20 @@ module.exports = function (db, authenticate) {
                     ai_search_history_limit: parseInt(settings?.ai_search_history_limit) || 10,
                     show_daily_word: Boolean(settings?.show_daily_word),
                     notification_refresh_interval: parseInt(settings?.notification_refresh_interval) || 30,
-                    require_finance_confirmation: settings?.require_finance_confirmation !== 0
+                    require_finance_confirmation: settings?.require_finance_confirmation !== 0,
+                    
+                    // SLA Settings
+                    inquiry_sla_enabled: settings?.inquiry_sla_enabled !== 0,
+                    inquiry_auto_close_days: parseInt(settings?.inquiry_auto_close_days) || 5,
+                    inquiry_sla_hours: parseInt(settings?.inquiry_sla_hours) || 24,
+
+                    rma_sla_enabled: settings?.rma_sla_enabled !== 0,
+                    rma_auto_close_days: parseInt(settings?.rma_auto_close_days) || 7,
+                    rma_sla_hours: parseInt(settings?.rma_sla_hours) || 24,
+
+                    svc_sla_enabled: settings?.svc_sla_enabled !== 0,
+                    svc_auto_close_days: parseInt(settings?.svc_auto_close_days) || 7,
+                    svc_sla_hours: parseInt(settings?.svc_sla_hours) || 24
                 }
             });
         } catch (err) {
@@ -144,16 +164,15 @@ module.exports = function (db, authenticate) {
         try {
             const { category } = req.query;
 
-            // Get distinct model names from products (installed base) table
-            // Use MIN(id) as representative ID for each model_name
+            // Get active models from product_models catalog
             let sql = `
                 SELECT 
-                    MIN(id) as id,
-                    model_name as name, 
-                    MAX(product_line) as line, 
-                    MAX(product_family) as family
-                FROM products 
-                WHERE model_name IS NOT NULL AND model_name != ''
+                    id,
+                    name_zh as name, 
+                    product_type as line, 
+                    product_family as family
+                FROM product_models 
+                WHERE is_active = 1
             `;
             let params = [];
 
@@ -162,7 +181,7 @@ module.exports = function (db, authenticate) {
                 params.push(category);
             }
 
-            sql += ' GROUP BY model_name ORDER BY model_name';
+            sql += ' ORDER BY product_family, name_zh';
 
             const products = db.prepare(sql).all(...params);
 

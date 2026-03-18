@@ -12,6 +12,104 @@ const sharp = require('sharp');
 const { execSync } = require('child_process');
 
 module.exports = function (db, authenticate, serviceUpload) {
+    // ==============================
+    // Database Schema Initialization
+    // ==============================
+    try {
+        // 1. Ensure accounts table has is_deleted column
+        const accountColumns = db.prepare("PRAGMA table_info(accounts)").all();
+        if (!accountColumns.some(c => c.name === 'is_deleted')) {
+            console.log('[Activities DB] Adding is_deleted to accounts table...');
+            db.exec("ALTER TABLE accounts ADD COLUMN is_deleted INTEGER DEFAULT 0; ALTER TABLE accounts ADD COLUMN deleted_at DATETIME;");
+        }
+
+        // 2. Ensure ticket_activities CHECK constraint is up to date
+        // Since SQLite doesn't support ALTER CHECK, we must recreate the table if necessary
+        const activitiesSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='ticket_activities'").get();
+        if (activitiesSchema && !activitiesSchema.sql.includes('op_repair_report')) {
+            console.log('[Activities DB] Upgrading ticket_activities table schema (new activity types)...');
+            
+            db.transaction(() => {
+                // Rename old table
+                db.exec("ALTER TABLE ticket_activities RENAME TO ticket_activities_old;");
+                
+                // Create new table with updated CHECK constraint
+                db.exec(`
+                    CREATE TABLE ticket_activities (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        ticket_id INTEGER NOT NULL,
+                        activity_type TEXT NOT NULL CHECK(activity_type IN (
+                            'status_change', 'comment', 'internal_note', 'attachment', 'mention',
+                            'participant_added', 'assignment_change', 'priority_change', 'sla_breach',
+                            'field_update', 'ticket_linked', 'system_event', 'diagnostic_report',
+                            'soft_delete', 'creation', 'document_published', 'document_recalled',
+                            'system', 'op_repair_report', 'shipping_info', 'receiving_info'
+                        )),
+                        content TEXT,
+                        content_html TEXT,
+                        metadata TEXT,
+                        visibility TEXT DEFAULT 'all' CHECK(visibility IN ('all', 'internal', 'customer')),
+                        actor_id INTEGER,
+                        actor_name TEXT,
+                        actor_role TEXT,
+                        is_edited INTEGER DEFAULT 0,
+                        edited_at DATETIME,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+                    );
+                `);
+
+                // Migrate data
+                db.exec(`
+                    INSERT INTO ticket_activities (
+                        id, ticket_id, activity_type, content, content_html, metadata,
+                        visibility, actor_id, actor_name, actor_role, is_edited, edited_at, created_at
+                    )
+                    SELECT 
+                        id, ticket_id, activity_type, content, content_html, metadata,
+                        visibility, actor_id, actor_name, actor_role, is_edited, edited_at, created_at
+                    FROM ticket_activities_old;
+                `);
+
+                // Re-create indexes
+                db.exec("CREATE INDEX idx_activities_ticket ON ticket_activities(ticket_id);");
+                db.exec("CREATE INDEX idx_activities_type ON ticket_activities(activity_type);");
+                db.exec("CREATE INDEX idx_activities_actor ON ticket_activities(actor_id);");
+                db.exec("CREATE INDEX idx_activities_created ON ticket_activities(created_at);");
+                
+                // Drop old table
+                db.exec("DROP TABLE ticket_activities_old;");
+            })();
+            console.log('[Activities DB] ticket_activities table upgraded successfully.');
+        }
+
+        // 3. Ensure mention/invite stats tables exist
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS user_mention_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                mentioned_user_id INTEGER NOT NULL,
+                mention_count INTEGER DEFAULT 0,
+                last_mention_at DATETIME,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (mentioned_user_id) REFERENCES users(id),
+                UNIQUE(user_id, mentioned_user_id)
+            );
+            CREATE TABLE IF NOT EXISTS user_invite_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                invited_user_id INTEGER NOT NULL,
+                invite_count INTEGER DEFAULT 0,
+                last_invite_at DATETIME,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (invited_user_id) REFERENCES users(id),
+                UNIQUE(user_id, invited_user_id)
+            );
+        `);
+    } catch (e) {
+        console.error('[Activities DB] Initialization Error:', e.message);
+    }
+
     const router = express.Router();
 
     // ==============================

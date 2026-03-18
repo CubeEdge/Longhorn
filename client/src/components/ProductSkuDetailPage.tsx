@@ -18,6 +18,14 @@ interface ProductSku {
     spec_label: string;
     sku_image: string;
     is_active: boolean;
+    weight_kg?: number;
+    volume_cum?: number;
+    length_cm?: number;
+    width_cm?: number;
+    depth_cm?: number;
+    is_dangerous_goods: boolean;
+    upc?: string;
+    sn_prefix?: string;
     created_at: string;
     updated_at: string;
     // Joined
@@ -87,7 +95,15 @@ const ProductSkuDetailPage: React.FC = () => {
                 display_name_en: sku.display_name_en,
                 spec_label: sku.spec_label,
                 sku_image: sku.sku_image,
-                is_active: sku.is_active
+                is_active: sku.is_active,
+                weight_kg: sku.weight_kg,
+                volume_cum: sku.volume_cum,
+                length_cm: sku.length_cm,
+                width_cm: sku.width_cm,
+                depth_cm: sku.depth_cm,
+                is_dangerous_goods: sku.is_dangerous_goods,
+                upc: sku.upc,
+                sn_prefix: sku.sn_prefix
             });
         }
     }, [sku]);
@@ -239,7 +255,15 @@ const ProductSkuDetailPage: React.FC = () => {
                                                     display_name_en: sku.display_name_en,
                                                     spec_label: sku.spec_label,
                                                     sku_image: sku.sku_image,
-                                                    is_active: sku.is_active
+                                                    is_active: sku.is_active,
+                                                    weight_kg: sku.weight_kg,
+                                                    volume_cum: sku.volume_cum,
+                                                    length_cm: sku.length_cm,
+                                                    width_cm: sku.width_cm,
+                                                    depth_cm: sku.depth_cm,
+                                                    is_dangerous_goods: sku.is_dangerous_goods,
+                                                    upc: sku.upc,
+                                                    sn_prefix: sku.sn_prefix
                                                 });
                                                 setIsEditModalOpen(true);
                                             }}
@@ -418,6 +442,60 @@ const ProductSkuDetailPage: React.FC = () => {
                                 <div className="info-item">
                                     <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>创建时间</div>
                                     <div className="value" style={{ fontWeight: 600, fontSize: '1rem' }}>{new Date(sku.created_at).toLocaleDateString()}</div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Physical Info Section - New */}
+                    <div className="detail-section" style={{ marginBottom: 32 }}>
+                        <div className="section-header" onClick={() => toggleSection('logistics')} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '12px 16px', cursor: 'pointer', borderRadius: 12,
+                            background: expandedSections.has('logistics') ? 'var(--glass-bg-hover)' : 'transparent',
+                            transition: 'all 0.2s'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <Box size={20} color="#10B981" />
+                                <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>物理与物流属性</span>
+                            </div>
+                            {expandedSections.has('logistics') ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </div>
+
+                        {expandedSections.has('logistics') && (
+                            <div style={{ padding: '20px 16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 24 }}>
+                                <div className="info-item">
+                                    <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>重量 (Weight)</div>
+                                    <div className="value" style={{ fontWeight: 600, fontSize: '1rem' }}>{sku.weight_kg ? `${sku.weight_kg} kg` : '-'}</div>
+                                </div>
+                                <div className="info-item">
+                                    <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>体积 (Volume)</div>
+                                    <div className="value" style={{ fontWeight: 600, fontSize: '1rem' }}>{sku.volume_cum ? `${sku.volume_cum} m³` : '-'}</div>
+                                </div>
+                                <div className="info-item">
+                                    <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>外箱尺寸 (Dimensions)</div>
+                                    <div className="value" style={{ fontWeight: 600, fontSize: '1rem' }}>
+                                        {sku.length_cm || sku.width_cm || sku.depth_cm 
+                                            ? `${sku.length_cm || 0} x ${sku.width_cm || 0} x ${sku.depth_cm || 0} cm` 
+                                            : '-'}
+                                    </div>
+                                </div>
+                                <div className="info-item">
+                                    <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>UPC 条码</div>
+                                    <div className="value" style={{ fontWeight: 600, fontSize: '1rem' }}>{sku.upc || '-'}</div>
+                                </div>
+                                <div className="info-item">
+                                    <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>SN 前缀</div>
+                                    <div className="value" style={{ fontWeight: 600, fontSize: '1rem' }}>{sku.sn_prefix || '-'}</div>
+                                </div>
+                                <div className="info-item">
+                                    <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>危险品标识</div>
+                                    <div className="value" style={{ 
+                                        fontWeight: 600, fontSize: '1rem',
+                                        color: sku.is_dangerous_goods ? '#EF4444' : 'var(--text-main)'
+                                    }}>
+                                        {sku.is_dangerous_goods ? '⚠️ 危险品 (Dangerous)' : '普通品'}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -612,6 +690,73 @@ const ProductSkuDetailPage: React.FC = () => {
                                             style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
                                         />
                                     </div>
+
+                                    {/* 物理属性 - 新增 */}
+                                    <div style={{ padding: 16, background: 'var(--glass-bg-hover)', borderRadius: 12, border: '1px solid var(--glass-border)', marginTop: 8 }}>
+                                        <h5 style={{ margin: '0 0 16px 0', fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: 600 }}>物理属性 (Physical Attributes)</h5>
+                                        
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>重量 (kg)</label>
+                                                <input
+                                                    type="number" step="0.001" value={editFormData.weight_kg ?? ''}
+                                                    onChange={e => setEditFormData({ ...editFormData, weight_kg: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                                                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>体积 (m³)</label>
+                                                <input
+                                                    type="number" step="0.000001" value={editFormData.volume_cum ?? ''}
+                                                    onChange={e => setEditFormData({ ...editFormData, volume_cum: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                                                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>外箱尺寸 (L x W x D cm)</label>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                                                <input
+                                                    type="number" placeholder="L" value={editFormData.length_cm ?? ''}
+                                                    onChange={e => setEditFormData({ ...editFormData, length_cm: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                                                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                                />
+                                                <input
+                                                    type="number" placeholder="W" value={editFormData.width_cm ?? ''}
+                                                    onChange={e => setEditFormData({ ...editFormData, width_cm: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                                                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                                />
+                                                <input
+                                                    type="number" placeholder="D" value={editFormData.depth_cm ?? ''}
+                                                    onChange={e => setEditFormData({ ...editFormData, depth_cm: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                                                    style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--glass-border)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 业务标识 - 新增 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>UPC 条码</label>
+                                            <input
+                                                type="text" value={editFormData.upc || ''}
+                                                onChange={e => setEditFormData({ ...editFormData, upc: e.target.value })}
+                                                placeholder="Universal Product Code"
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>SN 前缀</label>
+                                            <input
+                                                type="text" value={editFormData.sn_prefix || ''}
+                                                onChange={e => setEditFormData({ ...editFormData, sn_prefix: e.target.value.toUpperCase() })}
+                                                placeholder="例: KE8"
+                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -643,7 +788,7 @@ const ProductSkuDetailPage: React.FC = () => {
                                     </div>
 
                                     <div style={{ padding: 16, background: 'var(--glass-bg)', borderRadius: 12, border: '1px solid var(--glass-border)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
                                             <input
                                                 type="checkbox" id="sku_active_edit" checked={editFormData.is_active}
                                                 onChange={e => setEditFormData({ ...editFormData, is_active: e.target.checked })}
@@ -653,8 +798,18 @@ const ProductSkuDetailPage: React.FC = () => {
                                                 在售状态
                                             </label>
                                         </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <input
+                                                type="checkbox" id="sku_dangerous_edit" checked={editFormData.is_dangerous_goods}
+                                                onChange={e => setEditFormData({ ...editFormData, is_dangerous_goods: e.target.checked })}
+                                                style={{ width: 18, height: 18, accentColor: '#EF4444' }}
+                                            />
+                                            <label htmlFor="sku_dangerous_edit" style={{ fontSize: '0.9rem', color: 'var(--text-main)', cursor: 'pointer' }}>
+                                                危险品 (Dangerous Goods)
+                                            </label>
+                                        </div>
                                         <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 8, marginLeft: 30 }}>
-                                            下架后该SKU将不在新建工单时显示
+                                            危险品标识将影响物流运输处理和仓储规范。
                                         </p>
                                     </div>
                                 </div>

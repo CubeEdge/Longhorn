@@ -407,16 +407,18 @@ export const KinefinityWiki: React.FC = () => {
     const buildTree = (): CategoryNode[] => {
         const productModels = {
             'A': ['MAVO Edge 8K', 'MAVO Edge 6K', 'MAVO Mark2 LF', 'MAVO Mark2 S35'],
-            'B': ['MAVO LF', 'MAVO S35', 'Terra 4K', 'Terra 6K'],
+            'B': ['Broadcast Camera', 'MAVO Edge/Mark2 系列 (Broadcast)'],
             'C': ['Eagle SDI', 'Eagle HDMI'],
-            'D': ['GripBAT系列', 'Magic Arm', 'Dark Tower', 'KineBAT', t('wiki.product.cable_accessories')]
+            'D': ['MAVO LF', 'MAVO S35', 'Terra 4K', 'Terra 6K'],
+            'E': ['GripBAT系列', 'Magic Arm', 'Dark Tower', 'KineBAT', t('wiki.product.cable_accessories')]
         };
 
         const categoryTemplates: Record<string, Array<{ id: string, label: string }>> = {
             'A': [{ id: 'manual', label: t('wiki.category.manual') }],
             'B': [{ id: 'manual', label: t('wiki.category.manual') }],
             'C': [{ id: 'manual', label: t('wiki.category.manual') }],
-            'D': [{ id: 'manual', label: t('wiki.category.manual') }]
+            'D': [{ id: 'manual', label: t('wiki.category.manual') }],
+            'E': [{ id: 'manual', label: t('wiki.category.manual') }]
         };
 
         const buildChapterTree = (articles: KnowledgeArticle[], parentId: string): CategoryNode[] => {
@@ -487,9 +489,10 @@ export const KinefinityWiki: React.FC = () => {
 
         const tree: CategoryNode[] = [
             { id: 'a-camera', label: t('wiki.line.a_desc'), product_line: 'A', children: [] },
-            { id: 'b-camera', label: t('wiki.line.b_desc'), product_line: 'B', children: [] },
+            { id: 'b-broadcast', label: t('wiki.line.b_desc'), product_line: 'B', children: [] },
             { id: 'c-evf', label: t('wiki.line.c_desc'), product_line: 'C', children: [] },
-            { id: 'd-accessory', label: t('wiki.line.d_desc'), product_line: 'D', children: [] },
+            { id: 'd-archived', label: t('wiki.line.d_desc'), product_line: 'D', children: [] },
+            { id: 'e-accessory', label: t('wiki.line.e_desc'), product_line: 'E', children: [] },
         ];
 
         tree.forEach(productLineNode => {
@@ -615,6 +618,7 @@ export const KinefinityWiki: React.FC = () => {
                     'B': t('wiki.line.b'),
                     'C': t('wiki.line.c'),
                     'D': t('wiki.line.d'),
+                    'E': t('wiki.line.e'),
                     'GENERIC': t('wiki.line.generic')
                 };
                 newBreadcrumb.push({

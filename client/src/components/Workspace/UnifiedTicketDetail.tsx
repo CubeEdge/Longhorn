@@ -9,13 +9,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreHorizontal, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight, Wrench, Calculator, CheckCircle, Shield, Search, BadgeDollarSign, ChevronRight } from 'lucide-react';
+import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreHorizontal, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight, Wrench, Calculator, CheckCircle, Shield, Search, BadgeDollarSign, ChevronRight, Zap, MessageSquare, RefreshCcw } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import NodeProgressBar from './NodeProgressBar';
 import { ActivityTimeline, CollapsiblePanel, MediaLightbox, ActivityDetailDrawer } from './TicketDetailComponents';
 import type { CorrectionRequest } from './TicketDetailComponents';
+import { CRMLookup } from '../Service/CRMLookup';
 import { MentionCommentInput } from './MentionCommentInput';
 import { ActionBufferModal } from './ActionBufferModal';
 import { SubmitDiagnosticModal } from './SubmitDiagnosticModal';
@@ -53,10 +54,14 @@ interface TicketDetail {
     serial_number?: string;
     assigned_name?: string;
     assigned_dept?: string;
+    assigned_to?: number;
     submitted_name?: string;
     submitted_dept?: string;
     reporter_name?: string;
     reporter_snapshot?: any;
+    account_id?: number;
+    dealer_id?: number;
+    product_id?: number;
     channel?: string;
     problem_summary?: string;
     problem_description?: string;
@@ -93,8 +98,9 @@ const NODE_ACTION_MAP: Record<string, Record<string, { label_zh: string; label_e
         waiting_customer: { label_zh: '客户已付款', label_en: 'Customer Paid', action: 'paid' },
     },
     inquiry: {
-        open: { label_zh: '回复并跟进', label_en: 'Reply & Follow-up', action: 'reply' },
-        waiting: { label_zh: '催促客户回复', label_en: 'Nudge Customer', action: 'nudge' },
+        handling: { label_zh: '回复并等待客户', label_en: 'Reply & Wait', action: 'reply_to_customer' },
+        awaiting_customer: { label_zh: '处理客户反馈', label_en: 'Process Feedback', action: 'process_feedback' },
+        resolved: { label_zh: '重新开启工单', label_en: 'Reopen', action: 'reopen' },
     },
     svc: {
         open: { label_zh: '回复经销商', label_en: 'Reply Dealer', action: 'reply' },
@@ -106,22 +112,27 @@ const NODE_ACTION_MAP: Record<string, Record<string, { label_zh: string; label_e
 // Priority & Status helpers
 // ==============================
 
-const nodeLabels: Record<string, { zh: string }> = {
-    draft: { zh: '草稿' },
-    submitted: { zh: '已提交' },
-    ms_review: { zh: '商务审核' },
-    op_receiving: { zh: '待收货' },
-    op_diagnosing: { zh: '诊断中' },
-    op_repairing: { zh: '维修中' },
-    op_qa: { zh: 'QA检测' },
-    op_shipping: { zh: '打包发货' },
-    op_shipping_transit: { zh: '待补外销单号' },
-    ms_closing: { zh: '最终结案' },
-    ge_review: { zh: '财务审核' },
-    ge_closing: { zh: '财务结案' },
-    resolved: { zh: '已解决' },
-    closed: { zh: '已关闭' },
-    waiting_customer: { zh: '待反馈' },
+const nodeLabels: Record<string, { zh: string; en: string }> = {
+    draft: { zh: '草稿', en: 'Draft' },
+    handling: { zh: '处理中', en: 'Handling' },
+    awaiting_customer: { zh: '等待客户', en: 'Awaiting Customer' },
+    submitted: { zh: '已提交', en: 'Submitted' },
+    ms_review: { zh: '商务审核', en: 'MS Review' },
+    op_receiving: { zh: '待收货', en: 'Receiving' },
+    op_diagnosing: { zh: '诊断中', en: 'Diagnosing' },
+    op_repairing: { zh: '维修中', en: 'Repairing' },
+    op_qa: { zh: 'QA检测', en: 'QA Inspection' },
+    op_shipping: { zh: '打包发货', en: 'Shipping' },
+    op_shipping_transit: { zh: '待补外销单号', en: 'Transit Info' },
+    ms_closing: { zh: '最终结案', en: 'MS Closing' },
+    ge_review: { zh: '财务审核', en: 'Finance Review' },
+    ge_closing: { zh: '财务结案', en: 'Finance Closing' },
+    resolved: { zh: '已解决', en: 'Resolved' },
+    closed: { zh: '已关闭', en: 'Closed' },
+    auto_closed: { zh: '超时关闭', en: 'Auto Closed' },
+    converted: { zh: '已升级/转换', en: 'Converted' },
+    cancelled: { zh: '已废弃', en: 'Cancelled' },
+    waiting_customer: { zh: '待反馈', en: 'Awaiting Feedback' },
 };
 
 // Format date to minutes precision
@@ -164,6 +175,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [participants, setParticipants] = useState<any[]>([]);
     const [ticketAttachments, setTicketAttachments] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [lightboxMedia, setLightboxMedia] = useState<{ url: string, type: 'image' | 'video' } | null>(null);
     const [selectedActivity, setSelectedActivity] = useState<any | null>(null);
@@ -194,6 +206,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [isOpRepairReportEditorOpen, setIsOpRepairReportEditorOpen] = useState(false);
     const [isPIEditorOpen, setIsPIEditorOpen] = useState(false);
     const [isClosingHandoverOpen, setIsClosingHandoverOpen] = useState(false);
+    const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
+    const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+    const [autoCloseDate, setAutoCloseDate] = useState('');
+    const [nodeSlaHours, setNodeSlaHours] = useState(24);
     const [docsRefreshTrigger, setDocsRefreshTrigger] = useState(0);
     const [activePIInfo, setActivePIInfo] = useState<{ id?: number; number?: string } | null>(null);
     const [activeReportInfo, setActiveReportInfo] = useState<{ id?: number, number?: string } | null>(null);
@@ -201,11 +217,39 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [hasRepairReport, setHasRepairReport] = useState(false);
     const [piStatus, setPIStatus] = useState<string | null>(null);
     const [reportStatus, setReportStatus] = useState<string | null>(null);
+    const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
+    const [reopenReason, setReopenReason] = useState('');
+    const [reopenCountdown, setReopenCountdown] = useState(9);
+    const [isReopening, setIsReopening] = useState(false);
+    const [feedbackView, setFeedbackView] = useState<'options' | 'input' | 'resolve_input'>('options');
     
     // 关键节点编辑模式状态
     const [keyNodeEditMode, setKeyNodeEditMode] = useState<'op_receive' | 'op_shipping' | null>(null);
     const [keyNodeEditData, setKeyNodeEditData] = useState<Record<string, unknown> | null>(null);
     const [keyNodeEditActivityId, setKeyNodeEditActivityId] = useState<number | null>(null);
+
+    // 正规回复与代录反馈的受控状态
+    const [replyContent, setReplyContent] = useState('');
+    const [replyFiles, setReplyFiles] = useState<File[]>([]);
+    const [feedbackContent, setFeedbackContent] = useState('');
+    const [feedbackFiles, setFeedbackFiles] = useState<File[]>([]);
+
+    const renderFilePreviews = (files: File[], setFiles: React.Dispatch<React.SetStateAction<File[]>>) => {
+        if (files.length === 0) return null;
+        return (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                {files.map((file, i) => (
+                    <div key={i} style={{ position: 'relative', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Paperclip size={14} color="#888" />
+                        <span style={{ fontSize: 12, color: 'var(--text-main)', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+                        <div onClick={() => setFiles(files.filter((_, idx) => idx !== i))} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', marginLeft: 4 }}>
+                            <X size={14} color="#EF4444" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
 
     // Collapsible card states
     const [keyDeliverablesCollapsed, setKeyDeliverablesCollapsed] = useState(false);
@@ -223,7 +267,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [repairEditData, setRepairEditData] = useState<Record<string, unknown> | null>(null);
 
     // System settings for workflow control
-    const [systemSettings, setSystemSettings] = useState<{ require_finance_confirmation?: boolean }>({});
+    const [systemSettings, setSystemSettings] = useState<Record<string, any>>({});
 
     // PRD §7.1: 权限判断基于 acting user
     const actingDeptNorm = (actingUser.department_code || '').toUpperCase();
@@ -234,7 +278,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     // 当前节点 → 部门归属映射（用于判断哪个 Lead 能指派）
     const NODE_DEPT_MAP: Record<string, string> = {
         // MS 节点
-        draft: 'MS', submitted: 'MS', ms_review: 'MS', ms_closing: 'MS', waiting_customer: 'MS',
+        draft: 'MS', submitted: 'MS', ms_review: 'MS', ms_closing: 'MS', waiting_customer: 'MS', 
+        handling: 'MS', awaiting_customer: 'MS',
         // OP 节点
         op_receiving: 'OP', op_diagnosing: 'OP', op_repairing: 'OP', op_shipping: 'OP', op_shipping_transit: 'OP',
         // GE 节点
@@ -290,6 +335,19 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             refreshWarrantyCalc();
         }
     }, [ticket?.id, token]);
+
+    // 辅助函数：计算工作日 (跳过周末)
+    const addWorkingDays = (startDate: Date, days: number) => {
+        let result = new Date(startDate);
+        let addedDays = 0;
+        while (addedDays < days) {
+            result.setDate(result.getDate() + 1);
+            if (result.getDay() !== 0 && result.getDay() !== 6) {
+                addedDays++;
+            }
+        }
+        return result.toISOString().split('T')[0];
+    };
 
     // Function to refresh warranty calculation - can be called after warranty registration
     const refreshWarrantyCalc = useCallback(() => {
@@ -515,6 +573,28 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         >
                             <Trash2 size={14} /> 废弃/删除工单
                         </button>
+
+                        {/* 重新激活工单 (Inquiry Only) */}
+                        {ticket?.ticket_type?.toLowerCase() === 'inquiry' && ['resolved', 'closed', 'auto_closed'].includes(ticket?.current_node as string) && ((ticket as any)?.assigned_to === actingUser.id || hasPrivilege) && (
+                            <button
+                                onClick={() => {
+                                    setShowMoreMenu(false);
+                                    setIsReopenModalOpen(true);
+                                    setReopenCountdown(5);
+                                    setReopenReason('');
+                                }}
+                                style={{
+                                    width: '100%', padding: '8px 12px', borderTop: '1px solid var(--glass-border)', marginTop: 4,
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    background: 'transparent', border: 'none', color: 'var(--accent-blue)',
+                                    fontSize: 13, cursor: 'pointer', textAlign: 'left', borderRadius: 0
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,210,0,0.1)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                                <RefreshCcw size={14} /> 重新激活本工单
+                            </button>
+                        )}
                     </div>
                 </>
             )}
@@ -537,6 +617,14 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         return () => clearInterval(timer);
     }, [isAuditModalOpen, auditCountdown]);
 
+    useEffect(() => {
+        let timer: any;
+        if (isReopenModalOpen && reopenCountdown > 0) {
+            timer = setInterval(() => setReopenCountdown(prev => prev - 1), 1000);
+        }
+        return () => clearInterval(timer);
+    }, [isReopenModalOpen, reopenCountdown]);
+
     // 处理更正请求：打开对应的完整编辑器
     const handleCorrectionRequest = useCallback((request: CorrectionRequest) => {
         setPendingCorrectionRequest(request);
@@ -551,10 +639,34 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
             setDiagnosticEditMode(true);
             setDiagnosticEditData(request.metadata || null);
             setIsDiagnosticModalOpen(true);
+        } else if (request.activityType === 'ticket_creation' && ticket) {
+            // Jihua: 现在几乎直接用 drawer 修改工单的基本信息
+            setEditForm({
+                account_name: ticket.account_name,
+                contact_name: ticket.contact_name || ticket.reporter_name,
+                product_id: ticket.product_id,
+                serial_number: ticket.serial_number,
+                problem_description: ticket.problem_description,
+                dealer_id: ticket.dealer_id,
+                dealer_name: ticket.dealer_name,
+                ticket_type: ticket.ticket_type as any
+            });
+            setChangeReason(request.reason);
+            setIsEditing(true);
         }
-    }, []);
+    }, [ticket]);
 
     // 关键节点点击处理：打开对应的编辑器
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout>;
+        if (isReopenModalOpen && reopenCountdown > 0) {
+            timer = setTimeout(() => {
+                setReopenCountdown(prev => prev - 1);
+            }, 1000);
+        }
+        return () => clearTimeout(timer);
+    }, [isReopenModalOpen, reopenCountdown]);
+
     const handleKeyNodeClick = useCallback((nodeType: 'op_receive' | 'op_shipping' | 'ms_review' | 'ms_closing') => {
         switch (nodeType) {
             case 'op_receive': {
@@ -613,10 +725,17 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 axios.get(`/api/v1/rma-documents/repair-reports?ticket_id=${ticketId}`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => ({ data: { success: false } }))
             ]);
             if (res.data.success) {
+                const acts = res.data.activities || [];
+                const atts = res.data.attachments || [];
+                // 自动绑定附件列表至每一个活动下，打通详情显示
+                const activitiesWithAttachments = acts.map((act: any) => ({
+                    ...act,
+                    attachments: atts.filter((a: any) => a.activity_id === act.id)
+                }));
                 setTicket(res.data.data);
-                setActivities(res.data.activities || []);
+                setActivities(activitiesWithAttachments);
                 setParticipants(res.data.participants || []);
-                setTicketAttachments(res.data.attachments || []);
+                setTicketAttachments(atts);
             }
             if (settingsRes.data.success) {
                 setSystemSettings(settingsRes.data.data || {});
@@ -698,11 +817,22 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 
     useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
-    const handleAddComment = async (content: string, visibility: string, mentions: number[] = [], attachments: File[] = []) => {
+    const handleAddComment = async (content: string, visibility: string, mentions: number[] = [], attachments: File[] = [], activityType: string = 'comment') => {
         try {
+            let finalContent = content;
+            if (isDeptLead && !isAssignedToActingUser && ticket?.assigned_name) {
+                const proxyLabel = language === 'zh' ? `(主管代理 ${ticket.assigned_name} 执行)` : `(Acting for ${ticket.assigned_name})`;
+                if (content.includes('】')) {
+                    const lastBracket = content.lastIndexOf('】');
+                    finalContent = content.slice(0, lastBracket + 1) + ' ' + proxyLabel + ' ' + content.slice(lastBracket + 1);
+                } else {
+                    finalContent = proxyLabel + ' ' + content;
+                }
+            }
+
             const formData = new FormData();
-            formData.append('activity_type', 'comment');
-            formData.append('content', content);
+            formData.append('activity_type', activityType);
+            formData.append('content', finalContent);
             formData.append('visibility', visibility);
             formData.append('mentions', JSON.stringify(mentions));
 
@@ -831,6 +961,21 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         }
     };
 
+
+    const handleUpgrade = async (type: 'rma' | 'svc') => {
+        if (!window.confirm(`确认要将此咨询工单升级为 ${type.toUpperCase()} 工单吗？此操作不可逆。`)) return;
+        try {
+            const res = await axios.post(`/api/v1/tickets/${ticketId}/convert`, {
+                target_type: type
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            if (res.data.success) {
+                navigate(`/service/tickets/${res.data.data.new_ticket_id}`);
+            }
+        } catch (err: any) {
+            alert(err.response?.data?.error || err.message);
+        }
+    };
+
     /**
      * Handle Node Action (Transition)
      */
@@ -864,8 +1009,12 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 nextNode = 'ms_closing';
             }
         } else if (type === 'inquiry') {
-            if (ticket.current_node === 'open') nextNode = 'waiting';
-            else if (ticket.current_node === 'waiting') nextNode = 'open';
+            if (ticket.current_node === 'handling') nextNode = 'awaiting_customer';
+            else if (['awaiting_customer', 'resolved', 'closed', 'auto_closed'].includes(ticket.current_node)) {
+                if (action === 'resolve') nextNode = 'resolved';
+                else if (action === 'reopen' || action === 'continue') nextNode = 'handling';
+                else nextNode = 'awaiting_customer';
+            }
         }
 
         // Check if we need to open Buffer Modal instead of direct patch
@@ -888,15 +1037,36 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 
         try {
             setLoading(true);
+            const proxyReason = (isDeptLead && !isAssignedToActingUser) 
+                ? ` [主管代理执行] ${language === 'zh' ? `(代理自 ${ticket?.assigned_name || '未分配'})` : `(Acting for ${ticket?.assigned_name || 'Unassigned'})`}`
+                : '';
             await axios.patch(`/api/v1/tickets/${ticketId}`, {
                 current_node: nextNode,
-                change_reason: `执行主流程动作: ${action}`
+                change_reason: `执行主流程动作: ${action}${proxyReason}`
             }, { headers: { Authorization: `Bearer ${token}` } });
             fetchDetail();
         } catch (err: any) {
             alert(err.response?.data?.error || err.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleReopen = async () => {
+        if (!reopenReason.trim() || reopenReason.trim().length < 5) {
+            alert(language === 'zh' ? '请输入至少 5 个字符的重新激活理由' : 'Please enter at least 5 characters for re-opening reason.');
+            return;
+        }
+        try {
+            setIsReopening(true);
+            await handleAddComment(`${language === 'zh' ? '【重新激活工单】理由：' : '[Ticket Reopened] Reason: '} ${reopenReason}`, 'all', []);
+            await handleAction('reopen');
+            setIsReopenModalOpen(false);
+            setReopenReason('');
+        } catch (err: any) {
+            alert(err.response?.data?.error || err.message);
+        } finally {
+            setIsReopening(false);
         }
     };
 
@@ -978,45 +1148,29 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 </span>
 
                 {/* Context Status Badge: [ Node · Dept · Assignee / Claim ] */}
-                {/* Hide status badge when ticket is resolved/closed */}
-                {ticket.current_node !== 'resolved' && ticket.current_node !== 'closed' && ticket.current_node !== 'auto_closed' && (
+                {/* Hide status badge only for non-inquiry when resolved/closed. Inquiry shows static info. */}
+                {(!['resolved', 'closed', 'auto_closed', 'converted', 'cancelled'].includes(ticket?.current_node || '')) && (
                     <div style={{
                         display: 'flex', alignItems: 'center', gap: 6,
                         padding: '6px 14px', borderRadius: 10, fontSize: 14, fontWeight: 700,
                         background: 'rgba(255,215,0,0.15)', border: '1px solid rgba(255,215,0,0.3)',
-                        color: '#FFD700',
+                        color: 'var(--accent-yellow-dark, #B45309)',
                     }}>
                         <span>
-                            {(() => {
-                                const node = ticket.current_node;
-                                if (node === 'draft') return '草稿';
-                                if (node === 'submitted') return '待收货';
-                                if (node === 'ms_review') return '商务审核';
-                                if (node === 'op_receiving') return '待收货';
-                                if (node === 'op_diagnosing') return '诊断中';
-                                if (node === 'op_repairing') return '维修中';
-                                if (node === 'op_qa') return 'QA检测';
-                                if (node === 'op_shipping') return '打包发货';
-                                if (node === 'op_shipping_transit') return '待补外销单号';
-                                if (node === 'ms_closing') return '最终结案';
-                                if (node === 'ge_review') return '财务审核';
-                                if (node === 'ge_closing') return '财务结案';
-                                if (node === 'waiting_customer') return '待反馈';
-                                return node;
-                            })()}
+                            {nodeLabels[ticket.current_node]?.[lang === 'zh' ? 'zh' : 'en'] || nodeLabels[ticket.current_node]?.zh || ticket.current_node}
                         </span>
                         <span style={{ opacity: 0.4 }}>·</span>
                         <span>{(() => {
                             if (ticket.department_code) return ticket.department_code as string;
                             if (ticket.assigned_dept) return ticket.assigned_dept as string;
                             const n = String(ticket.current_node || '').toLowerCase();
-                            if (n.startsWith('ms_') || ['draft', 'open', 'waiting', 'waiting_customer'].includes(n)) return 'MS';
+                            if (n.startsWith('ms_') || ['draft', 'handling', 'awaiting_customer', 'open', 'waiting', 'waiting_customer'].includes(n)) return 'MS';
                             if (n.startsWith('op_') || ['submitted', 'shipped'].includes(n)) return 'OP';
                             if (n.startsWith('ge_')) return 'GE';
                             return '-';
                         })()}</span>
                         <span style={{ opacity: 0.4 }}>·</span>
-                        {canAssign ? (
+                        {canAssign && ticket?.ticket_type?.toLowerCase() !== 'inquiry' ? (
                             <div style={{ marginTop: '-1px' }}>
                                 <AssigneeSelector
                                     ticketId={ticket.id}
@@ -1029,7 +1183,14 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 />
                             </div>
                         ) : ticket.assigned_name ? (
-                            <span>{String(ticket.assigned_name)}</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span>{String(ticket.assigned_name)}</span>
+                                {ticket.assigned_dept && (
+                                    <span style={{ fontSize: 11, opacity: 0.6, padding: '0 4px', background: 'rgba(0,0,0,0.1)', borderRadius: 3, fontWeight: 500 }}>
+                                        {ticket.assigned_dept}
+                                    </span>
+                                )}
+                            </span>
                         ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                                 <span style={{ color: '#888' }}>未认领</span>
@@ -1353,14 +1514,14 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                                 <FileText size={14} />
-                                                问题概要
+                                                问题描述
                                                 {((ticket.problem_description?.length || 0) > 80 || (ticket.problem_summary?.length || 0) > 80) && (
                                                     <span style={{ color: '#FFD200', marginLeft: 4, textTransform: 'none', letterSpacing: 'normal' }}>· 已折叠部分</span>
                                                 )}
-                                                {/* 附件标志 */}
-                                                {(Number(ticket.attachments_count) > 0 || ticketAttachments.length > 0) && (
+                                                {/* 附件标志：仅计算没有 activity_id 的创单附件 */}
+                                                {ticketAttachments.filter((a: any) => !a.activity_id).length > 0 && (
                                                     <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#888', marginLeft: 4, textTransform: 'none', letterSpacing: 'normal' }}>
-                                                        · <Paperclip size={12} /> {String(Number(ticket.attachments_count) || ticketAttachments.length)}
+                                                        · <Paperclip size={12} /> {ticketAttachments.filter((a: any) => !a.activity_id).length}
                                                     </span>
                                                 )}
                                             </div>
@@ -1454,19 +1615,30 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             draft: '草稿', submitted: '已提交', ms_review: '商务审核',
                                             op_receiving: '待收货', op_diagnosing: '诊断中', op_repairing: '维修中',
                                             op_qa: 'QA检测', op_shipping: '打包发货', ms_closing: '待结案',
-                                            ge_review: '财务审核', ge_closing: '财务结案', resolved: '已解决',
-                                            closed: '已关闭', waiting_customer: '待反馈'
-                                        })[ticket.current_node] || ticket.current_node} · 对接人: {ticket.assigned_name || '未对接'}
+                                            ge_review: language === 'zh' ? '财务审核' : 'Finance Review', 
+                                            ge_closing: language === 'zh' ? '财务结案' : 'Finance Closed', 
+                                            resolved: language === 'zh' ? '已解决' : 'Resolved',
+                                            closed: language === 'zh' ? '已关闭' : 'Closed', 
+                                            waiting_customer: language === 'zh' ? '待客户反馈' : 'Awaiting Reply',
+                                            awaiting_customer: language === 'zh' ? '待客户反馈' : 'Awaiting Reply',
+                                            handling: language === 'zh' ? '处理中' : 'Handling',
+                                            auto_closed: language === 'zh' ? '超时结案' : 'Auto Closed'
+                                        })[ticket.current_node] || ticket.current_node} · {language === 'zh' ? '对接人' : 'Assignee'}: {ticket.assigned_name || (language === 'zh' ? '未对接' : 'Unassigned')}
+                                        {ticket.assigned_to && (
+                                            <span style={{ marginLeft: 6, fontSize: 12, opacity: 0.7, fontWeight: 400 }}>
+                                                ({`${participants.find(p => p.role === 'assignee')?.department_name || participants.find(p => p.role === 'assignee')?.department || '-'}`})
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </div>
 
                             {/* Right side: Primary Action */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                                {!isAssignedToActingUser && (isGlobalAdmin || isDeptLead) && (
-                                    <span style={{ fontSize: 12, color: '#888', fontStyle: 'italic' }}>
-                                        (作为主管代理执行)
-                                    </span>
+                                {isDeptLead && !isAssignedToActingUser && (
+                                    <div style={{ fontSize: 13, color: 'var(--text-tertiary)', fontStyle: 'italic', marginRight: -8 }}>
+                                        {language === 'zh' ? '(作为主管代理执行)' : '(Acting as Department Lead)'}
+                                    </div>
                                 )}
                                 <button
                                     onClick={() => {
@@ -1478,7 +1650,20 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             } else if (ticket.current_node === 'ms_closing') {
                                                 setIsClosingHandoverOpen(true);
                                             } else if (ticket.current_node === 'op_repairing') {
-                                                setIsOpRepairReportEditorOpen(true); // Changed to OpRepairReportEditor
+                                                setIsOpRepairReportEditorOpen(true);
+                                            } else if (ticket.ticket_type?.toLowerCase() === 'inquiry' && footerAction.action === 'reply_to_customer') {
+                                                if (!autoCloseDate) {
+                                                    const tType = ticket.ticket_type?.toLowerCase() || 'inquiry';
+                                                    const days = systemSettings?.[`${tType}_auto_close_days`] || (tType === 'inquiry' ? 5 : 7);
+                                                    const hours = systemSettings?.[`${tType}_sla_hours`] || 24;
+                                                    
+                                                    const defaultDate = addWorkingDays(new Date(), days);
+                                                    setAutoCloseDate(ticket.auto_close_at ? new Date(ticket.auto_close_at as any).toISOString().split('T')[0] : defaultDate);
+                                                    setNodeSlaHours(hours);
+                                                }
+                                                setIsReplyModalOpen(true);
+                                            } else if (ticket.ticket_type?.toLowerCase() === 'inquiry' && footerAction.action === 'process_feedback') {
+                                                setIsFeedbackModalOpen(true);
                                             } else {
                                                 handleAction(footerAction.action);
                                             }
@@ -1491,25 +1676,29 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         gap: 8,
                                         padding: '10px 24px',
                                         borderRadius: 10,
-                                        background: isAssignedToActingUser ? '#FFD200' : 'rgba(255,210,0,0.15)',
-                                        color: isAssignedToActingUser ? '#000' : '#FFD200',
-                                        border: isAssignedToActingUser ? 'none' : '1px solid rgba(255,210,0,0.4)',
+                                        background: footerAction?.action === 'reopen' 
+                                            ? 'transparent' 
+                                            : ((isAssignedToActingUser || isGlobalAdmin || isDeptLead) ? '#FFD200' : 'rgba(255,210,0,0.15)'),
+                                        color: footerAction?.action === 'reopen'
+                                            ? 'var(--text-tertiary)'
+                                            : ((isAssignedToActingUser || isGlobalAdmin || isDeptLead) ? '#000' : '#FFD200'),
+                                        border: footerAction?.action === 'reopen'
+                                            ? '1px solid var(--glass-border)'
+                                            : ((isAssignedToActingUser || isGlobalAdmin || isDeptLead) ? 'none' : '1px solid rgba(255,210,0,0.4)'),
                                         fontSize: 14,
-                                        fontWeight: 700,
+                                        fontWeight: footerAction?.action === 'reopen' ? 400 : 700,
                                         cursor: 'pointer',
                                         transition: 'all 0.2s',
-                                        boxShadow: isAssignedToActingUser ? '0 4px 15px rgba(255,215,0,0.25)' : 'none'
+                                        boxShadow: (footerAction?.action !== 'reopen' && (isAssignedToActingUser || isGlobalAdmin || isDeptLead)) ? '0 4px 15px rgba(255,215,0,0.25)' : 'none'
                                     }}
                                     onMouseEnter={e => {
                                         e.currentTarget.style.transform = 'translateY(-2px)';
-                                        if (isAssignedToActingUser) e.currentTarget.style.background = '#FFD200';
                                     }}
                                     onMouseLeave={e => {
                                         e.currentTarget.style.transform = 'none';
-                                        if (isAssignedToActingUser) e.currentTarget.style.background = '#FFD200';
                                     }}
                                 >
-                                    {loading ? <Loader2 className="animate-spin" size={18} /> : <ArrowRight size={18} />}
+                                    {loading ? <Loader2 className="animate-spin" size={18} /> : (footerAction?.action === 'reopen' ? <RefreshCcw size={18} /> : <ArrowRight size={18} />)}
                                     {footerAction ? (lang === 'zh' ? footerAction.label_zh : footerAction.label_en) : '未知操作'}
                                 </button>
                             </div>
@@ -1523,11 +1712,14 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         ticketId={ticketId}
                         participants={participants}
                         onUpdate={fetchDetail}
+                        isAdmin={isGlobalAdmin}
+                        isMsLead={isMsLead}
                     />
 
 
+
                     {/* Service Document Center - Consolidated Card (macOS26 Style) - Hidden for inquiry tickets */}
-                    {ticket.type !== 'inquiry' && (
+                    {ticket?.ticket_type?.toLowerCase() !== 'inquiry' && (
                     <div style={{
                         background: 'var(--glass-bg-light)',
                         borderRadius: '12px',
@@ -1554,7 +1746,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                             }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Wrench size={12} color="var(--text-main)" /> {language === 'zh' ? '关键交付内容' : 'Key Deliverables'}
+                                <Wrench size={12} color="var(--text-main)" /> {language === 'zh' ? '交付' : 'Deliverables'}
                             </div>
                             <ChevronRight
                                 size={16}
@@ -1635,10 +1827,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 const isEnabled = canGenerateDocuments || hasRepairReport;
                                 const isPublished = reportStatus === 'published' || reportStatus === 'approved';
                                 // 禁用时显示灰色，启用时显示黄色/绿色
-                                const btnBg = !isEnabled ? 'rgba(255,255,255,0.02)' : (isPublished ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 215, 0, 0.08)');
-                                const btnBorder = !isEnabled ? 'rgba(255,255,255,0.1)' : (isPublished ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 215, 0, 0.25)');
-                                const iconColor = !isEnabled ? '#666' : (isPublished ? '#10B981' : '#FFD700');
-                                const textColor = !isEnabled ? '#666' : (isPublished ? '#10B981' : '#FFD700');
+                                const btnBg = !isEnabled ? 'var(--glass-bg-light)' : (isPublished ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)');
+                                const btnBorder = !isEnabled ? 'var(--glass-border)' : (isPublished ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)');
+                                const iconColor = !isEnabled ? 'var(--text-tertiary)' : (isPublished ? '#10B981' : '#F59E0B');
+                                const textColor = !isEnabled ? 'var(--text-tertiary)' : (isPublished ? '#10B981' : '#F59E0B');
                                 return (
                                     <button
                                         disabled={!isEnabled}
@@ -1647,6 +1839,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         }}
                                         style={{
                                             display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px',
+                                            width: '100%',
                                             background: btnBg,
                                             border: `1px solid ${btnBorder}`,
                                             borderRadius: '8px',
@@ -1665,13 +1858,13 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             <span style={{
                                                 fontSize: '0.65rem', fontWeight: 600,
                                                 padding: '2px 6px', borderRadius: 4,
-                                                background: isPublished ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.1)',
-                                                color: isPublished ? '#10B981' : '#888'
+                                                background: isPublished ? 'rgba(16,185,129,0.15)' : 'var(--glass-bg-hover)',
+                                                color: isPublished ? '#10B981' : 'var(--text-tertiary)'
                                             }}>
                                                 {isPublished ? '已发布' : '草稿'}
                                             </span>
                                         ) : (
-                                            <span style={{ fontSize: '0.7rem', color: isEnabled ? '#FFD700' : '#666', opacity: 0.5 }}>{language === 'zh' ? '待处理' : 'Pending'}</span>
+                                            <span style={{ fontSize: '0.7rem', color: isEnabled ? '#F59E0B' : 'var(--text-tertiary)', opacity: 0.7 }}>{language === 'zh' ? '待处理' : 'Pending'}</span>
                                         )}
                                     </button>
                                 );
@@ -1684,10 +1877,10 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                 const isEnabled = canGenerateDocuments || hasPI;
                                 const isPublished = piStatus === 'published' || piStatus === 'approved';
                                 // 禁用时显示灰色，启用时显示黄色/绿色
-                                const btnBg = !isEnabled ? 'rgba(255,255,255,0.02)' : (isPublished ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 215, 0, 0.08)');
-                                const btnBorder = !isEnabled ? 'rgba(255,255,255,0.1)' : (isPublished ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 215, 0, 0.25)');
-                                const iconColor = !isEnabled ? '#666' : (isPublished ? '#10B981' : '#FFD700');
-                                const textColor = !isEnabled ? '#666' : (isPublished ? '#10B981' : '#FFD700');
+                                const btnBg = !isEnabled ? 'var(--glass-bg-light)' : (isPublished ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)');
+                                const btnBorder = !isEnabled ? 'var(--glass-border)' : (isPublished ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.35)');
+                                const iconColor = !isEnabled ? 'var(--text-tertiary)' : (isPublished ? '#10B981' : '#F59E0B');
+                                const textColor = !isEnabled ? 'var(--text-tertiary)' : (isPublished ? '#10B981' : '#F59E0B');
                                 return (
                                     <button
                                         disabled={!isEnabled}
@@ -1708,6 +1901,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         }}
                                         style={{
                                             display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px',
+                                            width: '100%',
                                             background: btnBg,
                                             border: `1px solid ${btnBorder}`,
                                             borderRadius: '8px',
@@ -1726,13 +1920,13 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                             <span style={{
                                                 fontSize: '0.65rem', fontWeight: 600,
                                                 padding: '2px 6px', borderRadius: 4,
-                                                background: isPublished ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.1)',
-                                                color: isPublished ? '#10B981' : '#888'
+                                                background: isPublished ? 'rgba(16,185,129,0.15)' : 'var(--glass-bg-hover)',
+                                                color: isPublished ? '#10B981' : 'var(--text-tertiary)'
                                             }}>
                                                 {isPublished ? '已发布' : '草稿'}
                                             </span>
                                         ) : (
-                                            <span style={{ fontSize: '0.7rem', color: isEnabled ? '#FFD700' : '#666', opacity: 0.5 }}>{language === 'zh' ? '待处理' : 'Pending'}</span>
+                                            <span style={{ fontSize: '0.7rem', color: isEnabled ? '#F59E0B' : 'var(--text-tertiary)', opacity: 0.7 }}>{language === 'zh' ? '待处理' : 'Pending'}</span>
                                         )}
                                     </button>
                                 );
@@ -1827,17 +2021,28 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     </div>
                                 )}
 
-                                {/* ---- 分组 2: 客户信息 ---- */}
                                 <div>
                                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>客户信息</div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                                         <div>
                                             <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>客户名称</label>
-                                            <input
-                                                value={editForm.account_name as string || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, account_name: e.target.value }))}
-                                                style={{ width: '100%', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 6, fontSize: 13 }}
-                                                placeholder="客户名称"
+                                            <CRMLookup 
+                                                currentAccountId={editForm.account_id as number || undefined}
+                                                onSelect={(acc: any) => {
+                                                    if (acc) {
+                                                        setEditForm(prev => ({ 
+                                                            ...prev, 
+                                                            account_id: acc.id,
+                                                            account_name: acc.name,
+                                                            // 根据主联系人自动联想（如果未填写）
+                                                            contact_name: prev.contact_name || acc.primary_contact_name || undefined
+                                                        }));
+                                                    } else {
+                                                        setEditForm(prev => ({ ...prev, account_id: undefined, account_name: undefined }));
+                                                    }
+                                                }}
+                                                placeholder={ticket.account_name}
+                                                style={{ height: 'auto' }}
                                             />
                                         </div>
                                         <div>
@@ -1851,11 +2056,17 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         </div>
                                         <div>
                                             <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>经销商</label>
-                                            <input
-                                                value={editForm.dealer_name as string || ''}
-                                                onChange={e => setEditForm(prev => ({ ...prev, dealer_name: e.target.value }))}
-                                                style={{ width: '100%', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 6, fontSize: 13 }}
-                                                placeholder="经销商名称"
+                                            <CRMLookup 
+                                                currentAccountId={editForm.dealer_id as number || undefined}
+                                                onSelect={(acc: any) => {
+                                                    if (acc) {
+                                                        setEditForm(prev => ({ ...prev, dealer_id: acc.id, dealer_name: acc.name }));
+                                                    } else {
+                                                        setEditForm(prev => ({ ...prev, dealer_id: undefined, dealer_name: undefined }));
+                                                    }
+                                                }}
+                                                placeholder={ticket.dealer_name || "搜索并选择经销商..."}
+                                                style={{ height: 'auto' }}
                                             />
                                         </div>
                                     </div>
@@ -1913,11 +2124,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     <div style={{ fontSize: 11, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>附件管理</div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                                         {/* 当前附件列表 */}
-                                        {ticketAttachments.length > 0 && (
+                                        {ticketAttachments.filter(a => !a.activity_id).length > 0 && (
                                             <div>
                                                 <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>当前附件</label>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                    {ticketAttachments.map(att => (
+                                                    {ticketAttachments.filter(att => !att.activity_id).map(att => (
                                                         <div
                                                             key={att.id}
                                                             style={{
@@ -2205,60 +2416,63 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                         </div>
                                     </div>
                                 )}
-                                {(Number(ticket.attachments_count || 0) > 0 || ticketAttachments.length > 0) && (
+                                {(ticketAttachments.filter(a => !a.activity_id || activities.some(act => act.id === a.activity_id && act.activity_type === 'system_event' && (act.metadata as any)?.event_type === 'creation')).length > 0) && (
                                     <div>
                                         <h4 style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, borderBottom: '1px solid var(--glass-border)', paddingBottom: 6 }}>附件文件</h4>
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
-                                            {ticketAttachments.map(att => (
-                                                <a
-                                                    key={att.id}
-                                                    href={att.file_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    style={{
-                                                        padding: '10px 12px',
-                                                        background: 'rgba(255,255,255,0.03)',
-                                                        border: '1px solid rgba(255,255,255,0.08)',
-                                                        borderRadius: 8,
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 10,
-                                                        textDecoration: 'none',
-                                                        transition: 'all 0.2s'
-                                                    }}
-                                                    onMouseEnter={e => {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                                                    }}
-                                                    onMouseLeave={e => {
-                                                        e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                                    }}
-                                                    onClick={(e) => {
-                                                        if (att.file_type.startsWith('image/')) {
-                                                            e.preventDefault();
-                                                            const isHeic = att.file_name?.toLowerCase().endsWith('.heic') || att.file_name?.toLowerCase().endsWith('.heif');
-                                                            // For HEIC images, use thumbnail API preview mode (converts to WebP for Chrome compatibility)
-                                                            const mediaUrl = isHeic 
-                                                                ? `/api/v1/system/attachments/${att.id}/thumbnail?size=preview` + (token ? `&token=${token}` : '')
-                                                                : att.file_url + '?inline=true' + (token ? `&token=${token}` : '');
-                                                            setLightboxMedia({ url: mediaUrl, type: att.file_type?.startsWith('video/') ? 'video' : 'image' });
-                                                        }
-                                                    }}
-                                                >
-                                                    <div style={{ width: 32, height: 32, borderRadius: 4, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                        {att.thumbnail_url ? (
-                                                            <img src={att.thumbnail_url + (token ? `?token=${token}` : '')} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 4 }} alt="" />
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
+                                            {ticketAttachments.filter(a => !a.activity_id || activities.some(act => act.id === a.activity_id && act.activity_type === 'system_event' && (act.metadata as any)?.event_type === 'creation')).map(att => {
+                                                const isImage = att.file_type?.startsWith('image/');
+                                                const isHeic = att.file_name?.toLowerCase().endsWith('.heic') || att.file_name?.toLowerCase().endsWith('.heif');
+                                                const mediaUrl = (isImage && isHeic) 
+                                                    ? `/api/v1/system/attachments/${att.id}/thumbnail?size=preview` + (token ? `&token=${token}` : '')
+                                                    : att.file_url + '?inline=true' + (token ? `&token=${token}` : '');
+                                                const thumbUrl = (att.thumbnail_url || att.file_url) + (token ? `?token=${token}` : '');
+
+                                                return (
+                                                    <div key={att.id}
+                                                        onClick={() => isImage ? setLightboxMedia({ url: mediaUrl, type: 'image' }) : window.open(mediaUrl)}
+                                                        style={{
+                                                            padding: isImage ? 0 : '10px 12px',
+                                                            background: 'rgba(255,255,255,0.03)',
+                                                            border: '1px solid rgba(255,255,255,0.08)',
+                                                            borderRadius: 8,
+                                                            display: 'flex',
+                                                            flexDirection: isImage ? 'column' : 'row',
+                                                            alignItems: isImage ? 'stretch' : 'center',
+                                                            gap: isImage ? 0 : 10,
+                                                            textDecoration: 'none',
+                                                            transition: 'all 0.2s',
+                                                            cursor: 'pointer',
+                                                            overflow: 'hidden',
+                                                            aspectRatio: isImage ? '4/3' : 'auto'
+                                                        }}
+                                                        onMouseEnter={e => {
+                                                            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                                                        }}
+                                                        onMouseLeave={e => {
+                                                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                        }}
+                                                    >
+                                                        {isImage ? (
+                                                            <div style={{ width: '100%', height: '100%', position: 'relative', background: '#222' }}>
+                                                                <img src={thumbUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                                                            </div>
                                                         ) : (
-                                                            <Paperclip size={16} color="#888" />
+                                                            <>
+                                                                <div style={{ width: 32, height: 32, borderRadius: 4, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                                    <Paperclip size={16} color="#888" />
+                                                                </div>
+                                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                                    <div style={{ fontSize: 13, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.file_name}</div>
+                                                                    <div style={{ fontSize: 10, color: '#666' }}>{(att.file_size / 1024).toFixed(1)} KB</div>
+                                                                </div>
+                                                            </>
                                                         )}
                                                     </div>
-                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <div style={{ fontSize: 13, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.file_name}</div>
-                                                        <div style={{ fontSize: 10, color: '#666' }}>{(att.file_size / 1024).toFixed(1)} KB</div>
-                                                    </div>
-                                                </a>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -2537,20 +2751,20 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         />
 
             {showCalculationModal && warrantyCalc && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ background: '#1c1c1e', borderRadius: 16, border: '1px solid rgba(255,255,255,0.1)', width: 500, overflow: 'hidden', boxShadow: '0 30px 60px rgba(0,0,0,0.6)' }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: 'var(--modal-bg, #1c1c1e)', borderRadius: 20, border: '1px solid var(--glass-border)', width: 500, overflow: 'hidden', boxShadow: 'var(--glass-shadow-lg, 0 30px 60px rgba(0,0,0,0.6))' }}>
                         {/* Header */}
-                        <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
+                        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--glass-bg-light)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255, 210, 0, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <Calculator size={20} color="#FFD200" />
                                 </div>
                                 <div>
-                                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>产品保修计算引擎</h3>
-                                    <p style={{ margin: 0, fontSize: 12, color: '#888', marginTop: 4 }}>序列号：{ticket?.serial_number || '-'}</p>
+                                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-main)' }}>产品保修计算引擎</h3>
+                                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>序列号：{ticket?.serial_number || '-'}</p>
                                 </div>
                             </div>
-                            <button onClick={() => setShowCalculationModal(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>
+                            <button onClick={() => setShowCalculationModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
                                 <X size={24} />
                             </button>
                         </div>
@@ -2559,8 +2773,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
                             {/* Rules Section */}
                             <div style={{ padding: '0 4px' }}>
-                                <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: '#aaa', fontWeight: 600 }}>保修计算说明</h4>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: '#888' }}>
+                                <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--text-secondary)', fontWeight: 600 }}>保修计算说明</h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--text-tertiary)' }}>
                                     {[
                                         { p: 1, basis: 'IOT_ACTIVATION', label: 'IoT', detail: '若 activation_date 存在，以此为准' },
                                         { p: 2, basis: 'INVOICE_PROOF', label: '人工', detail: '若 sales_invoice_date 存在（有发票），以此为准' },
@@ -2575,17 +2789,17 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                 alignItems: 'flex-start',
                                                 gap: 8,
                                                 padding: '8px 12px',
-                                                background: isActive ? 'rgba(255, 210, 0, 0.1)' : 'transparent',
+                                                background: isActive ? 'rgba(255, 210, 0, 0.1)' : 'var(--glass-bg-light)',
                                                 borderRadius: 8,
-                                                border: isActive ? '1px solid rgba(255, 210, 0, 0.3)' : '1px solid transparent'
+                                                border: isActive ? '1px solid rgba(255, 210, 0, 0.3)' : '1px solid var(--glass-border)'
                                             }}>
                                                 <span style={{ color: '#FFD200', fontWeight: 700, whiteSpace: 'nowrap' }}>{rule.p}.</span>
                                                 <div>
-                                                    <span style={{ color: isActive ? '#FFD200' : '#ccc', fontWeight: 600, marginRight: 4 }}>
+                                                    <span style={{ color: isActive ? '#FFD200' : 'var(--text-main)', fontWeight: 600, marginRight: 4 }}>
                                                         优先级 {rule.p} ({rule.label}):
                                                         {isActive && <span style={{ marginLeft: 8, fontSize: '0.75rem', padding: '2px 6px', background: '#FFD200', color: '#000', borderRadius: 4 }}>当前采用</span>}
                                                     </span>
-                                                    <div style={{ marginTop: 2 }}>{rule.detail}</div>
+                                                    <div style={{ marginTop: 2, color: 'var(--text-secondary)' }}>{rule.detail}</div>
                                                 </div>
                                             </div>
                                         );
@@ -2621,7 +2835,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                 {
                                                     'iot_activation': 'IoT激活日期',
                                                     'invoice': '销售发票日期',
-                                                    'registration': '官网注册日期',
+                                                    'registration': '人工注册日期',
                                                     'direct_ship': '直销发货日期+7天',
                                                     'dealer_fallback': '经销商发货日期+90天',
                                                     'damage_void': '人为损坏（保修失效）',
@@ -2739,6 +2953,405 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         }
                     }}
                 />
+            )}
+            {/* 1. Reply Modal (Handling Node) */}
+            {isReplyModalOpen && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
+                    <div style={{ width: 620, background: 'var(--modal-bg)', borderRadius: 16, border: '1px solid var(--glass-border)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
+                        {/* Header */}
+                        <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(59,130,246,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <MessageSquare size={18} color="var(--accent-blue)" />
+                                </div>
+                                <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-main)' }}>{language === 'zh' ? '回复客户并等待反馈' : 'Reply & Wait'}</span>
+                            </div>
+                            <div onClick={() => setIsReplyModalOpen(false)} style={{ width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'var(--glass-bg-light)' }}>
+                                <X size={18} color="var(--text-secondary)" />
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div style={{ padding: '24px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <textarea 
+                                    value={replyContent}
+                                    onChange={e => setReplyContent(e.target.value)}
+                                    placeholder={language === 'zh' ? '请输入正式回复客户的内容...' : 'Enter formal reply...'}
+                                    style={{ 
+                                        width: '100%', minHeight: 140, 
+                                        background: 'var(--card-bg-light)', border: '1px solid var(--glass-border)', 
+                                        borderRadius: 12, padding: '12px 16px', color: 'var(--text-main)', 
+                                        fontSize: 14, resize: 'vertical', outline: 'none', lineHeight: 1.5
+                                    }}
+                                />
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+                                        <Paperclip size={16} color="var(--text-secondary)" />
+                                        <span>{language === 'zh' ? '添加附件' : 'Add Attachment'}</span>
+                                        <input 
+                                            type="file" 
+                                            multiple 
+                                            onChange={e => e.target.files && setReplyFiles([...replyFiles, ...Array.from(e.target.files)])} 
+                                            style={{ display: 'none' }} 
+                                        />
+                                    </label>
+                                    <button 
+                                        onClick={async () => {
+                                            if (!replyContent.trim() && replyFiles.length === 0) return;
+                                            try {
+                                                setIsSubmitting(true);
+                                                // 添加前缀以在前端识别为重要节点，同时使用 'comment' 绕过 SQLite Constraint
+                                                const prefix = language === 'zh' ? '【正式回复】' : '[Official Reply] ';
+                                                const fullContent = replyContent.startsWith('【正式回复】') || replyContent.startsWith('[Official Reply]') 
+                                                    ? replyContent 
+                                                    : `${prefix}${replyContent}`;
+                                                    
+                                                await handleAddComment(fullContent, 'all', [], replyFiles, 'comment');
+                                                if (autoCloseDate) {
+                                                    await axios.patch(`/api/v1/tickets/${ticketId}/auto-close`, {
+                                                        auto_close_at: new Date(autoCloseDate).toISOString(),
+                                                        reason: language === 'zh' ? '回复并顺延' : 'Reply & Postpone',
+                                                        node_sla_hours: nodeSlaHours
+                                                    }, { headers: { Authorization: `Bearer ${token}` } });
+                                                }
+                                                await handleAction('reply_to_customer');
+                                                setReplyContent('');
+                                                setReplyFiles([]);
+                                                setIsReplyModalOpen(false);
+                                            } catch (err: any) {
+                                                alert(err.message || '回复失败');
+                                            } finally {
+                                                setIsSubmitting(false);
+                                            }
+                                        }}
+                                        disabled={isSubmitting || (!replyContent.trim() && replyFiles.length === 0)}
+                                        style={{ 
+                                            padding: '10px 24px', borderRadius: 8, 
+                                            background: 'var(--accent-blue)', color: '#fff', 
+                                            fontSize: 14, fontWeight: 600, border: 'none', 
+                                            cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                                            opacity: (isSubmitting || (!replyContent.trim() && replyFiles.length === 0)) ? 0.6 : 1
+                                        }}
+                                    >
+                                        {isSubmitting ? (language === 'zh' ? '提交中...' : 'Submitting...') : (language === 'zh' ? '确认输出回复' : 'Confirm')}
+                                    </button>
+                                </div>
+                                {renderFilePreviews(replyFiles, setReplyFiles)}
+                            </div>
+
+                             {/* Auto Close & SLA Config 下沉展示 */}
+                             {systemSettings?.[`${ticket?.ticket_type?.toLowerCase()}_sla_enabled`] !== false && (
+                                <div style={{ 
+                                    padding: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: 12,
+                                    display: 'flex', flexDirection: 'column', gap: 12
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <Clock size={14} color="#FFD200" />
+                                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-main)' }}>{language === 'zh' ? '时效管理设置' : 'SLA & Auto-close'}</span>
+                                        </div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                                            {language === 'zh' ? '规则：客户未回复则结案' : 'Rule: Auto-close if no customer reply'}
+                                        </div>
+                                    </div>
+                                    
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{language === 'zh' ? '预设结案日期' : 'Auto-close Date'}</label>
+                                            <input 
+                                                type="date" 
+                                                value={autoCloseDate} 
+                                                onChange={(e) => setAutoCloseDate(e.target.value)}
+                                                style={{ background: 'var(--card-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-main)', fontSize: 13 }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{language === 'zh' ? '节点处理时限 (小时)' : 'Node SLA (Hours)'}</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <input 
+                                                    type="number" 
+                                                    min={1}
+                                                    max={120}
+                                                    value={nodeSlaHours} 
+                                                    onChange={(e) => setNodeSlaHours(parseInt(e.target.value))}
+                                                    style={{ flex: 1, background: 'var(--card-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-main)', fontSize: 13 }}
+                                                />
+                                                <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>h</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic', background: 'rgba(255,210,0,0.05)', padding: '6px 10px', borderRadius: 4 }}>
+                                        {language === 'zh' 
+                                            ? `注：默认结案期为 ${systemSettings?.[`${ticket?.ticket_type?.toLowerCase()}_auto_close_days`] || (ticket?.ticket_type?.toLowerCase() === 'inquiry' ? 5 : 7)} 个工作日；节点时限 ${systemSettings?.[`${ticket?.ticket_type?.toLowerCase()}_sla_hours`] || 24} 小时。` 
+                                            : `Note: Default ${systemSettings?.[`${ticket?.ticket_type?.toLowerCase()}_auto_close_days`] || (ticket?.ticket_type?.toLowerCase() === 'inquiry' ? 5 : 7)} working days for auto-close; ${systemSettings?.[`${ticket?.ticket_type?.toLowerCase()}_sla_hours`] || 24}h for node SLA.`}
+                                    </div>
+                                </div>
+                             )}
+                        </div>
+
+                        {/* Footer / Upgrade Shortcut */}
+                        <div style={{ padding: '16px 24px', background: 'rgba(0,0,0,0.1)', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: 0.8 }}>
+                                <AlertTriangle size={12} color="var(--text-tertiary)" />
+                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{language === 'zh' ? '发现是硬件故障？' : 'Hardware issue?'}</span>
+                                <button 
+                                    onClick={() => {
+                                        setIsReplyModalOpen(false);
+                                        handleUpgrade('rma');
+                                    }}
+                                    style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                >
+                                    {language === 'zh' ? '直接升级为 RMA' : 'Upgrade to RMA'}
+                                </button>
+                            </div>
+                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Cmd + Enter {language === 'zh' ? '快速提交' : 'to Submit'}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 2. Process Feedback Modal (Awaiting Customer Node) */}
+            {isFeedbackModalOpen && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
+                    <div style={{ width: 500, background: 'var(--modal-bg)', borderRadius: 16, border: '1px solid var(--glass-border)', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+                        <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-main)' }}>
+                                {feedbackView === 'options' ? (language === 'zh' ? '处理客户反馈' : 'Process Feedback') : 
+                                 feedbackView === 'resolve_input' ? (language === 'zh' ? '确认解决并归档建议' : 'Confirm Resolution') : 
+                                 (language === 'zh' ? '代录客户反馈' : 'Log Feedback')}
+                            </span>
+                            <div onClick={() => { setIsFeedbackModalOpen(false); setFeedbackView('options'); }} style={{ width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'var(--glass-bg-light)' }}>
+                                <X size={18} color="var(--text-secondary)" />
+                            </div>
+                        </div>
+
+                        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            {feedbackView === 'options' ? (<>
+                                {/* Option 1: Resolved */}
+                                <button 
+                                    onClick={() => setFeedbackView('resolve_input')}
+                                    style={{ 
+                                        padding: '16px', borderRadius: 12, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', 
+                                        display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s', width: '100%'
+                                    }}
+                                >
+                                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <CheckCircle size={24} color="#fff" />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-main)' }}>{language === 'zh' ? '确认解决 (申请结案)' : 'Resolved'}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{language === 'zh' ? '客户反馈良好，问题已彻底搞定' : 'Issue solved completely'}</div>
+                                    </div>
+                                    <ChevronRight size={18} color="var(--text-tertiary)" />
+                                </button>
+
+                                {/* Option 2: Continuing (Megaphone Mode) */}
+                                <button 
+                                    onClick={() => setFeedbackView('input')}
+                                    style={{ 
+                                        padding: '16px', borderRadius: 12, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', 
+                                        display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s', width: '100%'
+                                    }}
+                                >
+                                    <div style={{ width: 40, height: 40, borderRadius: 10, background: '#3B82F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <Zap size={20} color="#fff" />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-main)' }}>{language === 'zh' ? '未解决 (继续乒乓)' : 'Still Processing'}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 2 }}>{language === 'zh' ? '客户仍有疑问，代录其反馈并继续' : 'Log customer feedback & continue'}</div>
+                                    </div>
+                                    <ChevronRight size={18} color="var(--text-tertiary)" />
+                                </button>
+                            </>) : feedbackView === 'resolve_input' ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                        {language === 'zh' ? '确认已经解决？您可以代录任何心得或客户的建议：' : 'Confirmed Solved? Log resolution details or suggestions:'}
+                                    </div>
+                                    <textarea 
+                                        value={feedbackContent}
+                                        onChange={e => setFeedbackContent(e.target.value)}
+                                        placeholder={language === 'zh' ? '请输入内容... (可选，若为空则记为确认解决)' : 'Enter details... (Optional)'}
+                                        style={{ 
+                                            width: '100%', minHeight: 120, 
+                                            background: 'var(--card-bg-light)', border: '1px solid var(--glass-border)', 
+                                            borderRadius: 12, padding: '12px 16px', color: 'var(--text-main)', 
+                                            fontSize: 14, resize: 'vertical', outline: 'none', lineHeight: 1.5
+                                        }}
+                                    />
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+                                            <Paperclip size={16} color="var(--text-secondary)" />
+                                            <span>{language === 'zh' ? '添加附件' : 'Add Attachment'}</span>
+                                            <input 
+                                                type="file" 
+                                                multiple 
+                                                onChange={e => e.target.files && setFeedbackFiles([...feedbackFiles, ...Array.from(e.target.files)])} 
+                                                style={{ display: 'none' }} 
+                                            />
+                                        </label>
+                                        <button 
+                                            onClick={async () => {
+                                                try {
+                                                    setIsSubmitting(true);
+                                                    const text = feedbackContent.trim() || (language === 'zh' ? '问题已解决' : 'Issue resolved.');
+                                                    // 标注：确认解决往往包含客户心声，自动打上【客户反馈】标签
+                                                    await handleAddComment(`${language === 'zh' ? '【确认解决】【客户反馈】' : '[Resolved][Customer Feedback]'} ${text}`, 'all', [], feedbackFiles, 'comment');
+                                                    await handleAction('resolve');
+                                                    setFeedbackContent('');
+                                                    setFeedbackFiles([]);
+                                                    setIsFeedbackModalOpen(false);
+                                                    setFeedbackView('options');
+                                                } catch (err: any) {
+                                                    alert(err.message || '记录失败');
+                                                } finally {
+                                                    setIsSubmitting(false);
+                                                }
+                                            }}
+                                            disabled={isSubmitting}
+                                            style={{ 
+                                                padding: '10px 24px', borderRadius: 8, 
+                                                background: 'rgba(34,197,94,0.9)', color: '#fff', 
+                                                fontSize: 14, fontWeight: 600, border: 'none', 
+                                                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                                                opacity: isSubmitting ? 0.6 : 1
+                                            }}
+                                        >
+                                            {isSubmitting ? (language === 'zh' ? '处理中...' : 'Processing...') : (language === 'zh' ? '确认解决' : 'Confirm')}
+                                        </button>
+                                    </div>
+                                    {renderFilePreviews(feedbackFiles, setFeedbackFiles)}
+                                    <div style={{ display: 'flex', gap: 8, marginTop: -4 }}>
+                                        <button onClick={() => { setFeedbackView('options'); }} style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13 }}>
+                                            {language === 'zh' ? '返回' : 'Back'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                        {language === 'zh' ? '代录客户通过电话/微信等反馈的内容：' : 'Log customer feedback from external channels:'}
+                                    </div>
+                                    <textarea 
+                                        value={feedbackContent}
+                                        onChange={e => setFeedbackContent(e.target.value)}
+                                        placeholder={language === 'zh' ? '请输入反馈内容...' : 'Enter feedback...'}
+                                        style={{ 
+                                            width: '100%', minHeight: 120, 
+                                            background: 'var(--card-bg-light)', border: '1px solid var(--glass-border)', 
+                                            borderRadius: 12, padding: '12px 16px', color: 'var(--text-main)', 
+                                            fontSize: 14, resize: 'vertical', outline: 'none', lineHeight: 1.5
+                                        }}
+                                    />
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+                                            <Paperclip size={16} color="var(--text-secondary)" />
+                                            <span>{language === 'zh' ? '添加附件' : 'Add Attachment'}</span>
+                                            <input 
+                                                type="file" 
+                                                multiple 
+                                                onChange={e => e.target.files && setFeedbackFiles([...feedbackFiles, ...Array.from(e.target.files)])} 
+                                                style={{ display: 'none' }} 
+                                            />
+                                        </label>
+                                        <button 
+                                            onClick={async () => {
+                                                if (!feedbackContent.trim() && feedbackFiles.length === 0) return;
+                                                try {
+                                                    setIsSubmitting(true);
+                                                    const prefix = language === 'zh' ? '【客户反馈】(由 ' : '[Customer Feedback] (via ';
+                                                    const actingName = (actingUser as any).name || (actingUser as any).username || 'MS';
+                                                    const suffix = language === 'zh' ? ' 代录)：' : '): ';
+                                                    const fullContent = `${prefix}${actingName}${suffix} ${feedbackContent}`;
+                                                    
+                                                    await handleAddComment(fullContent, 'all', [], feedbackFiles, 'comment');
+                                                    await handleAction('continue');
+                                                    setFeedbackContent('');
+                                                    setFeedbackFiles([]);
+                                                    setIsFeedbackModalOpen(false);
+                                                    setFeedbackView('options');
+                                                } catch (err: any) {
+                                                    alert(err.message || '反馈记录失败');
+                                                } finally {
+                                                    setIsSubmitting(false);
+                                                }
+                                            }}
+                                            disabled={isSubmitting || (!feedbackContent.trim() && feedbackFiles.length === 0)}
+                                            style={{ 
+                                                padding: '10px 24px', borderRadius: 8, 
+                                                background: 'var(--accent-blue)', color: '#fff', 
+                                                fontSize: 14, fontWeight: 600, border: 'none', 
+                                                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                                                opacity: (isSubmitting || (!feedbackContent.trim() && feedbackFiles.length === 0)) ? 0.6 : 1
+                                            }}
+                                        >
+                                            {isSubmitting ? (language === 'zh' ? '提交中...' : 'Submitting...') : (language === 'zh' ? '提交反馈' : 'Submit')}
+                                        </button>
+                                    </div>
+                                    {renderFilePreviews(feedbackFiles, setFeedbackFiles)}
+                                    <div style={{ display: 'flex', gap: 8, marginTop: -4 }}>
+                                        <button onClick={() => { setFeedbackView('options'); }} style={{ flex: 1, padding: '10px', borderRadius: 8, background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13 }}>
+                                            {language === 'zh' ? '返回' : 'Back'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Reopen Confirm Modal (High Security) */}
+            {isReopenModalOpen && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)' }}>
+                    <div style={{ width: 450, background: 'var(--modal-bg)', borderRadius: 20, border: '2px solid #EF4444', boxShadow: '0 0 50px rgba(239, 68, 68, 0.3)', overflow: 'hidden', animation: 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both' }}>
+                        <div style={{ padding: '24px', textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', borderBottom: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                            <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#EF4444', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                                <AlertTriangle size={32} />
+                            </div>
+                            <h3 style={{ margin: 0, fontSize: 18, color: '#EF4444', fontWeight: 800 }}>{language === 'zh' ? '重新激活工单' : 'Reopen Ticket'}</h3>
+                        </div>
+                        
+                        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, textAlign: 'center' }}>
+                                {language === 'zh' ? '您正在尝试重新打开一个已经终结的咨询工单。此操作将使工单返回“处理中”节点，请务必输入充分的理由。' : 'You are attempting to reopen a finalized ticket. This will move the ticket back to Handling. Please provide a reason.'}
+                            </p>
+                            
+                            <textarea
+                                value={reopenReason}
+                                onChange={e => setReopenReason(e.target.value)}
+                                placeholder={language === 'zh' ? '请输入重新激活的理由 (至少 5 个字符)...' : 'Reason for reopening (min 5 chars)...'}
+                                style={{ width: '100%', minHeight: 80, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 12, padding: 12, color: 'var(--text-main)', fontSize: 13, outline: 'none', resize: 'none' }}
+                            />
+                            
+                            <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                                <button onClick={() => setIsReopenModalOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: 10, background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer' }}>
+                                    {language === 'zh' ? '取消' : 'Cancel'}
+                                </button>
+                                <button 
+                                    disabled={reopenCountdown > 0 || !reopenReason.trim() || reopenReason.trim().length < 5 || isReopening}
+                                    onClick={handleReopen}
+                                    style={{ 
+                                        flex: 2, padding: '12px', borderRadius: 10, border: 'none', 
+                                        background: (reopenCountdown > 0 || reopenReason.trim().length < 5) ? 'var(--text-tertiary)' : '#EF4444', 
+                                        color: '#fff', fontWeight: 800, cursor: (reopenCountdown > 0 || reopenReason.trim().length < 5) ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.3s'
+                                    }}
+                                >
+                                    {isReopening ? '...' : (reopenCountdown > 0 ? `${language === 'zh' ? '强制等待' : 'Hold'} (${reopenCountdown}s)` : (language === 'zh' ? '确认重新激活' : 'Confirm Reopen'))}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <style>{`
+                        @keyframes shake {
+                            10%, 90% { transform: translate3d(-1px, 0, 0); }
+                            20%, 80% { transform: translate3d(2px, 0, 0); }
+                            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+                            40%, 60% { transform: translate3d(4px, 0, 0); }
+                        }
+                    `}</style>
+                </div>
             )}
 
         </div >

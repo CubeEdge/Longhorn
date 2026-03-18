@@ -36,6 +36,7 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
         shipping_combine_ref: '', // 合单参考号
         handover_notes: ''
     });
+    const [isCustomerFeedback, setIsCustomerFeedback] = useState(false);
 
     const [docsStatus, setDocsStatus] = useState<{
         reportPublished: boolean;
@@ -128,8 +129,12 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
         setLoading(true);
         try {
             // 构建 PATCH 数据
+            const prefix = isCustomerFeedback ? '【客户反馈】' : '';
             const patchData: any = {
-                final_settlement: JSON.stringify(formData)
+                final_settlement: JSON.stringify({
+                    ...formData,
+                    handover_notes: prefix + formData.handover_notes
+                })
             };
             
             // 更正模式下添加 change_reason 记录到时间线
@@ -492,6 +497,15 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                                     placeholder="例如：请务必加固包装、随箱带一个备用电池盖等..."
                                     style={{ width: '100%', padding: 12, background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, color: '#fff', fontSize: 13, minHeight: 60, resize: 'none' }}
                                 />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#FFD200', cursor: 'pointer', marginTop: 8 }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={isCustomerFeedback}
+                                        onChange={e => setIsCustomerFeedback(e.target.checked)}
+                                        style={{ accentColor: '#FFD200' }}
+                                    />
+                                    标注为客户反馈 (自动添加【客户反馈】)
+                                </label>
                             </div>
                         </div>
                     )}

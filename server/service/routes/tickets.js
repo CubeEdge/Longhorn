@@ -54,7 +54,7 @@ module.exports = function (db, authenticate, serviceUpload) {
     };
 
     const DEPARTMENT_NODES = {
-        'MS': ['draft', 'submitted', 'ms_review', 'waiting_customer', 'ms_closing'],
+        'MS': ['draft', 'submitted', 'ms_review', 'waiting_customer', 'ms_closing', 'handling', 'awaiting_customer'],
         'OP': ['op_receiving', 'op_diagnosing', 'op_repairing', 'op_shipping', 'op_shipping_transit', 'op_qa'],
         'GE': ['ge_review', 'ge_closing'],
         'RD': ['op_diagnosing', 'op_repairing']
@@ -207,22 +207,28 @@ module.exports = function (db, authenticate, serviceUpload) {
                     if (lastDeptOwner) {
                         targetAssigneeId = lastDeptOwner.user_id;
                         assignLogContent = `系统依据 [返回本部门原处理人] 规则自动指派给: {assigneeName}`;
-                    } else if (dept.lead_id) {
-                        // MS Fallback 1: Department Lead
-                        targetAssigneeId = dept.lead_id;
-                        assignLogContent = `系统依据 [部门负责人] 防呆规则自动指派给: {assigneeName}`;
                     } else {
-                        // MS Fallback 2: creator (only if they are in MS)
+                        // 优先 1：如果是本部门成员创建，或者具备 Global 权限/管理员，指派给创建人进行处理
                         const creator = db.prepare(`
-                            SELECT t.submitted_by, u.department_id 
+                            SELECT t.submitted_by, u.department_id, u.user_type, u.role, u.username
                             FROM tickets t 
                             JOIN users u ON t.submitted_by = u.id 
                             WHERE t.id = ?
                         `).get(id);
 
-                        if (creator && creator.department_id === dept.id) {
+                        const isPrivileged = creator && (
+                            creator.department_id === dept.id || 
+                            creator.user_type === 'Global' || 
+                            creator.username === 'admin'
+                        );
+
+                        if (isPrivileged) {
                             targetAssigneeId = creator.submitted_by;
-                            assignLogContent = `系统依据 [返回创建人] 防呆规则自动指派给: {assigneeName}`;
+                            assignLogContent = `系统依据 [指派提交者] 规则自动指派给: {assigneeName}`;
+                        } else if (dept.lead_id) {
+                            // 优先 2：部门负责人
+                            targetAssigneeId = dept.lead_id;
+                            assignLogContent = `系统依据 [部门负责人] 防呆规则自动指派给: {assigneeName}`;
                         } else {
                             targetAssigneeId = null;
                         }
@@ -372,7 +378,9 @@ module.exports = function (db, authenticate, serviceUpload) {
         const mapping = {
             draft: 'open',
             in_progress: 'in_progress',
+            handling: 'in_progress', // Inquiry: 处理中
             waiting_customer: 'waiting',
+            awaiting_customer: 'waiting', // Inquiry: 等待客户
             submitted: 'open',
             ms_review: 'in_progress',
             ge_review: 'in_progress',
@@ -1123,17 +1131,17 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             const stats = db.prepare(`
                 SELECT 
-                    is.invited_user_id as user_id,
+                    uis.invited_user_id as user_id,
                     u.username as name,
                     d.name as department,
                     d.code as dept_code,
-                    is.invite_count,
-                    is.last_invite_at
-                FROM user_invite_stats is
-                LEFT JOIN users u ON is.invited_user_id = u.id
+                    uis.invite_count,
+                    uis.last_invite_at
+                FROM user_invite_stats uis
+                LEFT JOIN users u ON uis.invited_user_id = u.id
                 LEFT JOIN departments d ON u.department_id = d.id
-                WHERE is.user_id = ?
-                ORDER BY is.invite_count DESC, is.last_invite_at DESC
+                WHERE uis.user_id = ?
+                ORDER BY uis.invite_count DESC, uis.last_invite_at DESC
                 LIMIT 20
             `).all(userId);
 
@@ -1538,12 +1546,13 @@ module.exports = function (db, authenticate, serviceUpload) {
             const ticketNumber = generateTicketNumber(ticket_type, channel_code);
 
             // Determine initial node
-            let initialNode = 'draft';
+            let initialNode = 'submitted';
+            if (ticket_type === 'inquiry') initialNode = 'handling';
             if (ticket_type === 'rma') initialNode = 'op_receiving';
             if (ticket_type === 'svc') initialNode = 'submitted';
 
             // Calculate SLA due
-            const slaDue = slaService.calculateSlaDue(priority, initialNode, now);
+            const slaDue = slaService.calculateSlaDue(db, priority, initialNode, now, ticket_type);
             const slaDueStr = slaDue ? slaDue.toISOString() : null;
 
             const insertSql = `
@@ -1731,6 +1740,142 @@ module.exports = function (db, authenticate, serviceUpload) {
             });
         } catch (err) {
             console.error('[Tickets] Create error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * POST /api/v1/tickets/:id/transfer
+     * 转交工单给其他对接人 (PRD §2.2)
+     */
+    router.post('/:id/transfer', authenticate, (req, res) => {
+        try {
+            const { id } = req.params;
+            const { to_user_id, reason } = req.body;
+
+            if (!to_user_id) return res.status(400).json({ success: false, error: '目标处理人 ID 必填' });
+            if (!reason) return res.status(400).json({ success: false, error: '转交理由必填' });
+
+            const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
+            if (!ticket) return res.status(404).json({ success: false, error: '工单不存在' });
+
+            // 权限检查：Assignee 本人、商管部负责人或管理员
+            const deptCode = getDeptCode(req.user);
+            const isMsLead = deptCode === 'MS' && req.user.role === 'Lead';
+            const isAdmin = req.user.role === 'Admin' || req.user.role === 'Exec' || isMsLead;
+            const isAssignee = ticket.assigned_to === req.user.id;
+
+            if (!isAdmin && !isAssignee) {
+                return res.status(403).json({ success: false, error: '无权转交此工单' });
+            }
+
+            const now = new Date().toISOString();
+            const fromUser = ticket.assigned_to ? db.prepare('SELECT display_name, username FROM users WHERE id = ?').get(ticket.assigned_to) : null;
+            const toUser = db.prepare('SELECT display_name, username FROM users WHERE id = ?').get(to_user_id);
+            
+            if (!toUser) return res.status(400).json({ success: false, error: '目标用户不存在' });
+
+            const fromName = fromUser ? (fromUser.display_name || fromUser.username) : '未指派';
+            const toName = toUser.display_name || toUser.username;
+
+            // 1. 将原有的对接人在参与者中降级为 协作者 ('mentioned')
+            if (ticket.assigned_to) {
+                db.prepare(`UPDATE ticket_participants SET role = 'mentioned' WHERE ticket_id = ? AND user_id = ? AND role = 'assignee'`).run(id, ticket.assigned_to);
+            }
+
+            // 2. 更新工单
+            db.prepare('UPDATE tickets SET assigned_to = ?, updated_at = ? WHERE id = ?').run(to_user_id, now, id);
+
+            // 记录时间轴
+            const actorName = req.user.display_name || req.user.username;
+            const actorDept = req.user.department_name || 'MS';
+            
+            db.prepare(`
+                INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
+                VALUES (?, 'assignment_change', ?, ?, ?, ?, ?, 'all')
+            `).run(
+                id,
+                `转交工单: ${fromName} → ${toName}。理由: ${reason}`,
+                JSON.stringify({ from_user_id: ticket.assigned_to, to_user_id, reason }),
+                req.user.id,
+                actorName,
+                actorDept
+            );
+
+            // 自动加入协作者
+            db.prepare(`
+                INSERT OR IGNORE INTO ticket_participants (ticket_id, user_id, role, join_method, joined_at)
+                VALUES (?, ?, 'assignee', 'auto', ?)
+            `).run(id, to_user_id, now);
+            db.prepare(`UPDATE ticket_participants SET role = 'assignee' WHERE ticket_id = ? AND user_id = ?`).run(id, to_user_id);
+
+            // 发送通知
+            try {
+                db.prepare(`
+                    INSERT INTO notifications (
+                        recipient_id, notification_type, title, content, icon,
+                        related_type, related_id, action_url, metadata, created_at
+                    ) VALUES (?, 'assignment', ?, ?, 'user', 'ticket', ?, ?, ?, ?)
+                `).run(
+                    to_user_id,
+                    `${actorName} 向您转交了工单`,
+                    `工单 ${ticket.ticket_number} (理由: ${reason})`,
+                    id,
+                    `/service/tickets/${id}`,
+                    JSON.stringify({ ticket_number: ticket.ticket_number, assigned_by: actorName }),
+                    now
+                );
+            } catch (e) {
+                console.error('[Tickets] Transfer notification error:', e.message);
+            }
+
+            res.json({ success: true, message: '工单已成功转交', new_assignee: toName });
+        } catch (err) {
+            console.error('[Tickets] Transfer error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    /**
+     * PATCH /api/v1/tickets/:id/auto-close
+     * 手动调整自动结案时间 (PRD §3.1)
+     */
+    router.patch('/:id/auto-close', authenticate, (req, res) => {
+        try {
+            const { id } = req.params;
+            const { auto_close_at, reason } = req.body;
+
+            if (!auto_close_at) return res.status(400).json({ success: false, error: '日期必填' });
+
+            const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id);
+            if (!ticket) return res.status(404).json({ success: false, error: '工单不存在' });
+
+            if (ticket.ticket_type !== 'inquiry') {
+                return res.status(400).json({ success: false, error: '仅咨询工单支持设置自动结案日期' });
+            }
+
+            const now = new Date().toISOString();
+            const actorName = req.user.display_name || req.user.username;
+            const actorDept = req.user.department_name || 'MS';
+
+            db.prepare('UPDATE tickets SET auto_close_at = ?, updated_at = ? WHERE id = ?').run(auto_close_at, now, id);
+
+            const dateStr = new Date(auto_close_at).toLocaleDateString('zh-CN');
+            db.prepare(`
+                INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
+                VALUES (?, 'field_update', ?, ?, ?, ?, ?, 'all')
+            `).run(
+                id,
+                `调整了自动结案日期至 ${dateStr}。${reason ? '理由: ' + reason : ''}`,
+                JSON.stringify({ field: 'auto_close_at', new_value: auto_close_at, reason }),
+                req.user.id,
+                actorName,
+                actorDept
+            );
+
+            res.json({ success: true, message: '自动结案日期已更新' });
+        } catch (err) {
+            console.error('[Tickets] Auto-close update error:', err);
             res.status(500).json({ success: false, error: err.message });
         }
     });
@@ -2062,7 +2207,7 @@ module.exports = function (db, authenticate, serviceUpload) {
 
                 // Recalculate SLA if priority changed
                 if (!updates.current_node) {
-                    const slaDue = slaService.calculateSlaDue(updates.priority, ticket.current_node, ticket.node_entered_at || now);
+                    const slaDue = slaService.calculateSlaDue(db, updates.priority, ticket.current_node, ticket.node_entered_at || now, ticket.ticket_type);
                     sets.push('sla_due_at = ?');
                     params.push(slaDue ? slaDue.toISOString() : null);
                 }
@@ -2327,7 +2472,7 @@ module.exports = function (db, authenticate, serviceUpload) {
             const initialNode = 'submitted';
             const priority = ticket.priority || 'P2';
 
-            const slaDue = slaService.calculateSlaDue(priority, initialNode, now);
+            const slaDue = slaService.calculateSlaDue(db, priority, initialNode, now, target_type);
             const slaDueStr = slaDue ? slaDue.toISOString() : null;
 
             // Create new ticket

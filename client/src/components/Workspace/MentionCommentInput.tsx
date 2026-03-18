@@ -293,20 +293,20 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
             {/* Uploading Overlay - More prominent for "global" feel */}
             {(loading || isSubmitting) && (
                 <div style={{
-                    position: 'absolute', inset: -4, background: 'rgba(0,0,0,0.7)',
-                    backdropFilter: 'blur(8px)', zIndex: 2000, borderRadius: 16,
+                    position: 'absolute', inset: -4, background: 'var(--glass-bg)',
+                    backdropFilter: 'blur(12px)', zIndex: 2000, borderRadius: 16,
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16,
-                    animation: 'fadeIn 0.2s ease-out', border: '1px solid rgba(255,215,0,0.2)'
+                    animation: 'fadeIn 0.2s ease-out', border: '1px solid var(--glass-border)'
                 }}>
                     <div style={{ position: 'relative', width: 56, height: 56 }}>
                         <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '3px solid rgba(255,215,0,0.1)', borderTopColor: '#FFD700', animation: 'spin 1s linear infinite' }} />
                         <div style={{ position: 'absolute', inset: 8, borderRadius: '50%', border: '2px solid rgba(255,215,0,0.4)', borderBottomColor: 'transparent', animation: 'spin 1.5s linear infinite reverse' }} />
                     </div>
                     <div style={{ textAlign: 'center' }}>
-                        <div style={{ color: '#FFD700', fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>
+                        <div style={{ color: 'var(--accent-gold)', fontSize: 16, fontWeight: 700, letterSpacing: 0.5 }}>
                             {attachments.length > 0 ? '正在安全上传大文件...' : '正在提交评论...'}
                         </div>
-                        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 4 }}>请勿刷新或关闭此页面</div>
+                        <div style={{ color: 'var(--text-tertiary)', fontSize: 12, marginTop: 4 }}>请勿刷新或关闭此页面</div>
                     </div>
                 </div>
             )}
@@ -382,7 +382,7 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
                                 style={{
                                     position: 'absolute', top: 2, right: 2,
                                     width: 18, height: 18, borderRadius: '50%',
-                                    background: 'rgba(0,0,0,0.7)', border: 'none',
+                                    background: 'var(--glass-bg-hover)', border: 'none',
                                     color: '#fff', cursor: 'pointer', padding: 0,
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 }}
@@ -549,18 +549,18 @@ export const MentionCommentInput: React.FC<MentionCommentInputProps> = ({ onSubm
             {loading && (
                 <div style={{
                     position: 'absolute', inset: 0, zIndex: 999,
-                    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+                    background: 'var(--glass-bg)', backdropFilter: 'blur(12px)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexDirection: 'column', gap: 12, borderRadius: 12,
-                    border: '1px solid rgba(255,215,0,0.2)'
+                    border: '1px solid var(--glass-border)'
                 }}>
                     <div className="animate-spin" style={{
                         width: 32, height: 32, border: '3px solid rgba(255,215,0,0.1)',
                         borderTopColor: '#FFD700', borderRadius: '50%'
                     }} />
-                    <div style={{ fontSize: 13, color: '#FFD700', fontWeight: 600, textAlign: 'center' }}>
+                    <div style={{ fontSize: 13, color: 'var(--accent-gold)', fontWeight: 600, textAlign: 'center' }}>
                         {attachments.length > 0 ? (
-                            <>正在上传大文件...<br /><span style={{ fontSize: 11, opacity: 0.8 }}>请勿刷新或关闭页面</span></>
+                            <>正在安全上传大文件...<br /><span style={{ fontSize: 11, opacity: 0.8, color: 'var(--text-tertiary)' }}>请勿刷新或关闭页面</span></>
                         ) : '请稍候...'}
                     </div>
                 </div>

@@ -1,7 +1,7 @@
 {
   "name": "longhorn-server",
   "private": true,
-  "version": "1.8.53",
+  "version": "1.8.19",
   "type": "commonjs",
   "main": "index.js",
   "scripts": {

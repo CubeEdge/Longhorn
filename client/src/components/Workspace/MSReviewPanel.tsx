@@ -292,7 +292,7 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
         const map: Record<string, string> = {
             'iot_activation': 'IoT激活日期',
             'invoice': '销售发票日期',
-            'registration': '官网注册日期',
+            'registration': '人工注册日期',
             'direct_ship': '直销发货日期+7天',
             'dealer_fallback': '经销商发货日期+90天',
             'damage_void': '人为损坏（保修失效）',
@@ -323,27 +323,27 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
     return (
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000,
-            background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(10px)',
+            background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)',
             display: 'flex', alignItems: 'center', justifyContent: 'center'
         }}>
             <div style={{
-                width: 700, background: '#1c1c1e', borderRadius: 16,
-                border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden',
-                boxShadow: '0 30px 60px rgba(0,0,0,0.6)',
+                width: 700, background: 'var(--modal-bg, #1c1c1e)', borderRadius: 20,
+                border: '1px solid var(--glass-border)', overflow: 'hidden',
+                boxShadow: 'var(--glass-shadow-lg, 0 30px 60px rgba(0,0,0,0.6))',
                 display: 'flex', flexDirection: 'column', maxHeight: '90vh'
             }}>
                 {/* Header */}
-                <div style={{ padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--glass-bg-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255, 210, 0, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Calculator size={20} color="#FFD200" />
                         </div>
                         <div>
-                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: '#fff' }}>商务审核 - 保修计算</h3>
-                            <p style={{ margin: 0, fontSize: 12, color: '#888', marginTop: 4 }}>工单 {ticketNumber}</p>
+                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-main)' }}>商务审核 - 保修计算</h3>
+                            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>工单 {ticketNumber}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
                         <X size={24} />
                     </button>
                 </div>
@@ -352,22 +352,22 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                 <div style={{ padding: 24, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
                     {/* OP Technical Assessment */}
-                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: '#aaa', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ background: 'var(--glass-bg-light)', padding: 16, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                        <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                             <FileText size={16} /> OP 技术判定（参考）
                         </h4>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <div>
-                                <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>技术损坏判定</div>
-                                <div style={{ fontSize: 14, color: '#fff' }}>
+                                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>技术损坏判定</div>
+                                <div style={{ fontSize: 14, color: 'var(--text-main)', fontWeight: 500 }}>
                                     {technicalAssessment?.technical_damage_status
                                         ? getDamageStatusText(technicalAssessment.technical_damage_status)
                                         : '未提交'}
                                 </div>
                             </div>
                             <div>
-                                <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>保修建议</div>
-                                <div style={{ fontSize: 14, color: '#fff' }}>
+                                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 4 }}>保修建议</div>
+                                <div style={{ fontSize: 14, color: 'var(--text-main)', fontWeight: 500 }}>
                                     {getSuggestionText(technicalAssessment?.technical_warranty_suggestion || '')}
                                 </div>
                             </div>
@@ -375,17 +375,17 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                     </div>
 
                     {/* Warranty Calculation Result - 时间维度计算 */}
-                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ background: 'var(--glass-bg-light)', padding: 16, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                            <h4 style={{ margin: 0, fontSize: 14, color: '#aaa', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <h4 style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <Calculator size={16} /> 保修计算结果（时间维度）
                             </h4>
                             {warrantyCalc && (
                                 <button
                                     onClick={() => setShowCalculationDetails(true)}
                                     style={{
-                                        padding: '6px 12px', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6,
-                                        color: '#aaa', fontSize: 12, cursor: 'pointer',
+                                        padding: '6px 12px', background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', borderRadius: 6,
+                                        color: 'var(--text-secondary)', fontSize: 12, cursor: 'pointer',
                                         display: 'flex', alignItems: 'center', gap: 6
                                     }}
                                 >
@@ -425,7 +425,7 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                         <div style={{ fontSize: '1rem', fontWeight: 600, color: warrantyCalc.is_in_warranty ? '#10B981' : '#EF4444' }}>
                                             {warrantyCalc.is_in_warranty ? '在保修期内' : '已过保修期'}
                                         </div>
-                                        <div style={{ fontSize: '0.8rem', color: '#888', marginTop: 2 }}>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginTop: 2 }}>
                                             截止: {warrantyCalc.end_date} · {getBasisText(warrantyCalc.calculation_basis)}
                                         </div>
                                     </div>
@@ -441,12 +441,12 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                     {/* MS 商务判定选择器 */}
                     {warrantyCalc && (
                         <div style={{ 
-                            background: 'rgba(255,255,255,0.03)', 
+                            background: 'var(--glass-bg-light)', 
                             padding: 16, 
                             borderRadius: 12, 
-                            border: `2px solid ${getWarrantyColor(msDecision)}` 
+                            border: `2px solid ${msDecision ? getWarrantyColor(msDecision) : 'var(--glass-border)'}` 
                         }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: '#aaa', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <FileText size={16} /> 商务判定（MS 最终决定）
                                 {recommendedDecision && msDecision === recommendedDecision && (
                                     <span style={{ 
@@ -508,9 +508,9 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                     disabled={!warrantyCalc.is_in_warranty}
                                     style={{
                                         flex: 1, padding: '14px', borderRadius: 10,
-                                        border: `2px solid ${msDecision === 'warranty_valid' ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
-                                        background: msDecision === 'warranty_valid' ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.02)',
-                                        color: msDecision === 'warranty_valid' ? '#10B981' : '#fff',
+                                        border: `2px solid ${msDecision === 'warranty_valid' ? '#10B981' : 'var(--glass-border)'}`,
+                                        background: msDecision === 'warranty_valid' ? 'rgba(16,185,129,0.1)' : 'var(--glass-bg-light)',
+                                        color: msDecision === 'warranty_valid' ? '#10B981' : 'var(--text-main)',
                                         cursor: warrantyCalc.is_in_warranty ? 'pointer' : 'not-allowed',
                                         opacity: warrantyCalc.is_in_warranty ? 1 : 0.4,
                                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
@@ -537,9 +537,9 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                     disabled={!warrantyCalc.is_in_warranty}
                                     style={{
                                         flex: 1, padding: '14px', borderRadius: 10,
-                                        border: `2px solid ${msDecision === 'warranty_void_damage' ? '#F59E0B' : 'rgba(255,255,255,0.1)'}`,
-                                        background: msDecision === 'warranty_void_damage' ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.02)',
-                                        color: msDecision === 'warranty_void_damage' ? '#F59E0B' : '#fff',
+                                        border: `2px solid ${msDecision === 'warranty_void_damage' ? '#F59E0B' : 'var(--glass-border)'}`,
+                                        background: msDecision === 'warranty_void_damage' ? 'rgba(245,158,11,0.1)' : 'var(--glass-bg-light)',
+                                        color: msDecision === 'warranty_void_damage' ? '#F59E0B' : 'var(--text-main)',
                                         cursor: warrantyCalc.is_in_warranty ? 'pointer' : 'not-allowed',
                                         opacity: warrantyCalc.is_in_warranty ? 1 : 0.4,
                                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
@@ -583,9 +583,9 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                         placeholder="请说明手动调整商务判定的原因..."
                                         rows={2}
                                         style={{
-                                            width: '100%', padding: 10, background: 'rgba(0,0,0,0.3)',
+                                            width: '100%', padding: 10, background: 'var(--glass-bg-light)',
                                             border: msDecisionRemark.trim() ? '1px solid rgba(245,158,11,0.5)' : '1px solid rgba(239,68,68,0.5)',
-                                            borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none', resize: 'none'
+                                            borderRadius: 8, color: 'var(--text-main)', fontSize: 13, outline: 'none', resize: 'none'
                                         }}
                                     />
                                 </div>
@@ -595,8 +595,8 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
 
                     {/* Cost Estimation (Always shown, optional for warranty cases) */}
                     {warrantyCalc && (
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
-                            <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: '#aaa', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ background: 'var(--glass-bg-light)', padding: 16, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                            <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <DollarSign size={16} /> 预估维修费用
                                 {/* 收费场景增加必填提示 */}
                                 {msDecision && isChargeRequired(msDecision) && (
@@ -624,9 +624,9 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                         onChange={e => setEstimatedMin(e.target.value)}
                                         placeholder={msDecision && !isChargeRequired(msDecision) ? '保内免费' : '0.00'}
                                         style={{
-                                            width: '100%', padding: 10, background: 'rgba(0,0,0,0.3)',
-                                            border: `1px solid ${msDecision && isChargeRequired(msDecision) && !estimatedMin ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`, 
-                                            borderRadius: 6, color: '#fff',
+                                            width: '100%', padding: 10, background: 'var(--glass-bg-light)',
+                                            border: `1px solid ${msDecision && isChargeRequired(msDecision) && !estimatedMin ? 'rgba(239,68,68,0.5)' : 'var(--glass-border)'}`, 
+                                            borderRadius: 6, color: 'var(--text-main)',
                                             fontSize: 14, outline: 'none'
                                         }}
                                     />
@@ -642,9 +642,9 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                         onChange={e => setEstimatedMax(e.target.value)}
                                         placeholder={msDecision && !isChargeRequired(msDecision) ? '保内免费' : '0.00'}
                                         style={{
-                                            width: '100%', padding: 10, background: 'rgba(0,0,0,0.3)',
-                                            border: `1px solid ${msDecision && isChargeRequired(msDecision) && !estimatedMax ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`, 
-                                            borderRadius: 6, color: '#fff',
+                                            width: '100%', padding: 10, background: 'var(--glass-bg-light)',
+                                            border: `1px solid ${msDecision && isChargeRequired(msDecision) && !estimatedMax ? 'rgba(239,68,68,0.5)' : 'var(--glass-border)'}`, 
+                                            borderRadius: 6, color: 'var(--text-main)',
                                             fontSize: 14, outline: 'none'
                                         }}
                                     />
@@ -661,8 +661,8 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                     )}
 
                     {/* Customer Confirmation */}
-                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: 16, borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
-                        <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: '#aaa' }}>客户确认方式</h4>
+                    <div style={{ background: 'var(--glass-bg-light)', padding: 16, borderRadius: 12, border: '1px solid var(--glass-border)' }}>
+                        <h4 style={{ margin: '0 0 12px 0', fontSize: 14, color: 'var(--text-secondary)' }}>客户确认方式</h4>
                         <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
                             {[
                                 { key: 'email', label: '邮件确认' },
@@ -673,9 +673,9 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                     key={method.key}
                                     onClick={() => setConfirmationMethod(method.key as any)}
                                     style={{
-                                        flex: 1, padding: '10px', background: confirmationMethod === method.key ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)',
-                                        border: `1px solid ${confirmationMethod === method.key ? '#3B82F6' : 'rgba(255,255,255,0.1)'}`,
-                                        color: confirmationMethod === method.key ? '#3B82F6' : '#fff', borderRadius: 8, cursor: 'pointer',
+                                        flex: 1, padding: '10px', background: confirmationMethod === method.key ? 'rgba(59,130,246,0.15)' : 'var(--glass-bg-light)',
+                                        border: `1px solid ${confirmationMethod === method.key ? '#3B82F6' : 'var(--glass-border)'}`,
+                                        color: confirmationMethod === method.key ? '#3B82F6' : 'var(--text-main)', borderRadius: 8, cursor: 'pointer',
                                         fontSize: 13, fontWeight: confirmationMethod === method.key ? 600 : 400
                                     }}
                                 >
@@ -696,8 +696,8 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                 </div>
 
                 {/* Footer */}
-                <div style={{ padding: '20px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'flex-end', gap: 12, background: 'rgba(0,0,0,0.2)' }}>
-                    <button onClick={onClose} disabled={loading} style={{ padding: '10px 20px', background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', borderRadius: 8 }}>取消</button>
+                <div style={{ padding: '20px 24px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'flex-end', gap: 12, background: 'var(--glass-bg-light)' }}>
+                    <button onClick={onClose} disabled={loading} style={{ padding: '10px 20px', background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', borderRadius: 8 }}>取消</button>
                     <button
                         onClick={handleSubmit}
                         disabled={loading || !warrantyCalc}
@@ -740,7 +740,7 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                     {[
                                         { p: 1, basis: 'IOT_ACTIVATION', label: 'IoT', detail: '联网激活日期' },
                                         { p: 2, basis: 'INVOICE_PROOF', label: '发票', detail: '人工发票日期' },
-                                        { p: 3, basis: 'REGISTRATION', label: '注册', detail: '用户注册日期' },
+                                        { p: 3, basis: 'REGISTRATION', label: '注册', detail: '人工注册日期' },
                                         { p: 4, basis: 'DIRECT_SHIPMENT', label: '直销', detail: '直销出库+7天' },
                                         { p: 5, basis: 'DEALER_FALLBACK', label: '兜底', detail: '代理发货+90天' }
                                     ].map((rule) => {

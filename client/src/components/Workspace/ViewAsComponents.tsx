@@ -176,12 +176,12 @@ export const ViewAsSelector: React.FC<ViewAsSelectorProps> = ({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(0,0,0,0.7)',
+        background: 'var(--modal-overlay)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 10002,
-        backdropFilter: 'blur(5px)'
+        backdropFilter: 'blur(12px)'
       }}
       onClick={onClose}
     >
@@ -189,9 +189,9 @@ export const ViewAsSelector: React.FC<ViewAsSelectorProps> = ({
         style={{
           width: 440,
           maxHeight: '80vh',
-          background: 'rgba(30,30,30,0.98)',
+          background: 'var(--modal-bg)',
           borderRadius: 16,
-          border: '1px solid rgba(255,255,255,0.12)',
+          border: '1px solid var(--modal-border)',
           boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
           overflow: 'hidden',
           display: 'flex',
@@ -202,14 +202,14 @@ export const ViewAsSelector: React.FC<ViewAsSelectorProps> = ({
         {/* Header */}
         <div style={{
           padding: '20px 24px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: '1px solid var(--glass-border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Shield size={20} color="#FFD700" />
-            <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>选择用户视角</span>
+            <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-main)' }}>选择用户视角</span>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer' }}>
             <X size={20} />
@@ -225,7 +225,7 @@ export const ViewAsSelector: React.FC<ViewAsSelectorProps> = ({
             background: 'rgba(255,255,255,0.05)',
             borderRadius: 10,
             padding: '10px 14px',
-            border: '1px solid rgba(255,255,255,0.1)'
+            border: '1px solid var(--glass-border)'
           }}>
             <Search size={18} color="#999" />
             <input
@@ -238,7 +238,7 @@ export const ViewAsSelector: React.FC<ViewAsSelectorProps> = ({
                 background: 'transparent',
                 border: 'none',
                 outline: 'none',
-                color: '#fff',
+                color: 'var(--text-main)',
                 fontSize: 15,
                 width: '100%'
               }}
@@ -299,7 +299,7 @@ export const ViewAsSelector: React.FC<ViewAsSelectorProps> = ({
                     </div>
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 15, fontWeight: 500, color: '#fff' }}>{u.name}</span>
+                        <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text-main)' }}>{u.name}</span>
                         {isPinned && <Shield size={12} color="#FFD700" />}
                       </div>
                       <div style={{ fontSize: 13, color: '#888', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

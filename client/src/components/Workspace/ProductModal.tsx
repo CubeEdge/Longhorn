@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { X, Save, Plus, Edit2, Shield, Package, Tag, Settings, Calendar, Check } from 'lucide-react';
+import { X, Save, Plus, Edit2, Shield, Package, Tag, Settings, Calendar, Check, AlertTriangle, Calculator, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import ProductWarrantyRegistrationModal from '../Service/ProductWarrantyRegistrationModal';
 import type { WarrantyRegistrationData } from '../Service/ProductWarrantyRegistrationModal';
@@ -13,7 +13,7 @@ interface Product {
     product_sku: string;
     product_type: string;
     product_line: 'Camera' | 'EVF' | 'Accessory';
-    product_family: 'A' | 'B' | 'C' | 'D';
+    product_family: 'A' | 'B' | 'C' | 'D' | 'E';
     production_date: string;
     is_iot_device: boolean;
     is_activated: boolean;
@@ -76,10 +76,36 @@ const ProductModal: React.FC<ProductModalProps> = ({
     // 传递给保修注册窗口的预填数据
     const [warrantyPrefillData, setWarrantyPrefillData] = useState<{
         productLine?: 'Camera' | 'EVF' | 'Accessory';
-        productFamily?: 'A' | 'B' | 'C' | 'D';
+        productFamily?: 'A' | 'B' | 'C' | 'D' | 'E';
         skuId?: number;
         salesChannel?: 'DIRECT' | 'DEALER';
     }>({});
+    
+    // 审计确认屏障状态
+    const [isAuditBarrierOpen, setIsAuditBarrierOpen] = useState(false);
+    const [barrierCountdown, setBarrierCountdown] = useState(0);
+    const [showWarrantyCalcModal, setShowWarrantyCalcModal] = useState(false);
+    const barrierTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // 5s 倒计时 Effect
+    useEffect(() => {
+        if (isAuditBarrierOpen) {
+            setBarrierCountdown(5);
+            barrierTimerRef.current = setInterval(() => {
+                setBarrierCountdown(prev => {
+                    if (prev <= 1) {
+                        if (barrierTimerRef.current) clearInterval(barrierTimerRef.current);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        } else {
+            if (barrierTimerRef.current) clearInterval(barrierTimerRef.current);
+        }
+        return () => { if (barrierTimerRef.current) clearInterval(barrierTimerRef.current); };
+    }, [isAuditBarrierOpen]);
+
     const [formData, setFormData] = useState<Partial<Product>>({
         model_name: '',
         serial_number: '',
@@ -253,8 +279,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
     // 右侧补充信息区域样式
     const rightSectionStyle = {
-        background: 'rgba(255,255,255,0.03)', borderRadius: 10,
-        border: '1px solid rgba(255,255,255,0.08)', padding: 16, marginBottom: 16
+        background: 'var(--glass-bg-light)', borderRadius: 10,
+        border: '1px solid var(--glass-border)', padding: 16, marginBottom: 16
     };
 
     return (
@@ -275,8 +301,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
             }}>
                 {/* Header - 匹配图2样式 */}
                 <div style={{
-                    padding: '24px 28px', borderBottom: '1px solid rgba(255,255,255,0.08)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)'
+                    padding: '24px 28px', borderBottom: '1px solid var(--glass-border)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--glass-bg-light)'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                         <div style={{
@@ -379,103 +405,21 @@ const ProductModal: React.FC<ProductModalProps> = ({
                                             style={selectStyle}
                                         >
                                             <option value="A">A - 在售电影机</option>
-                                            <option value="B">B - 历史机型</option>
+                                            <option value="B">B - 广播摄像机</option>
                                             <option value="C">C - 电子寻像器</option>
-                                            <option value="D">D - 通用配件</option>
+                                            <option value="D">D - 历史机型</option>
+                                            <option value="E">E - 通用配件</option>
                                         </select>
                                     </div>
                                 </div>
                             </div>
 
-                        </div>
-
-                        {/* 右侧：保修信息 */}
-                        <div style={{ width: 380 }}>
-                            <div style={rightSectionStyle}>
-                                <div style={{...sectionHeaderStyle, color: 'rgba(255,215,0,0.6)'}}>
-                                    <Shield size={14} /> 保修信息
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                    <div style={{ 
-                                        padding: '12px', borderRadius: 8, 
-                                        border: pendingWarrantyData 
-                                            ? '1px solid rgba(16,185,129,0.3)' 
-                                            : '1px solid rgba(255,255,255,0.08)', 
-                                        background: pendingWarrantyData 
-                                            ? 'rgba(16,185,129,0.08)' 
-                                            : 'rgba(255,255,255,0.02)', 
-                                        color: pendingWarrantyData ? '#10B981' : '#666', 
-                                        fontSize: '0.85rem',
-                                        display: 'flex', alignItems: 'center', gap: 8,
-                                        marginBottom: 8
-                                    }}>
-                                        {pendingWarrantyData ? (
-                                            <>
-                                                <Check size={16} />
-                                                已填写（{pendingWarrantyData.saleDate}，{pendingWarrantyData.warrantyMonths}个月）
-                                            </>
-                                        ) : (
-                                            formData.warranty_start_date || '未设置（系统自动计算）'
-                                        )}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setWarrantyPrefillData({
-                                                productLine: formData.product_line,
-                                                productFamily: formData.product_family,
-                                                skuId: formData.sku_id || undefined,
-                                                salesChannel: formData.sales_channel
-                                            });
-                                            setShowWarrantyModal(true);
-                                        }}
-                                        disabled={!formData.serial_number}
-                                        style={{
-                                            width: '100%', padding: '10px 14px', borderRadius: 8,
-                                            background: pendingWarrantyData 
-                                                ? 'rgba(16,185,129,0.1)' 
-                                                : 'rgba(59,130,246,0.1)', 
-                                            border: pendingWarrantyData 
-                                                ? '1px solid rgba(16,185,129,0.3)' 
-                                                : '1px solid rgba(59,130,246,0.3)',
-                                            color: pendingWarrantyData ? '#10B981' : '#3B82F6', 
-                                            fontSize: '0.8rem', fontWeight: 600,
-                                            cursor: formData.serial_number ? 'pointer' : 'not-allowed',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                            transition: 'all 0.2s',
-                                            opacity: formData.serial_number ? 1 : 0.5
-                                        }}
-                                        onMouseEnter={e => { 
-                                            if (formData.serial_number) {
-                                                e.currentTarget.style.background = pendingWarrantyData 
-                                                    ? 'rgba(16,185,129,0.2)' 
-                                                    : 'rgba(59,130,246,0.2)';
-                                            }
-                                        }}
-                                        onMouseLeave={e => { 
-                                            e.currentTarget.style.background = pendingWarrantyData 
-                                                ? 'rgba(16,185,129,0.1)' 
-                                                : 'rgba(59,130,246,0.1)'; 
-                                        }}
-                                    >
-                                        <Calendar size={14} />
-                                        {pendingWarrantyData ? '修改保修' : '注册保修'}
-                                    </button>
-                                    <div style={{ fontSize: '0.7rem', color: '#555', marginTop: 4 }}>
-                                        {pendingWarrantyData 
-                                            ? '* 保修信息已暂存，将在保存入库时一并提交'
-                                            : '* 保修日期由系统根据销售信息自动计算'
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            {/* 补充信息 */}
-                            <div style={rightSectionStyle}>
-                                <div style={{...sectionHeaderStyle, color: 'rgba(255,255,255,0.4)'}}>
+                            {/* 补充信息：生产日期 + 固件版本 */}
+                            <div style={sectionStyle}>
+                                <div style={sectionHeaderStyle}>
                                     <Settings size={14} /> 补充信息
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                                     <div>
                                         <label style={labelStyle}>生产日期</label>
                                         <input
@@ -495,6 +439,172 @@ const ProductModal: React.FC<ProductModalProps> = ({
                                             placeholder="例如: 1.2.3"
                                         />
                                     </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        {/* 右侧：保修信息 */}
+                        <div style={{ width: 380 }}>
+                            <div style={rightSectionStyle}>
+                                <div style={{...sectionHeaderStyle, color: 'var(--text-tertiary)'}}>
+                                    <Shield size={14} /> 保修信息
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    {/* 编辑已有保修的产品：显示保修状态概览 */}
+                                    {editingProduct && editingProduct.warranty_end_date ? (
+                                        <>
+                                            {/* 保修状态卡片 */}
+                                            <div style={{
+                                                padding: 16, borderRadius: 10,
+                                                background: editingProduct.warranty_status === 'ACTIVE' ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+                                                border: `1px solid ${editingProduct.warranty_status === 'ACTIVE' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                                    {editingProduct.warranty_status === 'ACTIVE'
+                                                        ? <CheckCircle size={18} color="#10B981" />
+                                                        : <AlertTriangle size={18} color="#EF4444" />}
+                                                    <span style={{
+                                                        fontSize: '0.9rem', fontWeight: 700,
+                                                        color: editingProduct.warranty_status === 'ACTIVE' ? '#10B981' : '#EF4444'
+                                                    }}>
+                                                        {editingProduct.warranty_status === 'ACTIVE' ? '保修有效' : '已过保'}
+                                                    </span>
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                                    <div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>生效日期</div>
+                                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: 500 }}>{editingProduct.warranty_start_date || '-'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>截止日期</div>
+                                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: 500 }}>{editingProduct.warranty_end_date || '-'}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* 操作按钮 */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowWarrantyCalcModal(true)}
+                                                    style={{
+                                                        width: '100%', padding: '10px 14px', borderRadius: 8,
+                                                        background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)',
+                                                        color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: 500,
+                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'var(--glass-bg-light)'}
+                                                >
+                                                    <Calculator size={14} /> 查看计算依据
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsAuditBarrierOpen(true)}
+                                                    style={{
+                                                        width: '100%', padding: '10px 14px', borderRadius: 8,
+                                                        background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
+                                                        color: '#f59e0b', fontSize: '0.8rem', fontWeight: 600,
+                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(245,158,11,0.2)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(245,158,11,0.1)'}
+                                                >
+                                                    <Calendar size={14} /> 更改保修信息
+                                                </button>
+                                            </div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                                                * 更改保修信息需要经过确认流程
+                                            </div>
+                                        </>
+                                    ) : (
+                                        /* 新产品或无保修产品：原始注册流程 */
+                                        <>
+                                            <div style={{
+                                                padding: '12px', borderRadius: 8,
+                                                border: pendingWarrantyData
+                                                    ? '1px solid rgba(16,185,129,0.3)'
+                                                    : '1px solid rgba(255,255,255,0.08)',
+                                                background: pendingWarrantyData
+                                                    ? 'rgba(16,185,129,0.08)'
+                                                    : 'rgba(255,255,255,0.02)',
+                                                color: pendingWarrantyData ? '#10B981' : '#666',
+                                                fontSize: '0.85rem',
+                                                display: 'flex', alignItems: 'center', gap: 8,
+                                                marginBottom: 8
+                                            }}>
+                                                {pendingWarrantyData ? (
+                                                    <>
+                                                        <Check size={16} />
+                                                        已填写（{pendingWarrantyData.saleDate}，{pendingWarrantyData.warrantyMonths}个月）
+                                                    </>
+                                                ) : (
+                                                    formData.warranty_start_date || '未设置（系统自动计算）'
+                                                )}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setWarrantyPrefillData({
+                                                        productLine: formData.product_line,
+                                                        productFamily: formData.product_family,
+                                                        skuId: formData.sku_id || undefined,
+                                                        salesChannel: formData.sales_channel
+                                                    });
+                                                    setShowWarrantyModal(true);
+                                                }}
+                                                disabled={!formData.serial_number}
+                                                style={{
+                                                    width: '100%', padding: '10px 14px', borderRadius: 8,
+                                                    background: pendingWarrantyData
+                                                        ? 'rgba(16,185,129,0.1)'
+                                                        : 'rgba(59,130,246,0.1)',
+                                                    border: pendingWarrantyData
+                                                        ? '1px solid rgba(16,185,129,0.3)'
+                                                        : '1px solid rgba(59,130,246,0.3)',
+                                                    color: pendingWarrantyData ? '#10B981' : '#3B82F6',
+                                                    fontSize: '0.8rem', fontWeight: 600,
+                                                    cursor: formData.serial_number ? 'pointer' : 'not-allowed',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                    transition: 'all 0.2s',
+                                                    opacity: formData.serial_number ? 1 : 0.5
+                                                }}
+                                                onMouseEnter={e => {
+                                                    if (formData.serial_number) {
+                                                        e.currentTarget.style.background = pendingWarrantyData
+                                                            ? 'rgba(16,185,129,0.2)'
+                                                            : 'rgba(59,130,246,0.2)';
+                                                    }
+                                                }}
+                                                onMouseLeave={e => {
+                                                    e.currentTarget.style.background = pendingWarrantyData
+                                                        ? 'rgba(16,185,129,0.1)'
+                                                        : 'rgba(59,130,246,0.1)';
+                                                }}
+                                            >
+                                                <Calendar size={14} />
+                                                {pendingWarrantyData ? '修改保修' : '注册保修'}
+                                            </button>
+                                            <div style={{ fontSize: '0.7rem', color: '#555', marginTop: 4 }}>
+                                                {pendingWarrantyData
+                                                    ? '* 保修信息已暂存，将在保存入库时一并提交'
+                                                    : '* 保修日期由系统根据销售信息自动计算'
+                                                }
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {/* 设备&渠道 */}
+                            <div style={rightSectionStyle}>
+                                <div style={{...sectionHeaderStyle, color: 'var(--text-tertiary)'}}>
+                                    <Settings size={14} /> 其他信息
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                                     <div>
                                         <label style={labelStyle}>设备状态</label>
                                         <select
@@ -527,8 +637,8 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
                 {/* Footer - 双按钮布局匹配图2 */}
                 <div style={{ 
-                    padding: '20px 28px', borderTop: '1px solid rgba(255,255,255,0.08)', 
-                    background: 'rgba(0,0,0,0.2)',
+                    padding: '20px 28px', borderTop: '1px solid var(--glass-border)', 
+                    background: 'var(--glass-bg-light)',
                     display: 'flex', gap: 12
                 }}>
                     <button
@@ -569,8 +679,15 @@ const ProductModal: React.FC<ProductModalProps> = ({
                 onClose={() => setShowWarrantyModal(false)}
                 serialNumber={formData.serial_number || ''}
                 productName={formData.model_name || ''}
-                isNewProduct={true}
+                isNewProduct={!editingProduct}
                 prefillData={warrantyPrefillData}
+                existingWarrantyData={editingProduct && editingProduct.warranty_end_date ? {
+                    saleSource: editingProduct.sales_invoice_date ? 'invoice' : 'customer_statement',
+                    saleDate: editingProduct.warranty_start_date || editingProduct.registration_date || '',
+                    warrantyMonths: editingProduct.warranty_months || 24,
+                    dealerId: editingProduct.sold_to_dealer_id || undefined,
+                    ownerId: editingProduct.current_owner_id || undefined
+                } : undefined}
                 onRegistered={(result) => {
                     setShowWarrantyModal(false);
                     // 方案B：接收暂存的保修数据
@@ -579,6 +696,154 @@ const ProductModal: React.FC<ProductModalProps> = ({
                     }
                 }}
             />
+            {/* Audit Barrier Modal */}
+            {isAuditBarrierOpen && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1200,
+                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div style={{
+                        width: 480, background: '#1c1c1e', borderRadius: 20,
+                        border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden',
+                        boxShadow: '0 40px 100px rgba(0,0,0,0.8)', padding: 32, textAlign: 'center'
+                    }}>
+                        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(245,158,11,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                            <AlertTriangle size={32} color="#f59e0b" />
+                        </div>
+                        <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-main)', marginBottom: 12 }}>更改保修日期声明</h3>
+                        <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 32 }}>
+                            保修日期是计算服务费用的核心依据。<br />更改已有的保修信息将被记录在审计日志中，请确保您持有的销售凭证合法有效。
+                        </p>
+                        <div style={{ display: 'flex', gap: 12 }}>
+                            <button
+                                onClick={() => setIsAuditBarrierOpen(false)}
+                                style={{ flex: 1, padding: '14px', borderRadius: 12, background: 'var(--glass-bg-light)', border: 'none', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer' }}
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsAuditBarrierOpen(false);
+                                    setWarrantyPrefillData({
+                                        productLine: formData.product_line,
+                                        productFamily: formData.product_family,
+                                        skuId: formData.sku_id || undefined,
+                                        salesChannel: formData.sales_channel
+                                    });
+                                    setShowWarrantyModal(true);
+                                }}
+                                disabled={barrierCountdown > 0}
+                                style={{
+                                    flex: 1, padding: '14px', borderRadius: 12, background: '#f59e0b', color: '#000', border: 'none', fontWeight: 700,
+                                    cursor: barrierCountdown > 0 ? 'not-allowed' : 'pointer', opacity: barrierCountdown > 0 ? 0.6 : 1, transition: 'all 0.2s'
+                                }}
+                            >
+                                {barrierCountdown > 0 ? `本人已知晓 (${barrierCountdown}s)` : '本人已知晓'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Product-level Warranty Calculation Modal */}
+            {showWarrantyCalcModal && editingProduct && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1200,
+                    background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <div style={{
+                        width: 500, background: 'var(--modal-bg)', borderRadius: 20,
+                        border: '1px solid var(--glass-border)', overflow: 'hidden',
+                        boxShadow: '0 30px 60px rgba(0,0,0,0.6)'
+                    }}>
+                        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,210,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Calculator size={20} color="#FFD200" />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text-main)' }}>保修计算引擎</h3>
+                                    <p style={{ margin: 0, fontSize: 12, color: 'var(--text-tertiary)', marginTop: 4 }}>序列号：{editingProduct.serial_number}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowWarrantyCalcModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer' }}>
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            <div>
+                                <h4 style={{ margin: '0 0 10px 0', fontSize: 13, color: 'var(--text-tertiary)', fontWeight: 600 }}>优先级规则</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+                                    {[
+                                        { p: 1, label: 'IoT', detail: '联网激活日期' },
+                                        { p: 2, label: '发票', detail: '人工发票日期' },
+                                        { p: 3, label: '注册', detail: '人工注册日期' },
+                                        { p: 4, label: '直销', detail: '直销出库+7天' },
+                                        { p: 5, label: '兜底', detail: '代理发货+90天' }
+                                    ].map(rule => (
+                                        <div key={rule.p} style={{
+                                            display: 'flex', alignItems: 'center', gap: 6,
+                                            padding: '6px 10px', borderRadius: 6,
+                                            background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)',
+                                            gridColumn: rule.p === 5 ? 'span 2' : 'auto'
+                                        }}>
+                                            <span style={{ color: 'var(--text-tertiary)', fontWeight: 700 }}>{rule.p}.</span>
+                                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{rule.label}</span>
+                                                <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{rule.detail}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div style={{ height: 1, background: 'var(--glass-border)' }} />
+                            <div style={{
+                                padding: 16, borderRadius: 12,
+                                background: editingProduct.warranty_status === 'ACTIVE' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                                border: `1px solid ${editingProduct.warranty_status === 'ACTIVE' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                                display: 'flex', flexDirection: 'column', gap: 12
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    {editingProduct.warranty_status === 'ACTIVE'
+                                        ? <CheckCircle size={22} color="#10B981" />
+                                        : <AlertTriangle size={22} color="#EF4444" />}
+                                    <span style={{ fontSize: 18, fontWeight: 700, color: editingProduct.warranty_status === 'ACTIVE' ? '#10B981' : '#EF4444' }}>
+                                        {editingProduct.warranty_status === 'ACTIVE' ? '在保期内' : '已过保'}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>生效日期</div>
+                                        <div style={{ fontSize: 14, color: 'var(--text-main)', fontWeight: 500 }}>{editingProduct.warranty_start_date || '-'}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>截止日期</div>
+                                        <div style={{ fontSize: 14, color: 'var(--text-main)', fontWeight: 500 }}>{editingProduct.warranty_end_date || '-'}</div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 4 }}>保修时长</div>
+                                        <div style={{ fontSize: 14, color: 'var(--text-main)', fontWeight: 500 }}>{editingProduct.warranty_months || 24} 个月</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={{ padding: '16px 24px', borderTop: '1px solid var(--glass-border)' }}>
+                            <button
+                                onClick={() => setShowWarrantyCalcModal(false)}
+                                style={{
+                                    width: '100%', padding: '12px', borderRadius: 10,
+                                    background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)',
+                                    color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem'
+                                }}
+                            >
+                                关闭
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 };

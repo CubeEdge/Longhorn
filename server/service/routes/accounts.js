@@ -1057,7 +1057,7 @@ module.exports = function (db, authenticate) {
      * - 如果没有关联数据，软删除（标记 is_deleted=1）
      * - 带 permanent=true 参数时，执行硬删除（仅在已删除列表中使用）
      */
-    router.delete('/:id', authenticate, (req, res) => {
+    router.delete('/:id', authenticate, requireCrmAccess, (req, res) => {
         try {
             const accountId = req.params.id;
             const permanent = req.query.permanent === 'true';
@@ -1082,7 +1082,7 @@ module.exports = function (db, authenticate) {
 
                 return res.json({
                     success: true,
-                    message: '账户已永久删除',
+                    message: '账户及关联联系人已永久删除',
                     deleted_account: {
                         id: account.id,
                         name: account.name
@@ -1091,11 +1091,7 @@ module.exports = function (db, authenticate) {
             }
 
             // 检查关联的工单数量
-            // account_id: 客户账户关联（适用于 ORGANIZATION/INDIVIDUAL）
-            // dealer_id: 经销商账户关联（适用于 DEALER）
-            // 根据账户类型选择正确的检查字段
             const isDealer = account.account_type === 'DEALER';
-
             let inquiryCount, rmaCount, repairCount;
 
             if (isDealer) {
@@ -1129,13 +1125,13 @@ module.exports = function (db, authenticate) {
                 'SELECT COUNT(*) as count FROM account_devices WHERE account_id = ?'
             ).get(accountId).count;
 
-            // 如果有关联数据，返回 409 错误，建议停用
+            // 如果有关联业务记录，提示无法删除，建议停用
             if (ticketCount > 0 || deviceCount > 0) {
                 return res.status(409).json({
                     success: false,
                     error: {
                         code: 'CANNOT_DELETE_HAS_HISTORY',
-                        message: '该账户有关联的工单或设备，无法删除',
+                        message: '该账户已有业务记录（工单或设备），为保护财务记录无法删除，建议将其“停用”。',
                         suggestion: 'DEACTIVATE'
                     },
                     counts: {
@@ -1165,7 +1161,7 @@ module.exports = function (db, authenticate) {
 
             res.json({
                 success: true,
-                message: '账户已移至已删除列表',
+                message: '账户已标记为删除，您可以在“已删除”列表中找回或彻底移除。',
                 deleted_account: {
                     id: account.id,
                     name: account.name
@@ -1176,10 +1172,15 @@ module.exports = function (db, authenticate) {
             console.error('[Accounts] Delete error:', err);
             res.status(500).json({
                 success: false,
-                error: { code: 'SERVER_ERROR', message: err.message }
+                error: { 
+                    code: 'SERVER_ERROR', 
+                    message: err.message,
+                    detail: process.env.NODE_ENV === 'development' ? err.stack : undefined
+                }
             });
         }
     });
+
 
     return router;
 };

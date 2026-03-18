@@ -55,6 +55,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     const [dealerExpanded, setDealerExpanded] = useState(true);
     const [customerExpanded, setCustomerExpanded] = useState(true);
     const [deviceExpanded, setDeviceExpanded] = useState(true);
+    const [unknownIdentityExpanded, setUnknownIdentityExpanded] = useState(true);
 
     useEffect(() => {
         fetchContext();
@@ -181,11 +182,11 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     };
 
     const cardTitleStyle: React.CSSProperties = {
-        fontSize: '0.8rem',
+        fontSize: '0.75rem',
         textTransform: 'uppercase',
         letterSpacing: '0.08em',
         color: 'var(--text-tertiary)',
-        marginBottom: '12px',
+        marginBottom: '10px',
         fontWeight: 700,
         display: 'flex',
         alignItems: 'center',
@@ -196,7 +197,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
         display: 'flex',
         alignItems: 'flex-start',
         marginBottom: '8px',
-        fontSize: '0.85rem',
+        fontSize: '0.8rem',
         lineHeight: '1.4'
     };
 
@@ -213,7 +214,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     };
 
     const labelStyle: React.CSSProperties = {
-        fontSize: '0.7rem',
+        fontSize: '0.65rem',
         color: 'var(--text-tertiary)',
         marginBottom: '2px'
     };
@@ -295,7 +296,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                         {dealerName || '未知经销商'}
                                     </div>
 
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
                                         {dealerCode && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                 <Hash size={11} />
@@ -343,11 +344,17 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                 {/* Status 4: Ghost / Unregistered */}
                 {!data?.account && (reporterSnapshot || contactName || customerName) && (
                     <div style={{ ...cardStyle, border: '1px solid var(--status-red-subtle)' }}>
-                        <div style={{ ...cardTitleStyle, color: 'var(--status-red)', justifyContent: 'space-between' }}>
+                        <div
+                            onClick={() => setUnknownIdentityExpanded(!unknownIdentityExpanded)}
+                            style={{ ...cardTitleStyle, color: 'var(--status-red)', justifyContent: 'space-between', cursor: 'pointer' }}
+                        >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 未知身份
                             </div>
+                            {unknownIdentityExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                         </div>
+
+                        {unknownIdentityExpanded && (<>
 
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--card-border)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
@@ -387,10 +394,13 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                         <button
                                             onClick={() => setShowConvertModal(true)}
                                             style={{
-                                                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                                background: 'var(--accent-blue-subtle)', border: '1px solid var(--accent-blue-border)',
-                                                borderRadius: 6, color: 'var(--accent-blue)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+                                                background: 'var(--accent-blue)', border: '1px solid var(--accent-blue)',
+                                                borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                                                boxShadow: '0 2px 4px rgba(0, 122, 255, 0.2)', transition: 'all 0.2s'
                                             }}
+                                            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                                            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                                         >
                                             <UserPlus size={14} /> 添加为新客户
                                         </button>
@@ -398,8 +408,8 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                             onClick={() => setShowSpamModal(true)}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
-                                                background: 'var(--status-red-subtle)', border: '1px solid var(--status-red)',
-                                                borderRadius: 6, color: 'var(--status-red)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
+                                                background: 'var(--status-red-subtle)', border: '1px solid rgba(239, 68, 68, 0.4)',
+                                                borderRadius: 6, color: 'var(--status-red)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600
                                             }}
                                         >
                                             <Trash2 size={14} /> 标记为垃圾
@@ -408,6 +418,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 </div>
                             );
                         })()}
+                        </>)}
                     </div>
                 )}
 
@@ -417,11 +428,11 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         <div style={{ ...cardTitleStyle, color: '#FFD200' }}>
                             <Building size={12} /> 客户信息 (临时对接)
                         </div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>
+                        <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px' }}>
                             {data.account.name}
                         </h3>
                         <div style={{ padding: '12px', background: 'rgba(245, 158, 11, 0.08)', borderRadius: 8 }}>
-                            <div style={{ fontSize: '0.8rem', color: '#FFD200', fontWeight: 600, marginBottom: 8 }}>
+                            <div style={{ fontSize: '0.75rem', color: '#FFD200', fontWeight: 600, marginBottom: 8 }}>
                                 ⚠️ 未归档联系人
                             </div>
                             <div style={rowStyle}>
@@ -477,10 +488,10 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                         </div>
 
                         {/* 客户名称和类型 - 始终显示 */}
-                        <div style={{ marginBottom: '12px' }}>
+                        <div style={{ marginBottom: '10px' }}>
                             <h3
                                 style={{
-                                    fontSize: '1rem',
+                                    fontSize: '0.85rem',
                                     fontWeight: 700,
                                     color: 'var(--text-main)',
                                     marginBottom: '4px'
@@ -488,7 +499,7 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                             >
                                 {data.account.name}
                             </h3>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
                                 {getAccountTypeLabel(data.account.account_type)}
                                 {data.account.dealer_code && ` · ${data.account.dealer_code}`}
                             </div>

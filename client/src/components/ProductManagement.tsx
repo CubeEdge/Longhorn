@@ -67,12 +67,13 @@ interface Product {
 
 const PRODUCT_FAMILY_MAP = {
     'A': { code: 'A', name: 'Current Cine Cameras', label: '在售电影机', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
-    'B': { code: 'B', name: 'Archived Cine Cameras', label: '历史机型', color: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' },
+    'B': { code: 'B', name: 'Broadcast Camera', label: '广播摄像机', color: 'bg-orange-500/20 text-orange-400 border border-orange-500/30' },
     'C': { code: 'C', name: 'Eagle e-Viewfinder', label: '电子寻像器', color: 'bg-green-500/20 text-green-400 border border-green-500/30' },
-    'D': { code: 'D', name: 'Universal Accessories', label: '通用配件', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/30' }
+    'D': { code: 'D', name: 'Archived Cine Cameras', label: '历史机型', color: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' },
+    'E': { code: 'E', name: 'Universal Accessories', label: '通用配件', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/30' }
 };
 
-type ProductFamily = 'ALL' | 'A' | 'B' | 'C' | 'D';
+type ProductFamily = 'ALL' | 'A' | 'B' | 'C' | 'D' | 'E';
 type ProductStatus = 'ALL' | 'ACTIVE' | 'IN_REPAIR' | 'STOLEN' | 'SCRAPPED';
 
 const ProductManagement: React.FC = () => {
@@ -252,9 +253,10 @@ const ProductManagement: React.FC = () => {
     const familyTabs: { key: ProductFamily; label: string }[] = [
         { key: 'ALL', label: '全部' },
         { key: 'A', label: '在售电影机' },
-        { key: 'B', label: '历史机型' },
+        { key: 'B', label: '广播摄像机' },
         { key: 'C', label: '电子寻像器' },
-        { key: 'D', label: '通用配件' }
+        { key: 'D', label: '历史机型' },
+        { key: 'E', label: '通用配件' }
     ];
 
     return (
@@ -539,6 +541,7 @@ const ProductManagement: React.FC = () => {
                             <th style={{ padding: 16, color: 'var(--text-secondary)' }}>序列号</th>
                             <th style={{ padding: 16, color: 'var(--text-secondary)' }}>族群</th>
                             <th style={{ padding: 16, color: 'var(--text-secondary)' }}>固件版本</th>
+                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>保修状态</th>
                             <th
                                 style={{ padding: 16, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
                                 onClick={() => handleSort('ticket_count')}
@@ -555,9 +558,9 @@ const ProductManagement: React.FC = () => {
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={5} style={{ padding: 40, textAlign: 'center' }}>Loading...</td></tr>
+                            <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center' }}>Loading...</td></tr>
                         ) : products.length === 0 ? (
-                            <tr><td colSpan={5} style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>
+                            <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                                     <Package size={48} opacity={0.3} />
                                     <span>暂无产品数据</span>
@@ -595,6 +598,52 @@ const ProductManagement: React.FC = () => {
                                     </td>
                                     <td style={{ padding: 16 }}>
                                         <span style={{ fontSize: '0.9rem', opacity: 0.8 }}>{product.firmware_version || '-'}</span>
+                                    </td>
+                                    <td style={{ padding: 16 }}>
+                                        {(() => {
+                                            const status = product.warranty_status;
+                                            const endDate = product.warranty_end_date;
+                                            
+                                            let bg = 'rgba(245,158,11,0.1)';
+                                            let color = '#F59E0B';
+                                            let border = 'rgba(245,158,11,0.2)';
+                                            let label = '待确认';
+                                            
+                                            if (!endDate || endDate === '0000-00-00') {
+                                                bg = 'rgba(107, 114, 128, 0.1)';
+                                                color = 'var(--text-tertiary)';
+                                                border = 'rgba(107, 114, 128, 0.2)';
+                                                label = '待录入';
+                                            } else if (status === 'ACTIVE') {
+                                                bg = 'rgba(16,185,129,0.12)';
+                                                color = '#10B981';
+                                                border = 'rgba(16,185,129,0.3)';
+                                                label = '保内';
+                                            } else if (status === 'EXPIRED') {
+                                                bg = 'rgba(239,68,68,0.12)';
+                                                color = '#EF4444';
+                                                border = 'rgba(239,68,68,0.3)';
+                                                label = '过保';
+                                            }
+
+                                            return (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                    <span style={{
+                                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                        width: 'fit-content', padding: '2px 8px', borderRadius: '12px',
+                                                        backgroundColor: bg, color: color, border: `1px solid ${border}`,
+                                                        fontSize: '0.75rem', fontWeight: 600
+                                                    }}>
+                                                        {label}
+                                                    </span>
+                                                    {endDate && (
+                                                        <span style={{ fontSize: '0.7rem', opacity: 0.5, fontFamily: 'monospace' }}>
+                                                            {endDate}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                     </td>
                                     <td style={{ padding: 16 }}>
                                         <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{product.ticket_count || 0}</span>

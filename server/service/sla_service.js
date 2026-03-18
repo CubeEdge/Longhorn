@@ -63,15 +63,37 @@ const WARNING_THRESHOLD = 0.25;  // 剩余 25% 时间时警告
 
 /**
  * 计算 SLA 截止时间
+ * @param {Object} db - better-sqlite3 数据库实例
  * @param {string} priority - P0/P1/P2
  * @param {string} currentNode - 当前状态机节点
  * @param {Date|string} nodeEnteredAt - 进入节点时间
+ * @param {string} ticketType - 工单类型 (inquiry/rma/svc)
  * @returns {Date|null} SLA 截止时间，如果该节点不计 SLA 返回 null
  */
-function calculateSlaDue(priority, currentNode, nodeEnteredAt) {
+function calculateSlaDue(db, priority, currentNode, nodeEnteredAt, ticketType) {
   const slaType = NODE_SLA_TYPE_MAP[currentNode];
   if (!slaType) return null;
   
+  const type = ticketType?.toLowerCase();
+  
+  if (db && type) {
+    try {
+      const settings = db.prepare('SELECT inquiry_sla_enabled, inquiry_sla_hours, rma_sla_enabled, rma_sla_hours, svc_sla_enabled, svc_sla_hours FROM system_settings LIMIT 1').get();
+      if (settings) {
+         const isEnabled = settings[`${type}_sla_enabled`] !== 0; // 默认 1，非 0
+         if (!isEnabled) return null;
+         
+         const overrideHours = settings[`${type}_sla_hours`];
+         if (overrideHours) {
+            const enteredTime = new Date(nodeEnteredAt);
+            return new Date(enteredTime.getTime() + overrideHours * 60 * 60 * 1000);
+         }
+      }
+    } catch (e) {
+      console.error('[SLA] Failed to query system_settings for SLA calculation:', e);
+    }
+  }
+
   const matrix = SLA_MATRIX[priority] || SLA_MATRIX.P2;
   const hours = matrix[slaType];
   if (!hours) return null;
@@ -132,12 +154,14 @@ function checkSlaStatus(ticket) {
 function updateSlaOnNodeChange(db, ticketId, newNode, priority) {
   const now = new Date().toISOString();
   
-  // 计算新节点的 SLA 截止时间
-  const slaDue = calculateSlaDue(priority, newNode, now);
-  const slaDueStr = slaDue ? slaDue.toISOString() : null;
-  
   // 检查是否超时（针对旧节点）
   const ticket = db.prepare('SELECT * FROM tickets WHERE id = ?').get(ticketId);
+  const ticketType = ticket?.ticket_type || 'inquiry';
+  
+  // 计算新节点的 SLA 截止时间
+  const slaDue = calculateSlaDue(db, priority, newNode, now, ticketType);
+  const slaDueStr = slaDue ? slaDue.toISOString() : null;
+  
   let breachCounter = ticket?.breach_counter || 0;
   
   if (ticket?.sla_due_at) {

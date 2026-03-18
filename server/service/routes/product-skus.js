@@ -135,7 +135,15 @@ module.exports = function (db, authenticate) {
                 display_name_en,
                 spec_label,
                 sku_image,
-                is_active
+                is_active,
+                weight_kg,
+                volume_cum,
+                length_cm,
+                width_cm,
+                depth_cm,
+                is_dangerous_goods,
+                upc,
+                sn_prefix
             } = req.body;
 
             // Validation
@@ -167,8 +175,11 @@ module.exports = function (db, authenticate) {
             const result = db.prepare(`
                 INSERT INTO product_skus (
                     model_id, sku_code, material_id, display_name, display_name_en,
-                    spec_label, sku_image, is_active, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                    spec_label, sku_image, is_active, 
+                    weight_kg, volume_cum, length_cm, width_cm, depth_cm,
+                    is_dangerous_goods, upc, sn_prefix,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
             `).run(
                 model_id,
                 sku_code,
@@ -177,7 +188,15 @@ module.exports = function (db, authenticate) {
                 display_name_en || null,
                 spec_label || null,
                 sku_image || null,
-                is_active !== false ? 1 : 0
+                is_active !== false ? 1 : 0,
+                weight_kg || null,
+                volume_cum || null,
+                length_cm || null,
+                width_cm || null,
+                depth_cm || null,
+                is_dangerous_goods ? 1 : 0,
+                upc || null,
+                sn_prefix || null
             );
 
             const newSku = db.prepare('SELECT * FROM product_skus WHERE id = ?').get(result.lastInsertRowid);
@@ -210,7 +229,15 @@ module.exports = function (db, authenticate) {
                 display_name_en,
                 spec_label,
                 sku_image,
-                is_active
+                is_active,
+                weight_kg,
+                volume_cum,
+                length_cm,
+                width_cm,
+                depth_cm,
+                is_dangerous_goods,
+                upc,
+                sn_prefix
             } = req.body;
 
             // Check if SKU exists
@@ -243,6 +270,14 @@ module.exports = function (db, authenticate) {
                     spec_label = ?,
                     sku_image = ?,
                     is_active = COALESCE(?, is_active),
+                    weight_kg = ?,
+                    volume_cum = ?,
+                    length_cm = ?,
+                    width_cm = ?,
+                    depth_cm = ?,
+                    is_dangerous_goods = ?,
+                    upc = ?,
+                    sn_prefix = ?,
                     updated_at = datetime('now')
                 WHERE id = ?
             `).run(
@@ -254,6 +289,14 @@ module.exports = function (db, authenticate) {
                 spec_label !== undefined ? spec_label : null,
                 sku_image !== undefined ? sku_image : null,
                 is_active !== undefined ? (is_active ? 1 : 0) : null,
+                weight_kg !== undefined ? weight_kg : null,
+                volume_cum !== undefined ? volume_cum : null,
+                length_cm !== undefined ? length_cm : null,
+                width_cm !== undefined ? width_cm : null,
+                depth_cm !== undefined ? depth_cm : null,
+                is_dangerous_goods !== undefined ? (is_dangerous_goods ? 1 : 0) : null,
+                upc !== undefined ? upc : null,
+                sn_prefix !== undefined ? sn_prefix : null,
                 id
             );
 
