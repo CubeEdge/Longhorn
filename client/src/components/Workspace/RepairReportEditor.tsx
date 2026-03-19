@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Wrench, AlertCircle, Save, X, Download, Send, FileText, Stethoscope, Plus, Trash2, Settings, ChevronDown, ChevronUp, DollarSign, Package, Globe, Check, Edit2, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Wrench, AlertCircle, Save, X, Download, Send, FileText, Stethoscope, Plus, Trash2, Settings, ChevronDown, ChevronUp, DollarSign, Package, Globe, Check, Sparkles } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useToast } from '../../store/useToast';
@@ -209,15 +209,80 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     const [translations, setTranslations] = useState<Record<string, Record<string, any>>>({});
     const [activeTranslationLang, setActiveTranslationLang] = useState('en-US');
     const [translatingFields, setTranslatingFields] = useState<Set<string>>(new Set());
+    // Track which languages have been Bokeh translated (for re-translate confirmation)
+    const [bokehTranslatedLangs, setBokehTranslatedLangs] = useState<Set<string>>(new Set());
+    // Re-translate confirmation modal state
+    const [retranslateConfirm, setRetranslateConfirm] = useState<{
+        isOpen: boolean;
+        fieldKey: string;
+        langCode: string;
+        sourceText: string;
+        currentTranslation: string;
+        countdown: number;
+    }>({ isOpen: false, fieldKey: '', langCode: '', sourceText: '', currentTranslation: '', countdown: 5 });
 
-    const handleAITranslate = async (fieldKey: string, langCode: string, sourceText: string) => {
+    // Countdown timer for re-translate confirmation
+    useEffect(() => {
+        if (retranslateConfirm.isOpen && retranslateConfirm.countdown > 0) {
+            const timer = setInterval(() => {
+                setRetranslateConfirm(prev => ({
+                    ...prev,
+                    countdown: prev.countdown - 1
+                }));
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [retranslateConfirm.isOpen, retranslateConfirm.countdown]);
+
+    const handleAITranslate = async (fieldKey: string, langCode: string, sourceText: string, currentEditValue?: string) => {
         if (!sourceText.trim()) return;
         
         const fieldLangKey = `${fieldKey}-${langCode}`;
+        const hasTranslatedBefore = bokehTranslatedLangs.has(langCode);
+        // Use current edit value if provided (from textarea), otherwise fall back to saved translation
+        const currentTranslation = currentEditValue !== undefined ? currentEditValue : (translations[langCode]?.[fieldKey] || '');
+        
+        // If this language has been translated before and has content, show confirmation
+        if (hasTranslatedBefore && currentTranslation) {
+            setRetranslateConfirm({
+                isOpen: true,
+                fieldKey,
+                langCode,
+                sourceText,
+                currentTranslation,
+                countdown: 5
+            });
+            return;
+        }
+        
         setTranslatingFields(prev => new Set(prev).add(fieldLangKey));
         
         try {
             // Directly call Bokeh AI for translation
+            await callBokehAI(fieldKey, langCode, sourceText);
+            // Mark this language as having been Bokeh translated
+            setBokehTranslatedLangs(prev => new Set(prev).add(langCode));
+        } catch (err) {
+            console.error('Translation error:', err);
+            showToast('Bokeh翻译失败，请稍后重试', 'error');
+        } finally {
+            setTranslatingFields(prev => {
+                const next = new Set(prev);
+                next.delete(fieldLangKey);
+                return next;
+            });
+        }
+    };
+
+    // Handle confirmed re-translate
+    const handleConfirmedRetranslate = async () => {
+        const { fieldKey, langCode, sourceText } = retranslateConfirm;
+        const fieldLangKey = `${fieldKey}-${langCode}`;
+        
+        setRetranslateConfirm(prev => ({ ...prev, isOpen: false }));
+        setTranslatingFields(prev => new Set(prev).add(fieldLangKey));
+        
+        try {
             await callBokehAI(fieldKey, langCode, sourceText);
         } catch (err) {
             console.error('Translation error:', err);
@@ -278,6 +343,22 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     };
 
     const saveTranslation = async (fieldKey: string, langCode: string, text: string, isManual: boolean) => {
+        // Update local state first for immediate UI feedback
+        const updated = {
+            ...translations,
+            [langCode]: {
+                ...translations[langCode],
+                [fieldKey]: text,
+                _meta: {
+                    updated_at: new Date().toISOString(),
+                    updated_by: isManual ? 'Manual Edit' : 'Bokeh AI',
+                    is_manual_edit: isManual
+                }
+            }
+        };
+        setTranslations(updated);
+        
+        // Save to backend if report exists
         if (!localReportId) return;
         try {
             await axios.post(
@@ -1722,6 +1803,60 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                     />
                 )}
 
+                {/* Re-translate Confirmation Modal */}
+                {retranslateConfirm.isOpen && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--modal-overlay)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 480, maxWidth: '90%', background: 'var(--modal-bg)', borderRadius: 12, padding: 24, border: '1px solid var(--glass-border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(59,130,246,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Sparkles size={20} color="#3B82F6" />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: 'var(--text-main)' }}>确认重新翻译</h3>
+                                    <p style={{ margin: '4px 0 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>Bokeh翻译将覆盖当前内容</p>
+                                </div>
+                            </div>
+                            
+                            <div style={{ marginBottom: 16 }}>
+                                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6 }}>当前译文（将被覆盖）</label>
+                                <div style={{ padding: 12, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, fontSize: 13, color: 'var(--text-main)', maxHeight: 100, overflow: 'auto' }}>
+                                    {retranslateConfirm.currentTranslation}
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: 20 }}>
+                                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6 }}>源文本</label>
+                                <div style={{ padding: 12, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 8, fontSize: 13, color: 'var(--text-secondary)', maxHeight: 80, overflow: 'auto' }}>
+                                    {retranslateConfirm.sourceText}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                                <button
+                                    onClick={() => setRetranslateConfirm(prev => ({ ...prev, isOpen: false }))}
+                                    style={{ padding: '10px 20px', borderRadius: 8, background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    onClick={handleConfirmedRetranslate}
+                                    disabled={retranslateConfirm.countdown > 0}
+                                    style={{ 
+                                        padding: '10px 20px', borderRadius: 8, background: '#FFA500', border: 'none', 
+                                        color: '#000', fontSize: 13, cursor: retranslateConfirm.countdown > 0 ? 'not-allowed' : 'pointer',
+                                        opacity: retranslateConfirm.countdown > 0 ? 0.6 : 1,
+                                        display: 'flex', alignItems: 'center', gap: 6,
+                                        fontWeight: 500
+                                    }}
+                                >
+                                    <Sparkles size={14} />
+                                    {retranslateConfirm.countdown > 0 ? `确认重新翻译 (${retranslateConfirm.countdown}s)` : '确认重新翻译'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* PDF Settings Panel */}
                 {showPdfSettings && (
                     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--modal-overlay)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1809,6 +1944,7 @@ const TextArea: React.FC<{
     translatingFields?: Set<string>;
     onAITranslate?: (fieldKey: string, lang: string, text: string) => void;
     onSaveTranslation?: (fieldKey: string, lang: string, text: string, isManual: boolean) => void;
+    bokehTranslatedLangs?: Set<string>;
 }> = ({ 
     label, 
     value, 
@@ -1822,7 +1958,8 @@ const TextArea: React.FC<{
     onActiveTranslationLangChange,
     translatingFields,
     onAITranslate,
-    onSaveTranslation
+    onSaveTranslation,
+    bokehTranslatedLangs
 }) => (
     <div style={{ marginBottom: 16 }}>
         <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</label>
@@ -1844,6 +1981,7 @@ const TextArea: React.FC<{
                 translatingFields={translatingFields}
                 onAITranslate={onAITranslate}
                 onSaveTranslation={onSaveTranslation}
+                bokehTranslatedLangs={bokehTranslatedLangs || new Set()}
             />
         )}
     </div>
@@ -2323,8 +2461,12 @@ const ReportPreview: React.FC<{
 
                 {/* 1. 客户信息 */}
                 <SectionPreview title={t.section1}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    {/* 客户名称单独一行 */}
+                    <div style={{ marginBottom: 12 }}>
                         <InfoRow label={t.customerName} value={ticketInfo?.customer_name || ticketInfo?.account_name || '-'} />
+                    </div>
+                    {/* 其他信息一行 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                         <InfoRow label={t.contact} value={ticketInfo?.contact_name || '-'} />
                         <InfoRow label={t.phone} value={ticketInfo?.contact_phone || '-'} />
                         <InfoRow label={t.email} value={ticketInfo?.contact_email || '-'} />
@@ -2333,13 +2475,17 @@ const ReportPreview: React.FC<{
 
                 {/* 2. 设备信息 */}
                 <SectionPreview title={t.section2}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                    {/* 产品型号单独一行 */}
+                    <div style={{ marginBottom: 12 }}>
                         <InfoRow 
                             label={t.productModel} 
                             value={(language !== 'original' && language !== 'zh-CN' && reportData.content.device_info.product_name_en) 
                                 ? reportData.content.device_info.product_name_en 
                                 : reportData.content.device_info.product_name} 
                         />
+                    </div>
+                    {/* 其他信息一行 */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <InfoRow label={t.serialNumber} value={reportData.content.device_info.serial_number} />
                         <InfoRow label={t.firmwareVersion} value={reportData.content.device_info.firmware_version} />
                     </div>
@@ -2351,7 +2497,7 @@ const ReportPreview: React.FC<{
                         <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>{t.customerReported}:</div>
                         <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontStyle: 'italic', fontSize: 13 }}>
                             {reportData.content.issue_description.customer_reported 
-                                ? renderTranslatedContent('customer_reported', reportData.content.issue_description.customer_reported)
+                                ? renderTranslatedContent('issue_description.customer_reported', reportData.content.issue_description.customer_reported)
                                 : t.notProvided}
                         </div>
                     </div>
@@ -2359,13 +2505,13 @@ const ReportPreview: React.FC<{
 
                 {/* 4. 技术诊断 */}
                 <SectionPreview title={t.section4}>
-                    <InfoBlock label={t.findings} value={renderTranslatedContent('findings', reportData.content.diagnosis.findings)} />
-                    <InfoBlock label={t.rootCause} value={renderTranslatedContent('root_cause', reportData.content.diagnosis.root_cause)} />
+                    <InfoBlock label={t.findings} value={renderTranslatedContent('diagnosis.findings', reportData.content.diagnosis.findings)} />
+                    <InfoBlock label={t.rootCause} value={renderTranslatedContent('diagnosis.root_cause', reportData.content.diagnosis.root_cause)} />
                     {reportData.content.diagnosis.troubleshooting_steps && (
                         <div>
                             <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>{t.troubleshootingSteps}:</div>
                             <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontSize: 13, whiteSpace: 'pre-wrap' }}>
-                                {renderTranslatedContent('troubleshooting_steps', reportData.content.diagnosis.troubleshooting_steps)}
+                                {renderTranslatedContent('diagnosis.troubleshooting_steps', reportData.content.diagnosis.troubleshooting_steps)}
                             </div>
                         </div>
                     )}
@@ -2377,11 +2523,11 @@ const ReportPreview: React.FC<{
                         <div style={{ marginBottom: 16 }}>
                             <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>{t.actionsTaken}:</div>
                             <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontSize: 13, whiteSpace: 'pre-wrap' }}>
-                                {renderTranslatedContent('actions_taken', reportData.content.repair_process.actions_taken)}
+                                {renderTranslatedContent('repair_process.actions_taken', reportData.content.repair_process.actions_taken)}
                             </div>
                         </div>
                     )}
-                    <InfoBlock label={t.testingResults} value={renderTranslatedContent('testing_results', reportData.content.repair_process.testing_results)} />
+                    <InfoBlock label={t.testingResults} value={renderTranslatedContent('repair_process.testing_results', reportData.content.repair_process.testing_results)} />
                 </SectionPreview>
 
                 {/* 6. 费用明细表 */}
@@ -2555,8 +2701,10 @@ const InlineTranslationPanel: React.FC<{
     activeLang: string;
     onActiveLangChange: (lang: string) => void;
     translatingFields: Set<string>;
-    onAITranslate: (fieldKey: string, lang: string, text: string) => void;
+    onAITranslate: (fieldKey: string, lang: string, text: string, currentEditValue?: string) => void;
     onSaveTranslation: (fieldKey: string, lang: string, text: string, isManual: boolean) => void;
+    bokehTranslatedLangs: Set<string>;
+    defaultExpanded?: boolean;
 }> = ({
     fieldKey,
     originalText,
@@ -2565,11 +2713,15 @@ const InlineTranslationPanel: React.FC<{
     onActiveLangChange,
     translatingFields,
     onAITranslate,
-    onSaveTranslation
+    onSaveTranslation,
+    bokehTranslatedLangs,
+    defaultExpanded = false
 }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+    // Direct editing: textarea value is synced with current translation
     const [editValue, setEditValue] = useState('');
+    // Track if this is the initial mount
+    const isInitialMount = useRef(true);
 
     const SUPPORTED_LANGUAGES = [
         { code: 'en-US', label: 'English', flag: '🇺🇸' },
@@ -2588,15 +2740,32 @@ const InlineTranslationPanel: React.FC<{
 
     const currentTranslation = translations[activeLang]?.[fieldKey] || '';
     const isTranslating = translatingFields.has(`${fieldKey}-${activeLang}`);
+    const hasBokehTranslatedBefore = bokehTranslatedLangs.has(activeLang);
 
+    // Sync editValue only on initial mount or when language changes (not when translation updates)
     useEffect(() => {
-        setEditValue(currentTranslation);
-    }, [currentTranslation, activeLang]);
+        if (isInitialMount.current) {
+            setEditValue(currentTranslation);
+            isInitialMount.current = false;
+        }
+    }, []);
 
-    const handleSaveEdit = () => {
-        onSaveTranslation(fieldKey, activeLang, editValue, true);
-        setIsEditing(false);
-    };
+    // Update editValue when language changes
+    useEffect(() => {
+        if (!isInitialMount.current) {
+            setEditValue(currentTranslation);
+        }
+    }, [activeLang]);
+
+    // Auto-save when user edits the textarea (debounced)
+    useEffect(() => {
+        if (editValue !== currentTranslation && editValue !== '') {
+            const timer = setTimeout(() => {
+                onSaveTranslation(fieldKey, activeLang, editValue, true);
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [editValue, currentTranslation, fieldKey, activeLang, onSaveTranslation]);
 
     const translatedCount = SUPPORTED_LANGUAGES.filter(lang => 
         translations[lang.code]?.[fieldKey]
@@ -2635,9 +2804,9 @@ const InlineTranslationPanel: React.FC<{
             {isExpanded && (
                 <div style={{
                     marginTop: 10, padding: 12,
-                    background: 'rgba(0,0,0,0.2)',
+                    background: 'var(--glass-bg)',
                     borderRadius: 8,
-                    border: '1px solid rgba(255,255,255,0.06)'
+                    border: '1px solid var(--glass-border)'
                 }}>
                     {/* Language Tabs */}
                     <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
@@ -2646,10 +2815,7 @@ const InlineTranslationPanel: React.FC<{
                             return (
                                 <button
                                     key={lang.code}
-                                    onClick={() => {
-                                        onActiveLangChange(lang.code);
-                                        setIsEditing(false);
-                                    }}
+                                    onClick={() => onActiveLangChange(lang.code)}
                                     style={{
                                         padding: '6px 10px', borderRadius: 6,
                                         background: activeLang === lang.code ? 'rgba(255,215,0,0.15)' : 'transparent',
@@ -2677,102 +2843,45 @@ const InlineTranslationPanel: React.FC<{
                                 {SUPPORTED_LANGUAGES.find(l => l.code === activeLang)?.label} 译文
                             </span>
                             
-                            {!isEditing && (
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                    <button
-                                        onClick={() => onAITranslate(fieldKey, activeLang, originalText)}
-                                        disabled={isTranslating}
-                                        style={{
-                                            padding: '4px 10px', borderRadius: 4,
-                                            background: 'rgba(59,130,246,0.15)',
-                                            border: '1px solid rgba(59,130,246,0.3)',
-                                            color: '#3B82F6', fontSize: 11,
-                                            cursor: isTranslating ? 'not-allowed' : 'pointer',
-                                            display: 'flex', alignItems: 'center', gap: 4,
-                                            opacity: isTranslating ? 0.6 : 1
-                                        }}
-                                    >
-                                        <Sparkles size={10} />
-                                        {isTranslating ? '翻译中...' : 'Bokeh翻译'}
-                                    </button>
-                                    {currentTranslation && (
-                                        <button
-                                            onClick={() => setIsEditing(true)}
-                                            style={{
-                                                padding: '4px 10px', borderRadius: 4,
-                                                background: 'rgba(255,215,0,0.15)',
-                                                border: '1px solid rgba(255,215,0,0.3)',
-                                                color: '#FFD200', fontSize: 11,
-                                                cursor: 'pointer', display: 'flex',
-                                                alignItems: 'center', gap: 4
-                                            }}
-                                        >
-                                            <Edit2 size={10} /> 修正
-                                        </button>
-                                    )}
-                                </div>
-                            )}
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                <button
+                                    onClick={() => onAITranslate(fieldKey, activeLang, originalText, editValue)}
+                                    disabled={isTranslating}
+                                    style={{
+                                        padding: '4px 10px', borderRadius: 4,
+                                        background: 'rgba(59,130,246,0.15)',
+                                        border: '1px solid rgba(59,130,246,0.3)',
+                                        color: '#3B82F6', fontSize: 11,
+                                        cursor: isTranslating ? 'not-allowed' : 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: 4,
+                                        opacity: isTranslating ? 0.6 : 1
+                                    }}
+                                >
+                                    <Sparkles size={10} />
+                                    {isTranslating ? '翻译中...' : (hasBokehTranslatedBefore ? '再Bokeh一次' : 'Bokeh翻译')}
+                                </button>
+                            </div>
                         </div>
 
-                        {isEditing ? (
-                            <div>
-                                <textarea
-                                    value={editValue}
-                                    onChange={e => setEditValue(e.target.value)}
-                                    style={{
-                                        width: '100%', minHeight: 60, padding: 8,
-                                        borderRadius: 6, background: 'rgba(0,0,0,0.3)',
-                                        border: '1px solid rgba(255,215,0,0.3)',
-                                        color: '#fff', fontSize: 12, lineHeight: 1.5,
-                                        resize: 'vertical', fontFamily: 'inherit'
-                                    }}
-                                />
-                                <div style={{
-                                    display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 6
-                                }}>
-                                    <button
-                                        onClick={() => {
-                                            setIsEditing(false);
-                                            setEditValue(currentTranslation);
-                                        }}
-                                        style={{
-                                            padding: '4px 10px', borderRadius: 4,
-                                            background: 'transparent',
-                                            border: '1px solid rgba(255,255,255,0.2)',
-                                            color: 'var(--text-secondary)', fontSize: 11,
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        取消
-                                    </button>
-                                    <button
-                                        onClick={handleSaveEdit}
-                                        style={{
-                                            padding: '4px 10px', borderRadius: 4,
-                                            background: '#FFD200', border: 'none',
-                                            color: '#000', fontSize: 11,
-                                            cursor: 'pointer', fontWeight: 500,
-                                            display: 'flex', alignItems: 'center', gap: 4
-                                        }}
-                                    >
-                                        <Check size={10} /> 保存
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div style={{
-                                padding: 10, borderRadius: 6,
-                                background: currentTranslation ? 'rgba(0,0,0,0.3)' : 'transparent',
-                                border: `1px solid ${currentTranslation ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.1)'}`,
-                                color: currentTranslation ? 'var(--text-main)' : 'var(--text-tertiary)',
-                                fontSize: 12, lineHeight: 1.5, minHeight: 40,
-                                whiteSpace: 'pre-wrap'
-                            }}>
-                                {currentTranslation || (
-                                    <span style={{ fontStyle: 'italic' }}>
-                                        暂无译文，点击 "Bokeh翻译" 生成
-                                    </span>
-                                )}
+                        {/* Direct editable textarea */}
+                        <textarea
+                            value={editValue}
+                            onChange={e => setEditValue(e.target.value)}
+                            placeholder="暂无译文，点击右侧按钮生成"
+                            style={{
+                                width: '100%', minHeight: 60, padding: 10,
+                                borderRadius: 6, 
+                                background: 'var(--glass-bg-hover)',
+                                border: `1px solid ${currentTranslation ? 'var(--glass-border)' : 'var(--glass-border-subtle, var(--glass-border))'}`,
+                                color: 'var(--text-main)',
+                                fontSize: 12, lineHeight: 1.5,
+                                resize: 'vertical', fontFamily: 'inherit',
+                                transition: 'all 0.2s'
+                            }}
+                        />
+                        {editValue !== currentTranslation && (
+                            <div style={{ fontSize: 10, color: '#10B981', marginTop: 4, textAlign: 'right' }}>
+                                已修改，自动保存中...
                             </div>
                         )}
                     </div>

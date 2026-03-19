@@ -681,6 +681,8 @@ const WorkspacePage: React.FC = () => {
       draft: { label: '草稿', color: '#9CA3AF' },
       submitted: { label: '已提交', color: '#3B82F6' },
       in_progress: { label: '处理中', color: '#3B82F6' },
+      handling: { label: '处理中', color: '#3B82F6' },
+      awaiting_customer: { label: '等待客户', color: '#D946EF' },
       waiting_customer: { label: '待反馈', color: '#D946EF' },
       ms_review: { label: 'MS审阅', color: '#FFD200' },
       op_receiving: { label: '待收货', color: '#FFD200' },

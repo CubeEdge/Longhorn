@@ -9,8 +9,7 @@ import {
   Clock, User, MessageSquare,
   ArrowRight, Plus as PlusIcon, AlertTriangle,
   AtSign, Paperclip, ChevronDown, ChevronRight, UserCheck,
-  Edit3, Trash2, X, Wrench, RefreshCw, Package, Truck, CheckCircle,
-  Globe
+  Edit3, Trash2, X, Wrench, RefreshCw, Package, Truck, CheckCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -2130,10 +2129,10 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>
                           {hasLinkedCustomer 
-                            ? `${customerName} · ${contactName}`
+                            ? `${customerName} · ${contactName}${countryName ? ` · ${countryName}` : ''}`
                             : reporterSnapshot?.name 
-                              ? `${reporterSnapshot.name} · ${reporterSnapshot.email || reporterSnapshot.phone || '未知联系方式'} (未关联客户)`
-                              : `${customerName} · ${contactName}`
+                              ? `${reporterSnapshot.name} · ${reporterSnapshot.email || reporterSnapshot.phone || '未知联系方式'}${countryName ? ` · ${countryName}` : ''} (未关联客户)`
+                              : `${customerName} · ${contactName}${countryName ? ` · ${countryName}` : ''}`
                           }
                         </div>
                         {ticket?.account_service_tier && (
@@ -2152,16 +2151,6 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>经销商</label>
                         <div style={{ fontSize: 13, color: 'var(--text-main)' }}>{dealerName}{ticket?.dealer_code ? ` (${ticket.dealer_code})` : ''}</div>
-                      </div>
-                    )}
-                    {/* 国家信息 */}
-                    {countryName && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>国家/地区</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Globe size={14} color="var(--text-tertiary)" />
-                          <span style={{ fontSize: 13, color: 'var(--text-main)' }}>{countryName}</span>
-                        </div>
                       </div>
                     )}
                   </div>

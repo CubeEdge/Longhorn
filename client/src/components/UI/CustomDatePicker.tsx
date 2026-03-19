@@ -20,6 +20,8 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
     const containerRef = useRef<HTMLDivElement>(null);
     const yearSelectorRef = useRef<HTMLDivElement>(null);
     const monthSelectorRef = useRef<HTMLDivElement>(null);
+    const yearListRef = useRef<HTMLDivElement>(null);
+    const monthListRef = useRef<HTMLDivElement>(null);
 
     // Generate year options (current year ± 30 years)
     const currentYear = new Date().getFullYear();
@@ -73,6 +75,26 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Scroll to current year when year selector opens
+    useEffect(() => {
+        if (showYearSelector && yearListRef.current) {
+            const currentYearElement = yearListRef.current.querySelector(`[data-year="${viewDate.getFullYear()}"]`) as HTMLElement;
+            if (currentYearElement) {
+                currentYearElement.scrollIntoView({ block: 'center', behavior: 'auto' });
+            }
+        }
+    }, [showYearSelector, viewDate]);
+
+    // Scroll to current month when month selector opens
+    useEffect(() => {
+        if (showMonthSelector && monthListRef.current) {
+            const currentMonthElement = monthListRef.current.querySelector(`[data-month="${viewDate.getMonth()}"]`) as HTMLElement;
+            if (currentMonthElement) {
+                currentMonthElement.scrollIntoView({ block: 'center', behavior: 'auto' });
+            }
+        }
+    }, [showMonthSelector, viewDate]);
 
     return (
         <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
@@ -142,7 +164,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
                                         <ChevronDown size={14} style={{ transform: showYearSelector ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                                     </button>
                                     {showYearSelector && (
-                                        <div style={{
+                                        <div ref={yearListRef} style={{
                                             position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
                                             marginTop: 4, maxHeight: '200px', overflowY: 'auto',
                                             background: 'var(--bg-sidebar)', border: '1px solid var(--glass-border)',
@@ -153,6 +175,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
                                             {yearOptions.map(year => (
                                                 <button
                                                     key={year}
+                                                    data-year={year}
                                                     onClick={() => {
                                                         setViewDate(setYear(viewDate, year));
                                                         setShowYearSelector(false);
@@ -191,7 +214,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
                                         <ChevronDown size={14} style={{ transform: showMonthSelector ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                                     </button>
                                     {showMonthSelector && (
-                                        <div style={{
+                                        <div ref={monthListRef} style={{
                                             position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
                                             marginTop: 4, maxHeight: '200px', overflowY: 'auto',
                                             background: 'var(--bg-sidebar)', border: '1px solid var(--glass-border)',
@@ -202,6 +225,7 @@ export const CustomDatePicker: React.FC<CustomDatePickerProps> = ({ value, onCha
                                             {monthOptions.map(month => (
                                                 <button
                                                     key={month.value}
+                                                    data-month={month.value}
                                                     onClick={() => {
                                                         setViewDate(setMonth(viewDate, month.value));
                                                         setShowMonthSelector(false);

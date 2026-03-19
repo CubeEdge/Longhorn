@@ -518,7 +518,7 @@ const CustomerDetailPage: React.FC = () => {
                                             right: 0,
                                             top: '100%',
                                         marginTop: 8,
-                                        background: 'rgba(40, 40, 42, 0.98)',
+                                        background: 'var(--glass-bg)',
                                         backdropFilter: 'blur(20px)',
                                         borderRadius: 12,
                                         border: '1px solid var(--glass-border)',

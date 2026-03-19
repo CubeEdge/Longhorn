@@ -97,39 +97,33 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
         >
             <div
                 style={{
-                    background: 'linear-gradient(145deg, rgba(35, 35, 40, 0.95), rgba(25, 25, 30, 0.95))',
+                    background: 'var(--bg-main)',
                     borderRadius: 16,
-                    border: '1px solid var(--glass-border)',
+                    border: hasRelatedData ? '1px solid #f59e0b' : '1px solid #ef4444',
                     padding: 0,
                     width: '100%',
                     maxWidth: 480,
                     boxShadow: '0 20px 60px var(--glass-shadow)'
                 }}
             >
-                {/* Header */}
+                {/* Header - 参考图2的居中图标设计 */}
                 <div
                     style={{
                         display: 'flex',
-                        justifyContent: 'space-between',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        padding: '20px 24px',
-                        borderBottom: '1px solid var(--glass-border)'
+                        padding: '32px 24px 16px',
+                        position: 'relative'
                     }}
                 >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {hasRelatedData ? (
-                            <AlertTriangle size={24} color="#f59e0b" />
-                        ) : (
-                            <Trash2 size={24} color="#ef4444" />
-                        )}
-                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600 }}>
-                            {hasRelatedData ? `无法删除该${entityName}` : `确认删除${entityName}？`}
-                        </h3>
-                    </div>
+                    {/* 关闭按钮 */}
                     <button
                         onClick={onClose}
                         disabled={loading}
                         style={{
+                            position: 'absolute',
+                            top: 16,
+                            right: 16,
                             background: 'transparent',
                             border: 'none',
                             color: 'var(--text-secondary)',
@@ -143,10 +137,39 @@ const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
                     >
                         <X size={20} />
                     </button>
+                    
+                    {/* 居中图标 */}
+                    <div style={{
+                        width: 56,
+                        height: 56,
+                        borderRadius: '50%',
+                        background: hasRelatedData ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: 16
+                    }}>
+                        {hasRelatedData ? (
+                            <AlertTriangle size={28} color="#f59e0b" />
+                        ) : (
+                            <Trash2 size={28} color="#ef4444" />
+                        )}
+                    </div>
+                    
+                    {/* 标题 */}
+                    <h3 style={{ 
+                        margin: 0, 
+                        fontSize: '1.25rem', 
+                        fontWeight: 600,
+                        color: 'var(--text-main)',
+                        textAlign: 'center'
+                    }}>
+                        {hasRelatedData ? `无法删除该${entityName}` : `确认删除${entityName}？`}
+                    </h3>
                 </div>
                 
                 {/* Body */}
-                <div style={{ padding: '24px' }}>
+                <div style={{ padding: '0 24px 24px' }}>
                     {hasRelatedData && counts ? (
                         // Case B: 有关联数据，不能删除
                         <>

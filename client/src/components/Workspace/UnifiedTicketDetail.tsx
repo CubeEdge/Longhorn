@@ -9,11 +9,29 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreHorizontal, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight, Wrench, Calculator, CheckCircle, Shield, Search, BadgeDollarSign, ChevronRight, Zap, MessageSquare, RefreshCcw, ArrowUpCircle } from 'lucide-react';
+import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreHorizontal, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight, Wrench, Calculator, CheckCircle, Shield, Search, BadgeDollarSign, ChevronRight, Zap, MessageSquare, RefreshCcw, ArrowUpCircle, Globe } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import NodeProgressBar from './NodeProgressBar';
+
+// 国家代码到名称的映射
+const countryCodeMap: Record<string, string> = {
+  'CN': '中国', 'US': '美国', 'UK': '英国', 'GB': '英国', 'DE': '德国', 'FR': '法国',
+  'JP': '日本', 'KR': '韩国', 'AU': '澳大利亚', 'CA': '加拿大', 'SG': '新加坡',
+  'MY': '马来西亚', 'TH': '泰国', 'VN': '越南', 'IN': '印度', 'RU': '俄罗斯',
+  'BR': '巴西', 'MX': '墨西哥', 'ES': '西班牙', 'IT': '意大利', 'NL': '荷兰',
+  'SE': '瑞典', 'CH': '瑞士', 'AT': '奥地利', 'BE': '比利时', 'DK': '丹麦',
+  'FI': '芬兰', 'NO': '挪威', 'PL': '波兰', 'PT': '葡萄牙', 'CZ': '捷克',
+  'HU': '匈牙利', 'GR': '希腊', 'IE': '爱尔兰', 'NZ': '新西兰', 'ZA': '南非',
+  'AE': '阿联酋', 'SA': '沙特阿拉伯', 'IL': '以色列', 'TR': '土耳其',
+  'ID': '印度尼西亚', 'PH': '菲律宾', 'TW': '台湾', 'HK': '香港', 'MO': '澳门',
+};
+
+const getCountryName = (code?: string): string | null => {
+  if (!code) return null;
+  return countryCodeMap[code.toUpperCase()] || code;
+};
 import { ActivityTimeline, CollapsiblePanel, MediaLightbox, ActivityDetailDrawer } from './TicketDetailComponents';
 import type { CorrectionRequest } from './TicketDetailComponents';
 import { CRMLookup } from '../Service/CRMLookup';
@@ -72,6 +90,7 @@ interface TicketDetail {
     parent_ticket_number?: string;
     resolution?: string;
     account_service_tier?: string;
+    account?: { id?: number; name?: string; country?: string; [key: string]: unknown };
     [key: string]: unknown;
 }
 
@@ -1524,6 +1543,21 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                                 {ticket.dealer_name ? `${ticket.dealer_name}${ticket.dealer_code ? ` (${ticket.dealer_code})` : ''}` : '直销'}
                                             </span>
                                         </div>
+
+                                        {/* Row 3 Col 3: Country (if available) */}
+                                        {(() => {
+                                            const countryCode = ticket?.account?.country;
+                                            const countryName = getCountryName(countryCode as string);
+                                            return countryName ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>国家/地区</span>
+                                                    <span style={{ fontSize: 14, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                        <Globe size={14} color="var(--text-tertiary)" />
+                                                        {countryName}
+                                                    </span>
+                                                </div>
+                                            ) : null;
+                                        })()}
 
                                         {/* Row 4 Col 1: Created Time */}
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
