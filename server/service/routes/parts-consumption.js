@@ -263,7 +263,13 @@ module.exports = function(db, authenticate) {
             }
 
             // 获取配件信息
-            const part = db.prepare('SELECT * FROM parts_master WHERE id = ? AND is_deleted = 0').get(part_id);
+            // 获取配件信息及统一价格
+            const part = db.prepare(`
+                SELECT pm.*, sp.price_cny 
+                FROM parts_master pm
+                LEFT JOIN sku_prices sp ON pm.sku = sp.sku
+                WHERE pm.id = ? AND pm.is_deleted = 0
+            `).get(part_id);
             if (!part) {
                 return res.status(404).json({
                     success: false,

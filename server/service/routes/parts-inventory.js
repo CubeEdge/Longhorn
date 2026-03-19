@@ -141,12 +141,13 @@ module.exports = function(db, authenticate) {
             // 总库存价值统计
             const valueStats = db.prepare(`
                 SELECT 
-                    SUM(di.quantity * pm.cost_cny) as total_cost_cny,
-                    SUM(di.quantity * pm.price_cny) as total_value_cny,
+                    SUM(di.quantity * sp.cost_cny) as total_cost_cny,
+                    SUM(di.quantity * sp.price_cny) as total_value_cny,
                     COUNT(DISTINCT di.part_id) as sku_count,
                     SUM(di.quantity) as total_quantity
                 FROM dealer_inventory di
                 JOIN parts_master pm ON di.part_id = pm.id
+                LEFT JOIN sku_prices sp ON pm.sku = sp.sku
                 WHERE di.is_deleted = 0 AND pm.is_deleted = 0
                 ${dealer_id ? 'AND di.dealer_id = ?' : ''}
             `).get(dealer_id || []);
@@ -169,9 +170,10 @@ module.exports = function(db, authenticate) {
                     pm.category,
                     COUNT(DISTINCT di.part_id) as sku_count,
                     SUM(di.quantity) as total_quantity,
-                    SUM(di.quantity * pm.price_cny) as total_value_cny
+                    SUM(di.quantity * sp.price_cny) as total_value_cny
                 FROM dealer_inventory di
                 JOIN parts_master pm ON di.part_id = pm.id
+                LEFT JOIN sku_prices sp ON pm.sku = sp.sku
                 WHERE di.is_deleted = 0 AND pm.is_deleted = 0
                 ${dealer_id ? 'AND di.dealer_id = ?' : ''}
                 GROUP BY pm.category

@@ -78,9 +78,11 @@ module.exports = function(db, authenticate) {
             const dataSql = `
                 SELECT 
                     pm.*,
+                    sp.price_cny, sp.price_usd, sp.price_eur, sp.cost_cny,
                     u.display_name as created_by_name,
                     u2.display_name as updated_by_name
                 FROM parts_master pm
+                LEFT JOIN sku_prices sp ON pm.sku = sp.sku
                 LEFT JOIN users u ON pm.created_by = u.id
                 LEFT JOIN users u2 ON pm.updated_by = u2.id
                 ${whereClause}
@@ -91,11 +93,20 @@ module.exports = function(db, authenticate) {
             const data = db.prepare(dataSql).all(...params, parseInt(page_size), offset);
 
             // 解析JSON字段
-            const parsedData = data.map(item => ({
-                ...item,
-                specifications: item.specifications ? JSON.parse(item.specifications) : null,
-                compatible_models: item.compatible_models ? JSON.parse(item.compatible_models) : []
-            }));
+            const parsedData = data.map(item => {
+                const mapped = {
+                    ...item,
+                    specifications: item.specifications ? JSON.parse(item.specifications) : null,
+                    compatible_models: item.compatible_models ? JSON.parse(item.compatible_models) : []
+                };
+                if (req.user.department_name === 'OP') {
+                    delete mapped.price_cny;
+                    delete mapped.price_usd;
+                    delete mapped.price_eur;
+                    delete mapped.cost_cny;
+                }
+                return mapped;
+            });
 
             res.json({
                 success: true,
@@ -131,9 +142,11 @@ module.exports = function(db, authenticate) {
 
             const part = db.prepare(`
                 SELECT pm.*,
+                       sp.price_cny, sp.price_usd, sp.price_eur, sp.cost_cny,
                        u.display_name as created_by_name,
                        u2.display_name as updated_by_name
                 FROM parts_master pm
+                LEFT JOIN sku_prices sp ON pm.sku = sp.sku
                 LEFT JOIN users u ON pm.created_by = u.id
                 LEFT JOIN users u2 ON pm.updated_by = u2.id
                 WHERE pm.id = ? AND pm.is_deleted = 0
@@ -154,14 +167,23 @@ module.exports = function(db, authenticate) {
                 WHERE pmp.part_id = ?
             `).all(req.params.id);
 
+            const responseData = {
+                ...part,
+                specifications: part.specifications ? JSON.parse(part.specifications) : null,
+                compatible_models: part.compatible_models ? JSON.parse(part.compatible_models) : [],
+                model_bom: compatibleModels
+            };
+
+            if (req.user.department_name === 'OP') {
+                delete responseData.price_cny;
+                delete responseData.price_usd;
+                delete responseData.price_eur;
+                delete responseData.cost_cny;
+            }
+
             res.json({
                 success: true,
-                data: {
-                    ...part,
-                    specifications: part.specifications ? JSON.parse(part.specifications) : null,
-                    compatible_models: part.compatible_models ? JSON.parse(part.compatible_models) : [],
-                    model_bom: compatibleModels
-                }
+                data: responseData
             });
         } catch (err) {
             console.error('[Parts Master] Get error:', err);
@@ -190,6 +212,7 @@ module.exports = function(db, authenticate) {
                 name,
                 name_en,
                 category,
+                material_id,
                 description,
                 specifications,
                 price_cny,
@@ -218,21 +241,42 @@ module.exports = function(db, authenticate) {
                 });
             }
 
-            const result = db.prepare(`
+            const insertPart = db.prepare(`
                 INSERT INTO parts_master (
-                    sku, name, name_en, category, description, specifications,
-                    price_cny, price_usd, price_eur, cost_cny,
+                    sku, name, name_en, name_internal, name_internal_en, category, material_id, description, specifications,
                     compatible_models, min_stock_level, reorder_point,
                     created_by, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            `).run(
-                sku, name, name_en || null, category, description || null,
-                specifications ? JSON.stringify(specifications) : null,
-                price_cny || 0, price_usd || 0, price_eur || 0, cost_cny || 0,
-                compatible_models ? JSON.stringify(compatible_models) : '[]',
-                min_stock_level || 5, reorder_point || 10,
-                req.user.id
-            );
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `);
+
+            const insertPrice = db.prepare(`
+                INSERT OR REPLACE INTO sku_prices (
+                    sku, item_type, price_cny, price_usd, price_eur, cost_cny
+                ) VALUES (?, 'part', ?, ?, ?, ?)
+            `);
+
+            let lastInsertRowid;
+
+            db.transaction(() => {
+                const result = insertPart.run(
+                    sku, name, name_en || null, name, name_en || null, category, material_id || null, description || null,
+                    specifications ? JSON.stringify(specifications) : null,
+                    compatible_models ? JSON.stringify(compatible_models) : '[]',
+                    min_stock_level || 5, reorder_point || 10,
+                    req.user.id
+                );
+                lastInsertRowid = result.lastInsertRowid;
+
+                insertPrice.run(
+                    sku,
+                    price_cny || 0,
+                    price_usd || 0,
+                    price_eur || 0,
+                    cost_cny || 0
+                );
+            })();
+
+            const result = { lastInsertRowid };
 
             res.status(201).json({
                 success: true,
@@ -268,39 +312,59 @@ module.exports = function(db, authenticate) {
                 });
             }
 
-            const updates = [];
-            const params = [];
+            const partUpdates = [];
+            const priceUpdates = [];
+            const partParams = [];
+            const priceParams = [];
 
-            const fields = [
-                'name', 'name_en', 'category', 'description', 'specifications',
-                'price_cny', 'price_usd', 'price_eur', 'cost_cny',
-                'compatible_models', 'min_stock_level', 'reorder_point', 'status'
+            const partFields = [
+                'name', 'name_en', 'name_internal', 'name_internal_en', 'category', 'description', 
+                'specifications', 'compatible_models', 'min_stock_level', 'reorder_point', 'status', 'material_id'
             ];
+            const priceFields = ['price_cny', 'price_usd', 'price_eur', 'cost_cny'];
 
-            fields.forEach(field => {
+            partFields.forEach(field => {
                 if (req.body[field] !== undefined) {
-                    updates.push(`${field} = ?`);
+                    partUpdates.push(`${field} = ?`);
                     if (field === 'specifications' || field === 'compatible_models') {
-                        params.push(JSON.stringify(req.body[field]));
+                        partParams.push(JSON.stringify(req.body[field]));
                     } else {
-                        params.push(req.body[field]);
+                        partParams.push(req.body[field]);
                     }
                 }
             });
 
-            if (updates.length === 0) {
+            priceFields.forEach(field => {
+                if (req.body[field] !== undefined) {
+                    priceUpdates.push(`${field} = ?`);
+                    priceParams.push(req.body[field]);
+                }
+            });
+
+            if (partUpdates.length === 0 && priceUpdates.length === 0) {
                 return res.status(400).json({
                     success: false,
                     error: { code: 'NO_CHANGES', message: '没有可更新的字段' }
                 });
             }
 
-            updates.push('updated_at = CURRENT_TIMESTAMP');
-            updates.push('updated_by = ?');
-            params.push(req.user.id);
-            params.push(req.params.id);
+            db.transaction(() => {
+                if (partUpdates.length > 0) {
+                    partUpdates.push('updated_at = CURRENT_TIMESTAMP');
+                    partUpdates.push('updated_by = ?');
+                    partParams.push(req.user.id);
+                    partParams.push(req.params.id);
+                    
+                    db.prepare(`UPDATE parts_master SET ${partUpdates.join(', ')} WHERE id = ?`).run(...partParams);
+                }
 
-            db.prepare(`UPDATE parts_master SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+                if (priceUpdates.length > 0) {
+                    priceUpdates.push('updated_at = CURRENT_TIMESTAMP');
+                    priceParams.push(part.sku); 
+                    
+                    db.prepare(`UPDATE sku_prices SET ${priceUpdates.join(', ')} WHERE sku = ?`).run(...priceParams);
+                }
+            })();
 
             res.json({
                 success: true,
