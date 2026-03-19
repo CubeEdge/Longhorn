@@ -733,12 +733,37 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                             >
                                 预览
                             </button>
+                            {/* 编辑/预览Tab与关闭按钮间距24px+ */}
+                            <div style={{ width: 24 }} />
+                            {/* X圆形关闭按钮 */}
                             <button
-                                onClick={() => setShowPdfSettings(true)}
-                                title="PDF导出设置"
-                                style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', marginLeft: 4 }}
+                                onClick={onClose}
+                                title="关闭"
+                                style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: '50%',
+                                    background: 'rgba(255,255,255,0.1)',
+                                    border: '1px solid rgba(255,255,255,0.15)',
+                                    color: 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(239,68,68,0.2)';
+                                    e.currentTarget.style.color = '#EF4444';
+                                    e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                    e.currentTarget.style.color = 'var(--text-secondary)';
+                                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                                }}
                             >
-                                <Settings size={18} />
+                                <X size={16} />
                             </button>
                         </div>
                     </div>
@@ -959,9 +984,39 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                         )}
                     </div>
 
-                    {/* Footer - 统一布局：左侧关闭，右侧操作按钮 */}
+                    {/* Footer - 左侧设置按钮，右侧操作按钮 */}
                     <div style={{ padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)' }}>
-                        <button onClick={onClose} style={{ padding: '8px 20px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 6 }}>关闭</button>
+                        {/* 左侧：设置按钮 */}
+                        <button
+                            onClick={() => setShowPdfSettings(true)}
+                            title="PDF导出设置"
+                            style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: '50%',
+                                background: 'transparent',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                                e.currentTarget.style.color = 'var(--text-main)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.color = 'var(--text-secondary)';
+                            }}
+                        >
+                            <Settings size={18} />
+                        </button>
+                        {/* 右侧：操作按钮组 */}
                         <div style={{ display: 'flex', gap: 8 }}>
                             {/* 导出PDF按钮 - 仅预览模式下显示 */}
                             {canExport && activeTab === 'preview' && (

@@ -366,9 +366,15 @@ module.exports = (db, authenticate) => {
                 }
             }
 
-            // 1. Fetch Device Info
+            // 1. Fetch Device Info with product_model id
             let device = db.prepare(`
-                SELECT * FROM products WHERE serial_number = ?
+                SELECT 
+                    p.*,
+                    pm.id as product_id
+                FROM products p
+                LEFT JOIN product_skus ps ON p.sku_id = ps.id
+                LEFT JOIN product_models pm ON ps.model_id = pm.id
+                WHERE p.serial_number = ?
             `).get(serial_number);
 
             // 2. Fetch Service History for this Device (by product_id or serial_number)

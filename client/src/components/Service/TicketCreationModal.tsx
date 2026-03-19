@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     X, Save, Loader2, MessageSquare, ShieldCheck, Wrench,
     FileText, Sparkles, Plus, AlertTriangle, Image, Video,
-    ChevronDown
+    ChevronDown, Info
 } from 'lucide-react';
 import axios from 'axios';
 import { useTicketStore, type TicketType } from '../../store/useTicketStore';
@@ -11,6 +11,8 @@ import { useLanguage } from '../../i18n/useLanguage';
 import { useNavigate } from 'react-router-dom';
 import { ProductWarrantyRegistrationModal } from './ProductWarrantyRegistrationModal';
 import ProductModal from '../Workspace/ProductModal';
+import { useConfirm } from '../../store/useConfirm';
+import { useToast } from '../../store/useToast';
 
 import { CRMLookup } from './CRMLookup';
 
@@ -94,6 +96,8 @@ const TicketCreationModal: React.FC = () => {
     const { token } = useAuthStore();
     const { t, language } = useLanguage();
     const navigate = useNavigate();
+    const { confirm } = useConfirm();
+    const { showToast } = useToast();
 
     const [loading, setLoading] = useState(false);
     const [products, setProducts] = useState<any[]>([]);
@@ -147,6 +151,10 @@ const TicketCreationModal: React.FC = () => {
 
     const [aiLoading, setAiLoading] = useState(false);
 
+    // Product selection states
+    const [showAllProducts, setShowAllProducts] = useState(false);
+    const [productDropdownSettings, setProductDropdownSettings] = useState<any>(null);
+
     const draft = drafts[initialType];
 
     // Fetch initial data
@@ -154,8 +162,14 @@ const TicketCreationModal: React.FC = () => {
         if (isOpen) {
             const fetchInitialData = async () => {
                 try {
-                    const prodRes = await axios.get('/api/v1/system/products', { headers: { Authorization: `Bearer ${token}` } });
+                    const [prodRes, settingsRes] = await Promise.all([
+                        axios.get('/api/v1/system/products', { headers: { Authorization: `Bearer ${token}` } }),
+                        axios.get('/api/v1/system/public-settings', { headers: { Authorization: `Bearer ${token}` } })
+                    ]);
                     if (prodRes.data.success) setProducts(prodRes.data.data);
+                    if (settingsRes.data.success) {
+                        setProductDropdownSettings(settingsRes.data.data.product_dropdown);
+                    }
 
                     // Load existing attachments for correction
                     if (isCorrection && targetTicketId) {
@@ -194,6 +208,7 @@ const TicketCreationModal: React.FC = () => {
             if (!draft.serial_number || draft.serial_number.length < 5) {
                 setMachineInfo(null);
                 setWarrantyCheckStatus('unchecked');
+                setShowAllProducts(false);
                 return;
             }
             setSnLoading(true);
@@ -209,11 +224,26 @@ const TicketCreationModal: React.FC = () => {
                     if (device.product_id && !device.is_unregistered) {
                         // SN 在台账中：使用设备的 product_id（产品型号ID）
                         handleFieldChange('product_id', device.product_id, true);
+                    } else {
+                        // SN 不在台账：尝试通过 sn_prefix 自动匹配产品型号
+                        const snInput = draft.serial_number.trim().toUpperCase();
+                        const matchedProducts = products.filter(p => p.sn_prefix && (
+                            p.sn_prefix.toUpperCase() === snInput ||  // 精确匹配
+                            snInput.startsWith(p.sn_prefix.toUpperCase())  // 输入以产品前缀开头
+                        ));
+                        
+                        if (matchedProducts.length === 1) {
+                            // 只有一个精确匹配，自动选中
+                            const matched = matchedProducts[0];
+                            handleFieldChange('product_id', matched.id, true);
+                        } else if (matchedProducts.length === 0) {
+                            // 没有匹配的产品，清除之前的选择
+                            handleFieldChange('product_id', null);
+                        }
+                        // 如果有多个匹配，不自动选择，让用户手动选择
                     }
-                    // 注意：SN 不在台账时，保留用户已选的产品型号，不清空
                 } else {
                     setMachineInfo(null);
-                    // 查询失败不清空 product_id，保留用户已选的型号
                 }
             } catch (err) {
                 setMachineInfo(null);
@@ -273,7 +303,13 @@ const TicketCreationModal: React.FC = () => {
     };
 
     const removeExistingAttachment = async (attachId: number) => {
-        if (!confirm('确定要删除此附件吗？此操作不可撤销。')) return;
+        const confirmed = await confirm(
+            t('ticket.creation.confirm_delete_attachment') || '确定要删除此附件吗？此操作不可撤销。',
+            t('common.confirm') || '确认',
+            t('common.confirm') || '确认',
+            t('common.cancel') || '取消'
+        );
+        if (!confirmed) return;
         
         try {
             const res = await axios.delete(`/api/v1/tickets/${targetTicketId}/attachments/${attachId}`, {
@@ -281,10 +317,11 @@ const TicketCreationModal: React.FC = () => {
             });
             if (res.data.success) {
                 setExistingAttachments(prev => prev.filter(a => a.id !== attachId));
+                showToast(t('ticket.creation.attachment_deleted') || '附件已删除', 'success');
             }
         } catch (err) {
             console.error('Failed to delete attachment:', err);
-            alert('删除附件失败');
+            showToast(t('ticket.creation.delete_attachment_failed') || '删除附件失败', 'error');
         }
     };
 
@@ -441,7 +478,7 @@ const TicketCreationModal: React.FC = () => {
             }
         } catch (err: any) {
             console.error('Failed to create ticket:', err);
-            alert(err.response?.data?.error?.message || t('common.error'));
+            showToast(err.response?.data?.error?.message || t('common.error'), 'error');
         } finally {
             setLoading(false);
         }
@@ -708,30 +745,48 @@ const TicketCreationModal: React.FC = () => {
 
                             {/* Product Section */}
                             <section>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'end' }}>
+                                    {/* SN输入框 - 移到左边 */}
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{t('ticket.creation.product_model') || '产品型号'}</label>
-                                        <div style={{ position: 'relative' }}>
-                                            <select
-                                                value={draft.product_id || ''}
-                                                onChange={(e) => handleFieldChange('product_id', parseInt(e.target.value))}
-                                                style={{
-                                                    width: '100%', height: 44, borderRadius: 12, padding: '0 14px',
-                                                    color: 'var(--text-main)', fontSize: 15, outline: 'none', appearance: 'none',
-                                                    backgroundColor: 'var(--glass-bg-light)',
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{t('ticket.creation.serial_number') || '序列号 (S/N)'}</label>
+                                            <div style={{ position: 'relative' }} className="sn-match-tooltip">
+                                                <Info size={14} color="var(--text-tertiary)" style={{ cursor: 'help' }} />
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    left: '100%',
+                                                    top: '50%',
+                                                    transform: 'translateY(-50%)',
+                                                    marginLeft: 8,
+                                                    width: 320,
+                                                    background: 'var(--bg-sidebar)',
                                                     border: '1px solid var(--glass-border)',
-                                                    ...ghostStyle('product_id')
-                                                }}
-                                            >
-                                                <option value="" style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>{t('ticket.creation.select_product') || 'Select Catalog Product...'}</option>
-                                                {products.map(p => <option key={p.id} value={p.id} style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>{p.name}</option>)}
-                                            </select>
-                                            <ChevronDown size={18} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
-                                            {ghostFields.has('product_id') && <div style={{ position: 'absolute', right: 36, top: -10, background: '#3b82f6', color: '#fff', fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 800 }}>AI MATCHED</div>}
+                                                    borderRadius: 12,
+                                                    padding: 16,
+                                                    zIndex: 1000,
+                                                    boxShadow: '0 10px 30px var(--glass-shadow-lg)',
+                                                    display: 'none',
+                                                    fontSize: 12,
+                                                    lineHeight: 1.6
+                                                }} className="sn-match-tooltip-content">
+                                                    <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-main)' }}>序列号前缀匹配规则</div>
+                                                    <div style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
+                                                        <div style={{ marginBottom: 4 }}>• 输入 <b>KV</b> → 匹配所有 KV 开头的产品（KVF_1、KVF_2）</div>
+                                                        <div style={{ marginBottom: 4 }}>• 输入 <b>KVF</b> → 匹配所有 KVF 开头的产品</div>
+                                                        <div style={{ marginBottom: 4 }}>• 输入 <b>KVF_1</b> → 精确匹配 KVF_1（自动选中）</div>
+                                                        <div>• 输入 <b>KVF_130</b> → 匹配 KVF_1 系列产品</div>
+                                                    </div>
+                                                    <div style={{ color: 'var(--text-tertiary)', fontSize: 11, borderTop: '1px solid var(--glass-border)', paddingTop: 8 }}>
+                                                        匹配的产品会显示在顶部并标记 ★
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <style>{`
+                                                .sn-match-tooltip:hover .sn-match-tooltip-content {
+                                                    display: block !important;
+                                                }
+                                            `}</style>
                                         </div>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                        <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{t('ticket.creation.serial_number') || '序列号 (S/N)'}</label>
                                         <div style={{ position: 'relative' }}>
                                             <input
                                                 type="text"
@@ -741,11 +796,190 @@ const TicketCreationModal: React.FC = () => {
                                                 style={{
                                                     width: '100%', height: 44, borderRadius: 12, padding: '0 16px',
                                                     color: 'var(--text-main)', fontSize: 15, outline: 'none', fontFamily: 'monospace',
+                                                    backgroundColor: 'var(--glass-bg-light)',
+                                                    border: '1px solid var(--glass-border)',
                                                     ...ghostStyle('serial_number')
                                                 }}
                                             />
                                             {snLoading && <Loader2 size={18} className="animate-spin" style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: '#3b82f6' }} />}
                                             {ghostFields.has('serial_number') && <div style={{ position: 'absolute', right: 16, top: -10, background: '#3b82f6', color: '#fff', fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 800 }}>AUTO DETECTED</div>}
+                                        </div>
+                                    </div>
+                                    {/* 产品型号下拉框 - 移到右边 */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>{t('ticket.creation.product_model') || '产品型号'}</label>
+                                        <div style={{ position: 'relative' }}>
+                                            <select
+                                                value={draft.product_id || ''}
+                                                onChange={(e) => {
+                                                    const value = e.target.value;
+                                                    if (value === '__toggle__') {
+                                                        setShowAllProducts(true);
+                                                        return;
+                                                    }
+                                                    if (value === '__collapse__') {
+                                                        setShowAllProducts(false);
+                                                        return;
+                                                    }
+                                                    handleFieldChange('product_id', parseInt(value));
+                                                }}
+                                                style={{
+                                                    width: '100%', height: 44, borderRadius: 12, padding: '0 14px',
+                                                    color: 'var(--text-main)', fontSize: 15, outline: 'none', appearance: 'none',
+                                                    backgroundColor: 'transparent',
+                                                    border: '1px solid var(--glass-border)',
+                                                    ...ghostStyle('product_id')
+                                                }}
+                                            >
+                                                <option value="" style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>{t('ticket.creation.select_product') || '选择产品型号...'}</option>
+                                                {/* 根据序列号前缀筛选产品型号 */}
+                                                {(() => {
+                                                    // 直接使用用户输入进行匹配（去除空格，转大写）
+                                                    const snInput = (draft.serial_number || '').trim().toUpperCase();
+                                                    
+                                                    // 获取系统设置中的族群显示配置
+                                                    const familyVisibility = productDropdownSettings?.family_visibility || {
+                                                        A: true, B: false, C: true, D: true, E: false
+                                                    };
+                                                    
+                                                    // 获取系统设置中的产品类型过滤配置
+                                                    const enableTypeFilter = productDropdownSettings?.enable_type_filter !== false;
+                                                    const allowedTypes = productDropdownSettings?.allowed_types || ['电影机', '摄像机', '电子寻像器', '寻像器', '套装'];
+                                                    
+                                                    // 过滤产品：SN为空时限制族群和类型，SN有输入时显示所有
+                                                    const baseProducts = snInput.length === 0
+                                                        ? products.filter(p => {
+                                                            // 必须是启用的族群
+                                                            if (!familyVisibility[p.family as keyof typeof familyVisibility]) return false;
+                                                            
+                                                            // 必须有 sn_prefix（真正的产品型号）
+                                                            if (!p.sn_prefix) return false;
+                                                            
+                                                            // 检查产品类型过滤
+                                                            if (enableTypeFilter) {
+                                                                const productType = (p.product_type || p.line || '').toLowerCase();
+                                                                const matchesType = allowedTypes.some((type: string) => 
+                                                                    productType.includes(type.toLowerCase())
+                                                                );
+                                                                if (!matchesType) return false;
+                                                            }
+                                                            
+                                                            return true;
+                                                          })
+                                                        : products;
+                                                    
+                                                    // 双向匹配规则：
+                                                    // 1. 产品sn_prefix以输入开头（输入"KV"或"KVF"，匹配"KVF_1""KVF_2"）
+                                                    // 2. 输入以产品sn_prefix开头（输入"KVF_130"，匹配sn_prefix为"KVF_1"的产品）
+                                                    const matchedProducts = snInput.length > 0
+                                                        ? baseProducts.filter(p => p.sn_prefix && (
+                                                            p.sn_prefix.toUpperCase().startsWith(snInput) ||
+                                                            snInput.startsWith(p.sn_prefix.toUpperCase())
+                                                        ))
+                                                        : [];
+                                                    
+                                                    // 未匹配的产品
+                                                    const unmatchedProducts = snInput.length > 0
+                                                        ? baseProducts.filter(p => !p.sn_prefix || !(
+                                                            p.sn_prefix.toUpperCase().startsWith(snInput) ||
+                                                            snInput.startsWith(p.sn_prefix.toUpperCase())
+                                                        ))
+                                                        : baseProducts;
+                                                    
+                                                    // 按族群分组函数
+                                                    const groupByFamily = (prods: any[]) => {
+                                                        const aFamily = prods.filter(p => p.family === 'A');
+                                                        const cFamily = prods.filter(p => p.family === 'C');
+                                                        const bFamily = prods.filter(p => p.family === 'B');
+                                                        const otherFamily = prods.filter(p => !['A', 'B', 'C'].includes(p.family || ''));
+                                                        return { aFamily, cFamily, bFamily, otherFamily };
+                                                    };
+                                                    
+                                                    const unmatchedGroups = groupByFamily(unmatchedProducts);
+                                                    const hasMatched = matchedProducts.length > 0;
+                                                    const hasUnmatched = unmatchedProducts.length > 0 && (showAllProducts || !hasMatched);
+                                                    
+                                                    return (
+                                                        <>
+                                                            {/* 匹配的产品 */}
+                                                            {hasMatched && (
+                                                                <>
+                                                                    <optgroup label={`★ 匹配的产品型号 (${matchedProducts.length})`} style={{ background: 'var(--glass-bg-light)', color: '#10B981' }}>
+                                                                        {matchedProducts.map(p => (
+                                                                            <option key={p.id} value={p.id} style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>
+                                                                                {p.name} {p.sn_prefix ? `(${p.sn_prefix})` : ''}
+                                                                            </option>
+                                                                        ))}
+                                                                    </optgroup>
+                                                                </>
+                                                            )}
+                                                            
+                                                            {/* 无匹配提示 */}
+                                                            {snInput && !hasMatched && (
+                                                                <option value="" disabled style={{ color: 'var(--text-secondary)' }}>
+                                                                    ⚠ 无匹配前缀，请手动选择产品型号
+                                                                </option>
+                                                            )}
+                                                            
+                                                            {/* 展开/折叠其他产品 */}
+                                                            {hasMatched && hasUnmatched && !showAllProducts && (
+                                                                <option value="__toggle__" style={{ color: '#3b82f6', fontStyle: 'italic' }}>
+                                                                    ▸ 显示其他产品型号 ({unmatchedProducts.length})
+                                                                </option>
+                                                            )}
+                                                            
+                                                            {/* 其他产品（按族群分组） */}
+                                                            {hasUnmatched && (
+                                                                <>
+                                                                    {hasMatched && showAllProducts && (
+                                                                        <optgroup label="─ 其他产品型号 ─" style={{ background: 'var(--glass-bg-light)', color: 'var(--text-secondary)' }}>
+                                                                            <option value="__collapse__" style={{ color: '#3b82f6' }}>▸ 隐藏其他产品</option>
+                                                                        </optgroup>
+                                                                    )}
+                                                                    {unmatchedGroups.aFamily.length > 0 && (
+                                                                        <optgroup label="A系 - 电影机" style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>
+                                                                            {unmatchedGroups.aFamily.map(p => (
+                                                                                <option key={p.id} value={p.id} style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>
+                                                                                    {p.name} {p.sn_prefix ? `(${p.sn_prefix})` : ''}
+                                                                                </option>
+                                                                            ))}
+                                                                        </optgroup>
+                                                                    )}
+                                                                    {unmatchedGroups.cFamily.length > 0 && (
+                                                                        <optgroup label="C系 - 电子寻像器" style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>
+                                                                            {unmatchedGroups.cFamily.map(p => (
+                                                                                <option key={p.id} value={p.id} style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>
+                                                                                    {p.name} {p.sn_prefix ? `(${p.sn_prefix})` : ''}
+                                                                                </option>
+                                                                            ))}
+                                                                        </optgroup>
+                                                                    )}
+                                                                    {unmatchedGroups.bFamily.length > 0 && (
+                                                                        <optgroup label="B系 - 摄像机" style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>
+                                                                            {unmatchedGroups.bFamily.map(p => (
+                                                                                <option key={p.id} value={p.id} style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>
+                                                                                    {p.name} {p.sn_prefix ? `(${p.sn_prefix})` : ''}
+                                                                                </option>
+                                                                            ))}
+                                                                        </optgroup>
+                                                                    )}
+                                                                    {unmatchedGroups.otherFamily.length > 0 && (
+                                                                        <optgroup label="其他产品" style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>
+                                                                            {unmatchedGroups.otherFamily.map(p => (
+                                                                                <option key={p.id} value={p.id} style={{ background: 'var(--glass-bg-light)', color: 'var(--text-main)' }}>
+                                                                                    {p.name} {p.sn_prefix ? `(${p.sn_prefix})` : ''}
+                                                                                </option>
+                                                                            ))}
+                                                                        </optgroup>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </select>
+                                            <ChevronDown size={18} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)', pointerEvents: 'none' }} />
+                                            {ghostFields.has('product_id') && <div style={{ position: 'absolute', right: 36, top: -10, background: '#3b82f6', color: '#fff', fontSize: 10, padding: '2px 8px', borderRadius: 6, fontWeight: 800 }}>AI MATCHED</div>}
                                         </div>
                                     </div>
                                 </div>
@@ -910,9 +1144,68 @@ const TicketCreationModal: React.FC = () => {
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     background: 'var(--glass-bg)'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-tertiary)', fontSize: 13 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
-                        {t('ticket.creation.draft_autosaved') || 'Draft auto-saved to cloud.'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--text-tertiary)', fontSize: 13 }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
+                            {t('ticket.creation.draft_autosaved') || 'Draft auto-saved to cloud.'}
+                        </div>
+                        <button
+                            onClick={async () => {
+                                // 获取当前tab的草稿内容用于显示
+                                const currentDraft = drafts[initialType];
+                                const lines: string[] = [];
+                                
+                                // 收集草稿中的信息
+                                if (currentDraft?.customer_name) {
+                                    lines.push(`客户: ${currentDraft.customer_name}`);
+                                }
+                                if (currentDraft?.serial_number) {
+                                    lines.push(`序列号: ${currentDraft.serial_number}`);
+                                }
+                                if (currentDraft?.product_id) {
+                                    const productName = products.find(p => p.id === currentDraft.product_id)?.name || '未知型号';
+                                    lines.push(`产品型号: ${productName}`);
+                                }
+                                if (currentDraft?.problem_description) {
+                                    const desc = currentDraft.problem_description.substring(0, 40);
+                                    lines.push(`问题描述: ${desc}${currentDraft.problem_description.length > 40 ? '...' : ''}`);
+                                }
+                                
+                                const contentPreview = lines.length > 0 ? lines.join('\n') : '已填写部分信息';
+                                
+                                const tabName = initialType === 'RMA' ? 'RMA返厂' : initialType === 'DealerRepair' ? '经销商维修' : '咨询工单';
+                                const confirmed = await confirm(
+                                    `确定要清空【${tabName}】的填写内容吗？\n${contentPreview}\n此操作不可恢复。`,
+                                    '确认清空草稿',
+                                    '确认清空',
+                                    '取消',
+                                    0
+                                );
+                                if (confirmed) {
+                                    clearDraft(initialType);
+                                    setAttachmentsMap(prev => ({ ...prev, [initialType]: [] }));
+                                    setMachineInfo(null);
+                                    setExistingAttachments([]);
+                                }
+                            }}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 4,
+                                padding: '4px 10px', borderRadius: 6,
+                                border: '1px solid var(--glass-border)',
+                                background: 'transparent', color: 'var(--text-secondary)',
+                                fontSize: 12, cursor: 'pointer', transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={e => {
+                                e.currentTarget.style.color = '#EF4444';
+                                e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)';
+                            }}
+                            onMouseLeave={e => {
+                                e.currentTarget.style.color = 'var(--text-secondary)';
+                                e.currentTarget.style.borderColor = 'var(--glass-border)';
+                            }}
+                        >
+                            <X size={14} /> 清空
+                        </button>
                     </div>
                     <div style={{ display: 'flex', gap: 16 }}>
                         <button

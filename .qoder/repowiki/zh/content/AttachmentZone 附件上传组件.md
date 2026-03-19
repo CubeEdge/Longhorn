@@ -10,17 +10,16 @@
 - [FileBrowser.tsx](file://client/src/components/FileBrowser.tsx)
 - [index.js](file://server/index.js)
 - [system.js](file://server/service/routes/system.js)
+- [index.css](file://client/src/index.css)
 </cite>
 
 ## 更新摘要
 **变更内容**
-- 新增媒体即地上传功能，支持拖拽上传图片和视频
-- 实时生成缩略图预览，提供更好的用户体验
-- 增强的文件类型检测和图标显示
-- 优化的文件管理界面和交互设计
-- **新增** HEIC/HEIF 图像格式支持，通过 macOS sips 工具进行转换
-- **新增** Chrome 兼容性的缩略图 API 预览模式，支持高质量图像预览
-- **新增** 缩略图缓存机制和队列处理，提升性能和可靠性
+- 新增拖拽上传功能，支持多文件上传
+- 新增文件预览功能，使用80x80像素缩略图预览
+- 新增文件移除功能，支持悬停删除按钮
+- 组件UI设计更新为CSS变量主题化
+- 增强的交互体验和视觉反馈
 
 ## 目录
 1. [简介](#简介)
@@ -37,7 +36,7 @@
 
 AttachmentZone 是 Longhorn 服务管理系统中的核心附件上传组件，专为工单创建流程设计。该组件提供了直观的拖拽式文件上传界面，支持多种文件格式，包括图片、视频、PDF 和纯文本文件。组件采用现代化的 React Hooks 架构，集成了国际化支持、文件预览和交互式删除功能。
 
-**更新** 组件现已支持媒体即地上传功能，能够实时生成图片和视频的缩略图预览，为用户提供更直观的文件管理体验。同时，组件已增强对 HEIC/HEIF 图像格式的支持，并添加了 Chrome 兼容性的缩略图 API 预览模式。
+**更新** 组件现已支持拖拽上传功能，能够实时生成图片和视频的缩略图预览，为用户提供更直观的文件管理体验。组件UI设计更新为80x80像素缩略图预览，使用CSS变量进行主题化，提供更好的视觉一致性和品牌识别度。
 
 该组件主要服务于三种类型的工单创建：咨询工单（Inquiry）、RMA 返厂工单（RMA）和经销商维修工单（Dealer Repair），为技术支持团队提供统一的附件上传体验。
 
@@ -88,15 +87,15 @@ TicketModal --> Zustand
 AttachmentZone 组件提供了完整的文件上传解决方案，具有以下核心功能：
 
 - **拖拽式上传界面**：用户可以通过点击或拖拽文件到指定区域进行上传
-- **媒体即地上传**：支持图片和视频的实时预览，自动生成缩略图
-- **多格式支持**：支持图片（image/*）、视频（video/*）、PDF（application/pdf）和纯文本（text/plain）
+- **多文件上传支持**：支持一次选择多个文件进行批量上传
+- **80x80像素缩略图预览**：统一的缩略图尺寸，提供更好的视觉一致性
 - **实时文件预览**：上传的文件会显示缩略图或图标，并支持悬停删除
+- **CSS变量主题化**：使用var(--border-color)、var(--kine-yellow)等CSS变量进行主题化
 - **响应式设计**：适配不同屏幕尺寸的设备
 - **国际化支持**：支持中英文等多种语言的提示信息
-- **HEIC/HEIF 支持**：通过 macOS sips 工具处理 HEIC/HEIF 图像格式
-- **缩略图 API**：提供 Chrome 兼容性的缩略图预览模式
+- **交互式删除**：悬停显示删除按钮，点击即可移除文件
 
-**更新** 媒体文件的处理经过特别优化，图片文件使用 URL.createObjectURL 实时生成缩略图，视频文件显示相应的播放图标。新增的 HEIC/HEIF 支持确保了现代 iOS 设备拍摄的照片能够正确显示和处理。
+**更新** 组件现已支持拖拽上传功能，能够实时生成图片和视频的缩略图预览。新增的80x80像素缩略图预览统一了视觉设计，使用CSS变量进行主题化，确保在深色和浅色主题下都能保持一致的品牌外观。
 
 ### 组件接口定义
 
@@ -160,15 +159,16 @@ RemoveFile --> UpdateFiles
 **图表来源**
 - [AttachmentZone.tsx:14-32](file://client/src/components/Service/AttachmentZone.tsx#L14-L32)
 
-#### 媒体文件处理机制
+#### 文件预览机制
 
-**更新** 组件实现了智能的媒体文件处理机制，根据文件类型提供不同的预览体验：
+**更新** 组件实现了智能的文件预览机制，根据文件类型提供不同的预览体验：
 
 ```mermaid
 classDiagram
-class MediaHandler {
+class FilePreviewHandler {
 +handleImage(file : File) : HTMLElement
 +handleVideo(file : File) : HTMLElement
++handleOther(file : File) : HTMLElement
 +generateThumbnail(file : File) : string
 +removeFile(index : number) : void
 }
@@ -177,33 +177,34 @@ class FileType {
 +VIDEO
 +PDF
 +TEXT
-+HEIC_HEIF
 }
 class PreviewStrategy {
 +URL.createObjectURL
 +Lucide Icons
 +Default File Icons
-+Thumbnail API
 }
-MediaHandler --> FileType
-MediaHandler --> PreviewStrategy
+FilePreviewHandler --> FileType
+FilePreviewHandler --> PreviewStrategy
 ```
 
 **图表来源**
 - [AttachmentZone.tsx:62-81](file://client/src/components/Service/AttachmentZone.tsx#L62-L81)
 
-#### 国际化集成
+#### CSS变量主题化
 
-组件集成了完整的国际化支持，支持中英文提示信息：
+组件使用CSS变量进行主题化，确保在不同主题下的一致外观：
 
-| 中文键值 | 英文键值 | 描述 |
-|---------|---------|------|
-| service.upload.drop_hint | service.upload.drop_hint | 拖拽上传提示 |
-| service.upload.support_hint | service.upload.support_hint | 支持格式说明 |
+| CSS变量 | 用途 | 深色主题默认值 | 浅色主题默认值 |
+|---------|------|---------------|---------------|
+| --border-color | 边框颜色 | rgba(255,255,255,0.1) | rgba(0,0,0,0.1) |
+| --kine-yellow | 品牌黄色 | #FFD200 | #E6BD00 |
+| --bg-main | 主背景色 | #000000 | #E5E7EB |
+| --text-main | 主文字颜色 | #FFFFFF | #1C1C1E |
+| --glass-bg | 玻璃背景色 | rgba(28,28,30,0.75) | rgba(255,255,255,0.75) |
 
 **章节来源**
-- [AttachmentZone.tsx:11-12](file://client/src/components/Service/AttachmentZone.tsx#L11-L12)
-- [translations.ts:1282-1283](file://client/src/i18n/translations.ts#L1282-L1283)
+- [AttachmentZone.tsx:43-46](file://client/src/components/Service/AttachmentZone.tsx#L43-L46)
+- [index.css:11-116](file://client/src/index.css#L11-L116)
 
 ### TicketCreationModal 集成
 
@@ -230,17 +231,16 @@ Modal->>Modal : 清理附件状态
 - [TicketCreationModal.tsx:16-18](file://client/src/components/Service/TicketCreationModal.tsx#L16-L18)
 - [TicketCreationModal.tsx:43-52](file://client/src/components/Service/TicketCreationModal.tsx#L43-L52)
 
-#### 增强的媒体文件处理
+#### 增强的文件管理
 
-**更新** 组件支持多种媒体文件格式的处理和显示：
+**更新** 组件支持多种文件格式的处理和显示：
 
-| 文件类型 | MIME 类型 | 显示方式 | 处理机制 | 大小限制 | HEIC/HEIF 支持 |
-|---------|----------|---------|---------|---------|---------------|
-| 图片 | image/* | 实时缩略图 | URL.createObjectURL | 50MB | ✅ macOS sips |
-| 视频 | video/* | Film 图标 | 播放图标 | 50MB | ❌ |
-| PDF | application/pdf | FileText 图标 | 默认图标 | 50MB | ❌ |
-| 文本 | text/plain | FileText 图标 | 默认图标 | 50MB | ❌ |
-| HEIC/HEIF | image/heic, image/heif | WebP 缩略图 | sips 转换 | 50MB | ✅ macOS |
+| 文件类型 | MIME 类型 | 显示方式 | 处理机制 | 大小限制 |
+|---------|----------|---------|---------|---------|
+| 图片 | image/* | 80x80缩略图 | URL.createObjectURL | 50MB |
+| 视频 | video/* | Film 图标 | 播放图标 | 50MB |
+| PDF | application/pdf | FileText 图标 | 默认图标 | 50MB |
+| 文本 | text/plain | FileText 图标 | 默认图标 | 50MB |
 
 **章节来源**
 - [TicketCreationModal.tsx:254-266](file://client/src/components/Service/TicketCreationModal.tsx#L254-L266)
@@ -354,16 +354,15 @@ Language --> TicketModal
 
 ## 性能考虑
 
-### 媒体文件处理优化
+### 文件预览优化
 
-**更新** 组件在媒体文件处理方面采用了多项优化策略：
+**更新** 组件在文件预览方面采用了多项优化策略：
 
 - **内存管理**：使用 URL.createObjectURL 创建文件预览，避免重复读取
 - **异步处理**：文件上传采用异步处理，避免阻塞主线程
 - **状态优化**：使用 useCallback 优化回调函数，减少不必要的重渲染
-- **缩略图缓存**：媒体文件的缩略图在内存中缓存，提高重复访问性能
-- **HEIC/HEIF 转换**：使用 macOS sips 工具进行高效转换，避免复杂的图像处理
-- **缩略图 API 队列**：服务器端实现缩略图生成队列，防止 CPU 和 IO 过载
+- **统一缩略图尺寸**：80x80像素的固定尺寸，优化布局计算和渲染性能
+- **CSS变量缓存**：主题颜色通过CSS变量缓存，减少样式计算开销
 
 ### 网络传输优化
 
@@ -373,18 +372,18 @@ Language --> TicketModal
 - **进度跟踪**：实时显示上传进度和速度
 - **断点续传**：支持上传中断后的续传功能
 
-### 缩略图 API 性能优化
+### 主题化性能优化
 
-**新增** 服务器端缩略图 API 实现了以下性能优化：
+**新增** 组件的主题化设计实现了以下性能优化：
 
-- **缓存机制**：WebP 缩略图缓存，避免重复生成
-- **队列处理**：并发缩略图生成限制，防止服务器过载
-- **预览模式**：支持高质量预览模式，平衡质量和性能
-- **格式检测**：智能格式检测，选择最优处理路径
+- **CSS变量缓存**：浏览器原生支持的CSS变量缓存机制
+- **主题切换快速响应**：通过CSS变量实现主题切换，无需重新渲染DOM
+- **统一颜色管理**：集中管理品牌颜色，减少重复计算
+- **响应式设计优化**：使用CSS Grid和Flexbox，减少JavaScript计算
 
 **章节来源**
-- [index.js:1116-1138](file://server/index.js#L1116-L1138)
-- [system.js:534-578](file://server/service/routes/system.js#L534-L578)
+- [index.css:11-116](file://client/src/index.css#L11-L116)
+- [AttachmentZone.tsx:43-46](file://client/src/components/Service/AttachmentZone.tsx#L43-L46)
 
 ## 故障排除指南
 
@@ -398,71 +397,74 @@ Language --> TicketModal
 - 确认文件扩展名正确
 - 提供友好的错误提示信息
 
-#### 媒体文件预览失败
+#### 文件预览失败
 
 **更新** **问题**：图片或视频文件无法生成预览
 **解决方案**：
 - 检查文件是否损坏或格式不支持
 - 验证浏览器对媒体文件的支持情况
 - 确认 URL.createObjectURL 的权限设置
-- 对于 HEIC/HEIF 文件，检查 macOS sips 工具是否可用
+- 检查文件大小是否超过限制
 
-#### HEIC/HEIF 文件处理失败
+#### 缩略图显示异常
 
-**新增** **问题**：HEIC/HEIF 图像文件无法正确显示
+**新增** **问题**：80x80像素缩略图显示不正确
 **解决方案**：
-- 确认运行环境为 macOS（sips 工具仅在 macOS 上可用）
-- 检查 sips 工具是否正确安装和可用
-- 验证文件格式是否为标准 HEIC/HEIF
-- 检查文件是否损坏或包含不支持的元数据
+- 检查CSS变量是否正确加载
+- 验证object-fit属性是否生效
+- 确认容器尺寸设置正确
+- 检查主题切换是否影响样式
 
-#### 缩略图 API 错误
+#### 删除功能失效
 
-**新增** **问题**：缩略图 API 返回错误或无法生成缩略图
+**新增** **问题**：悬停删除按钮无法正常工作
 **解决方案**：
-- 检查服务器磁盘空间和权限
-- 验证 ffmpeg 或 sips 工具的可用性
-- 检查缩略图缓存目录的写入权限
-- 查看服务器日志中的详细错误信息
+- 检查事件绑定是否正确
+- 验证removeFile函数逻辑
+- 确认文件索引计算正确
+- 检查按钮样式是否被覆盖
 
-#### 上传失败处理
+#### 主题显示问题
 
-**问题**：文件上传过程中出现错误
+**新增** **问题**：CSS变量主题化效果异常
 **解决方案**：
-- 检查网络连接状态
-- 验证服务器端点可用性
-- 实现重试机制和错误回退
+- 检查:root选择器是否正确
+- 验证[data-theme]属性是否正确设置
+- 确认CSS变量优先级顺序
+- 检查主题切换逻辑
 
 #### 性能问题
 
-**问题**：大量媒体文件上传时性能下降
+**问题**：大量文件上传时性能下降
 **解决方案**：
 - 实施文件大小限制
 - 优化预览图像的生成
 - 使用虚拟滚动处理大量文件
-- 实现媒体文件的懒加载
-- **新增**：利用缩略图缓存机制减少重复处理
+- 实现文件的懒加载
+- **新增**：利用CSS变量缓存机制减少样式计算
 
 **章节来源**
 - [TicketCreationModal.tsx:93-98](file://client/src/components/Service/TicketCreationModal.tsx#L93-L98)
 - [AttachmentZone.tsx:14-22](file://client/src/components/Service/AttachmentZone.tsx#L14-L22)
-- [index.js:1140-1206](file://server/index.js#L1140-L1206)
+- [index.css:11-116](file://client/src/index.css#L11-L116)
 
 ## 结论
 
 AttachmentZone 附件上传组件是 Longhorn 服务管理系统的重要组成部分，它通过现代化的 React 技术栈和优秀的用户体验设计，为工单创建流程提供了强大的附件支持功能。
 
-**更新** 组件经过重大升级，现在具备了媒体即地上传功能，能够实时生成图片和视频的缩略图预览，显著提升了用户的文件管理体验。新增的 HEIC/HEIF 图像格式支持确保了现代 iOS 设备照片的正确处理，而 Chrome 兼容性的缩略图 API 预览模式进一步提升了跨平台兼容性和性能表现。
+**更新** 组件经过重大升级，现在具备了拖拽上传功能，能够支持多文件上传、实时文件预览和交互式删除功能。新增的80x80像素缩略图预览统一了视觉设计，使用CSS变量进行主题化，确保在深色和浅色主题下都能保持一致的品牌外观和良好的用户体验。
 
 组件的主要优势包括：
 
 1. **用户友好**：直观的拖拽式界面和实时预览功能
-2. **媒体优化**：专门针对图片和视频文件的优化处理
-3. **功能完整**：支持多种文件格式和完整的生命周期管理
-4. **技术先进**：基于最新的 React Hooks 和现代前端开发实践
-5. **可维护性强**：清晰的架构设计和良好的代码组织
-6. **性能优化**：智能缓存和队列处理机制
-7. **跨平台兼容**：支持 HEIC/HEIF 和各种浏览器环境
-8. **可扩展性**：模块化的架构设计便于功能扩展
+2. **多文件支持**：支持一次选择多个文件进行批量上传
+3. **统一视觉设计**：80x80像素缩略图预览，提供更好的视觉一致性
+4. **主题化设计**：使用CSS变量实现快速主题切换
+5. **交互式删除**：悬停显示删除按钮，提升操作便利性
+6. **功能完整**：支持多种文件格式和完整的生命周期管理
+7. **技术先进**：基于最新的 React Hooks 和现代前端开发实践
+8. **可维护性强**：清晰的架构设计和良好的代码组织
+9. **性能优化**：智能缓存和主题化机制
+10. **可扩展性**：模块化的架构设计便于功能扩展
 
 该组件的成功实施为整个 Longhorn 系统的用户体验提升做出了重要贡献，为后续的功能扩展和维护奠定了坚实的基础。

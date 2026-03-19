@@ -46,7 +46,7 @@ module.exports = function (db, authenticate) {
      */
     router.get('/', authenticate, requireSkuAdmin, (req, res) => {
         try {
-            const { model_id, keyword } = req.query;
+            const { model_id, keyword, product_family } = req.query;
 
             let conditions = [];
             let params = [];
@@ -56,6 +56,11 @@ module.exports = function (db, authenticate) {
                 params.push(model_id);
             }
 
+            if (product_family) {
+                conditions.push('pm.product_family = ?');
+                params.push(product_family);
+            }
+
             if (keyword) {
                 conditions.push('(ps.sku_code LIKE ? OR ps.display_name LIKE ? OR ps.material_id LIKE ?)');
                 params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
@@ -63,15 +68,27 @@ module.exports = function (db, authenticate) {
 
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+            // 排序规则：1. 电影机/摄像机/电子寻像器优先 2. 有SN前缀的次之 3. 创建时间倒序
             const skus = db.prepare(`
                 SELECT 
                     ps.*,
-                    pm.name_zh,
-                    (SELECT COUNT(*) FROM products p WHERE p.sku_id = ps.id) as instance_count
+                    pm.name_zh as model_name,
+                    pm.model_code,
+                    pm.product_family,
+                    (SELECT COUNT(*) FROM products p WHERE p.sku_id = ps.id) as instance_count,
+                    CASE 
+                        WHEN pm.product_type LIKE '%电影机%' OR pm.product_type LIKE '%摄像机%' THEN 1
+                        WHEN pm.product_type LIKE '%电子寻像器%' OR pm.product_type LIKE '%寻像器%' THEN 2
+                        ELSE 3
+                    END as type_priority,
+                    CASE WHEN pm.sn_prefix IS NOT NULL AND pm.sn_prefix != '' THEN 1 ELSE 2 END as has_sn_prefix
                 FROM product_skus ps
                 JOIN product_models pm ON ps.model_id = pm.id
                 ${whereClause}
-                ORDER BY ps.created_at DESC
+                ORDER BY 
+                    type_priority ASC,
+                    has_sn_prefix ASC,
+                    ps.created_at DESC
             `).all(...params);
 
             res.json({

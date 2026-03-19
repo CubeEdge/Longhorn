@@ -20,6 +20,7 @@ import {
     RotateCcw
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { CustomDatePicker } from '../UI/CustomDatePicker';
 
 interface ConsumptionRecord {
     id: number;
@@ -399,29 +400,23 @@ const PartsConsumptionPage: React.FC = () => {
                     <option value="disputed">有争议</option>
                 </select>
 
-                <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    style={{
-                        padding: '10px 12px',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                        fontSize: '14px'
-                    }}
-                />
-                <span style={{ color: '#6B7280' }}>至</span>
-                <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    style={{
-                        padding: '10px 12px',
-                        border: '1px solid #E5E7EB',
-                        borderRadius: '8px',
-                        fontSize: '14px'
-                    }}
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 140 }}>
+                        <CustomDatePicker
+                            label=""
+                            value={dateFrom}
+                            onChange={(val) => setDateFrom(val)}
+                        />
+                    </div>
+                    <span style={{ color: '#6B7280' }}>至</span>
+                    <div style={{ width: 140 }}>
+                        <CustomDatePicker
+                            label=""
+                            value={dateTo}
+                            onChange={(val) => setDateTo(val)}
+                        />
+                    </div>
+                </div>
 
                 <button
                     onClick={fetchData}

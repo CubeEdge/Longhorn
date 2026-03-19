@@ -71,6 +71,14 @@ const ServiceNavigation: React.FC = () => {
     return false;
   })();
 
+  // 产品台账访问权限：仅 MS, OP, GE 部门和 Exec 可见
+  const hasProductLedgerAccess = (() => {
+    if (!actingUser) return false;
+    if (actingRole === 'Exec') return true;
+    if (actingDeptCode === 'MS' || actingDeptCode === 'OP' || actingDeptCode === 'GE') return true;
+    return false;
+  })();
+
   // Load expanded state from localStorage
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>(() => {
     try {
@@ -123,8 +131,8 @@ const ServiceNavigation: React.FC = () => {
       id: 'product-info',
       title: '产品和配件信息',
       items: [
-        // MS/OP 可查看
-        ...(hasCrmAccess || actingDeptCode === 'OP' ? [
+        // 产品台账权限：仅 MS, OP, GE 和 Exec 可见
+        ...(hasProductLedgerAccess ? [
           { id: 'product-models', label: t('sidebar.product_models') || '产品目录', icon: Package, path: '/service/product-models' },
           { id: 'products', label: t('sidebar.archives_assets') || '设备台账', icon: Box, path: '/service/products' },
           { id: 'parts', label: t('sidebar.parts') || '配件管理', icon: Package, path: '/service/parts' },

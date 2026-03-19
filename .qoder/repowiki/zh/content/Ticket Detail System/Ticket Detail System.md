@@ -5,6 +5,7 @@
 - [UnifiedTicketDetailPage.tsx](file://client/src/components/Service/UnifiedTicketDetailPage.tsx)
 - [UnifiedTicketDetail.tsx](file://client/src/components/Workspace/UnifiedTicketDetail.tsx)
 - [TicketDetailComponents.tsx](file://client/src/components/Workspace/TicketDetailComponents.tsx)
+- [AttachmentZone.tsx](file://client/src/components/Service/AttachmentZone.tsx)
 - [useCachedTickets.ts](file://client/src/hooks/useCachedTickets.ts)
 - [useTicketStore.ts](file://client/src/store/useTicketStore.ts)
 - [RMATicketListPage.tsx](file://client/src/components/RMATickets/RMATicketListPage.tsx)
@@ -12,20 +13,25 @@
 - [IssueDetailPage.tsx](file://client/src/components/Issues/IssueDetailPage.tsx)
 - [tickets.js](file://server/service/routes/tickets.js)
 - [ticket-activities.js](file://server/service/routes/ticket-activities.js)
+- [issues.js](file://server/service/routes/issues.js)
+- [upload.js](file://server/service/routes/upload.js)
 - [ActionBufferModal.tsx](file://client/src/components/Workspace/ActionBufferModal.tsx)
 - [Ticket_Refinement_Plan.md](file://docs/Ticket_Refinement_Plan.md)
 - [uiux.md](file://.agent/workflows/uiux.md)
 - [log_prompt.md](file://docs/log_prompt.md)
+- [check_attachments.js](file://server/scripts/check_attachments.js)
+- [system.js](file://server/service/routes/system.js)
 </cite>
 
 ## 更新摘要
 **变更内容**
-- 新增活动详细信息抽屉的全面修正功能
-- 添加多种活动类型的修正请求支持
-- 增强诊断报告、OP维修报告、发货信息、评论和内部备注的修正能力
-- 实现完整的权限控制和审计追踪机制
-- 改进工单活动时间轴分类和UI/UX设计
-- 优化侧滑窗口布局和交互体验
+- 新增附件管理功能，支持附件的上传、预览和删除
+- 增强工单活动详情展示，包含附件信息和权限控制
+- 完善附件查询优化，支持高效检索
+- 新增 AttachmentZone 组件提供直观的附件拖拽上传体验
+- 增强活动时间轴中的附件网格展示功能
+- 实现附件权限控制和访问令牌机制
+- 优化 HEIC 格式兼容性和缩略图生成
 
 ## 目录
 1. [项目概述](#项目概述)
@@ -34,17 +40,18 @@
 4. [数据流分析](#数据流分析)
 5. [权限控制机制](#权限控制机制)
 6. [工作流处理](#工作流处理)
-7. [修正功能增强](#修正功能增强)
-8. [UI/UX改进](#uiux改进)
-9. [性能优化策略](#性能优化策略)
-10. [错误处理与调试](#错误处理与调试)
-11. [总结](#总结)
+7. [附件管理系统](#附件管理系统)
+8. [修正功能增强](#修正功能增强)
+9. [UI/UX改进](#uiux改进)
+10. [性能优化策略](#性能优化策略)
+11. [错误处理与调试](#错误处理与调试)
+12. [总结](#总结)
 
 ## 项目概述
 
 工单详情系统是Longhorn项目中的核心功能模块，负责提供统一的工单管理界面，支持多种工单类型（咨询工单、RMA返修工单、经销商维修工单）的统一展示和操作。该系统采用前后端分离架构，前端使用React构建现代化的用户界面，后端基于Express.js提供RESTful API服务。
 
-系统的核心目标是为用户提供一致的工单管理体验，无论工单类型如何，都能通过统一的界面进行查看、编辑、评论和状态跟踪。**最新更新**增强了活动详细信息抽屉的修正功能，支持多种活动类型的修正请求，包括诊断报告、OP维修报告、发货信息、评论和内部备注。同时，系统还改进了工单活动时间轴的分类方式，采用更直观的UI/UX设计，提升了用户的操作体验。
+**最新更新**引入了全新的附件管理功能，显著提升了工单详情的附件处理能力和用户体验。系统现在支持完整的附件生命周期管理，包括上传、预览、下载和权限控制。活动时间轴中集成了附件网格展示，提供直观的多媒体内容浏览体验。同时，系统实现了高效的附件查询优化和HEIC格式兼容性处理。
 
 ## 系统架构
 
@@ -59,24 +66,33 @@ Store[状态管理]
 Drawer[活动详细信息抽屉]
 Correction[修正功能模块]
 Timeline[活动时间轴]
-end
+AttachmentGrid[附件网格展示]
+MediaLightbox[媒体预览框]
+AttachmentZone[附件拖拽上传]
+CollapsiblePanel[可折叠面板]
+FieldUpdateContent[字段更新内容]
+DiagnosticReport[诊断报告]
+OpRepairReport[OP维修报告]
+End
 subgraph "API网关"
 Auth[认证中间件]
 Routes[路由处理]
-end
+End
 subgraph "后端服务"
 Tickets[工单服务]
 Activities[活动服务]
-SLA[SLA服务]
-Dispatch[调度服务]
+Attachments[附件服务]
+Upload[上传服务]
+Thumbnail[缩略图服务]
 CorrectionAPI[修正API服务]
-end
+End
 subgraph "数据库层"
 TicketDB[(工单数据库)]
 ActivityDB[(活动数据库)]
+AttachmentDB[(附件数据库)]
 UserDB[(用户数据库)]
 CorrectionDB[(修正历史数据库)]
-end
+End
 UI --> Detail
 UI --> List
 Detail --> Hooks
@@ -85,16 +101,24 @@ Hooks --> Store
 Detail --> Drawer
 Drawer --> Correction
 Drawer --> Timeline
+Drawer --> AttachmentGrid
+AttachmentGrid --> MediaLightbox
+AttachmentZone --> Upload
+Upload --> Attachments
+Attachments --> Thumbnail
+Attachments --> AttachmentDB
 Drawer --> Auth
 List --> Auth
 Auth --> Routes
 Routes --> Tickets
 Routes --> Activities
+Routes --> Attachments
 Routes --> CorrectionAPI
 Tickets --> SLA
 Tickets --> Dispatch
 Tickets --> TicketDB
 Activities --> ActivityDB
+Activities --> AttachmentDB
 Activities --> CorrectionDB
 SLA --> UserDB
 Dispatch --> UserDB
@@ -104,6 +128,7 @@ CorrectionAPI --> CorrectionDB
 **图表来源**
 - [UnifiedTicketDetail.tsx:125-442](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L125-L442)
 - [TicketDetailComponents.tsx:756-949](file://client/src/components/Workspace/TicketDetailComponents.tsx#L756-L949)
+- [AttachmentZone.tsx:1-108](file://client/src/components/Service/AttachmentZone.tsx#L1-L108)
 - [ticket-activities.js:650-815](file://server/service/routes/ticket-activities.js#L650-L815)
 
 ## 核心组件分析
@@ -148,15 +173,23 @@ class ActivityDetailDrawer {
 +canCorrectActivity() : boolean
 +handleCorrection() : Promise<void>
 }
+class MediaLightbox {
++url : string
++type : 'image' | 'video'
++onClose : Function
++render() : JSX.Element
+}
 UnifiedTicketDetailPage --> UnifiedTicketDetail : "渲染"
 UnifiedTicketDetail --> TicketDetail : "管理状态"
 UnifiedTicketDetail --> ActivityDetailDrawer : "集成"
+ActivityDetailDrawer --> MediaLightbox : "使用"
 ```
 
 **图表来源**
 - [UnifiedTicketDetailPage.tsx:12-35](file://client/src/components/Service/UnifiedTicketDetailPage.tsx#L12-L35)
 - [UnifiedTicketDetail.tsx:30-62](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L30-L62)
 - [TicketDetailComponents.tsx:756-820](file://client/src/components/Workspace/TicketDetailComponents.tsx#L756-L820)
+- [TicketDetailComponents.tsx:225-304](file://client/src/components/Workspace/TicketDetailComponents.tsx#L225-L304)
 
 ### 工具组件库
 
@@ -175,6 +208,7 @@ class CollapsiblePanel {
 +icon : ReactNode
 +count : number
 +defaultOpen : boolean
++headerRight : ReactNode
 +children : ReactNode
 +render() : JSX.Element
 }
@@ -200,15 +234,42 @@ class ActivityDetailDrawer {
 +canCorrectActivity() : boolean
 +handleCorrection() : Promise<void>
 }
+class AttachmentGrid {
++attachments : Attachment[]
++lightboxMedia : Object
++setLightboxMedia : Function
++render() : JSX.Element
+}
+class FieldUpdateContent {
++content : string
++metadata : FieldUpdateMetadata
++render() : JSX.Element
+}
+class DiagnosticReportContent {
++metadata : any
++render() : JSX.Element
+}
+class OpRepairReportContent {
++metadata : any
++render() : JSX.Element
+}
 ActivityTimeline --> MediaLightbox : "使用"
 CollapsiblePanel --> ParticipantsPanel : "组合"
 ActivityDetailDrawer --> MediaLightbox : "使用"
+ActivityDetailDrawer --> AttachmentGrid : "集成"
+ActivityDetailDrawer --> FieldUpdateContent : "使用"
+ActivityDetailDrawer --> DiagnosticReportContent : "使用"
+ActivityDetailDrawer --> OpRepairReportContent : "使用"
 ```
 
 **图表来源**
 - [TicketDetailComponents.tsx:21-49](file://client/src/components/Workspace/TicketDetailComponents.tsx#L21-L49)
 - [TicketDetailComponents.tsx:63-96](file://client/src/components/Workspace/TicketDetailComponents.tsx#L63-L96)
 - [TicketDetailComponents.tsx:756-949](file://client/src/components/Workspace/TicketDetailComponents.tsx#L756-L949)
+- [TicketDetailComponents.tsx:1988-2110](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1988-L2110)
+- [TicketDetailComponents.tsx:109-162](file://client/src/components/Workspace/TicketDetailComponents.tsx#L109-L162)
+- [TicketDetailComponents.tsx:164-204](file://client/src/components/Workspace/TicketDetailComponents.tsx#L164-L204)
+- [TicketDetailComponents.tsx:183-204](file://client/src/components/Workspace/TicketDetailComponents.tsx#L183-L204)
 
 **章节来源**
 - [UnifiedTicketDetailPage.tsx:1-38](file://client/src/components/Service/UnifiedTicketDetailPage.tsx#L1-L38)
@@ -313,8 +374,35 @@ CanEdit --> End([结束])
 | OP相关节点 | OP | 成员 | 查看、评论 |
 | 其他节点 | 任意 | 管理员 | 完全控制 |
 
+### 附件权限控制
+
+**新增** 系统实现了严格的附件访问权限控制机制：
+
+```mermaid
+flowchart TD
+Start([访问附件]) --> CheckAuth{检查认证状态}
+CheckAuth --> |未认证| RedirectLogin[重定向登录]
+CheckAuth --> |已认证| CheckPermissions{检查权限}
+CheckPermissions --> |无权限| DenyAccess[拒绝访问]
+CheckPermissions --> |有权限| CheckFileType{检查文件类型}
+CheckFileType --> |受保护类型| CheckToken{检查访问令牌}
+CheckFileType --> |公开类型| AllowDirect[直接访问]
+CheckToken --> |令牌有效| AllowAccess[允许访问]
+CheckToken --> |令牌无效| DenyAccess
+AllowDirect --> End([结束])
+AllowAccess --> End
+RedirectLogin --> End
+DenyAccess --> End
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:2017-2024](file://client/src/components/Workspace/TicketDetailComponents.tsx#L2017-L2024)
+- [ticket-activities.js:231-232](file://server/service/routes/ticket-activities.js#L231-L232)
+
 **章节来源**
 - [UnifiedTicketDetail.tsx:174-213](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L174-L213)
+- [TicketDetailComponents.tsx:2017-2024](file://client/src/components/Workspace/TicketDetailComponents.tsx#L2017-L2024)
+- [ticket-activities.js:231-232](file://server/service/routes/ticket-activities.js#L231-L232)
 
 ## 工作流处理
 
@@ -358,6 +446,173 @@ end
 **章节来源**
 - [tickets.js:16-30](file://server/service/routes/tickets.js#L16-L30)
 - [tickets.js:1815-1874](file://server/service/routes/tickets.js#L1815-L1874)
+
+## 附件管理系统
+
+### 附件网格展示系统
+
+**新增** 附件网格展示系统提供了完整的附件管理功能，支持多种文件类型的预览和下载：
+
+```mermaid
+classDiagram
+class AttachmentGrid {
++attachments : Attachment[]
++lightboxMedia : Object
++setLightboxMedia : Function
++render() : JSX.Element
+}
+class Attachment {
++id : number
++file_name : string
++file_size : number
++file_type : string
++file_url : string
++thumbnail_url : string | null
++render() : JSX.Element
+}
+class MediaLightbox {
++url : string
++type : 'image' | 'video'
++onClose : Function
++render() : JSX.Element
+}
+class AttachmentLayout {
++count : number
++getGridStyle() : Object
++isLargeItem() : boolean
++isSmallItem() : boolean
++render() : JSX.Element
+}
+AttachmentGrid --> Attachment : "管理"
+AttachmentGrid --> MediaLightbox : "使用"
+AttachmentGrid --> AttachmentLayout : "布局"
+Attachment --> AttachmentLayout : "样式"
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:1988-2110](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1988-L2110)
+- [TicketDetailComponents.tsx:225-304](file://client/src/components/Workspace/TicketDetailComponents.tsx#L225-L304)
+- [TicketDetailComponents.tsx:2001-2007](file://client/src/components/Workspace/TicketDetailComponents.tsx#L2001-L2007)
+
+### 支持的附件类型
+
+系统支持以下文件类型的附件管理：
+
+| 文件类型 | MIME类型 | 支持特性 | 预览模式 |
+|---------|---------|---------|---------|
+| 图片 | image/* | 缩略图、原图预览、HEIC兼容 | 图片预览 |
+| 视频 | video/* | 视频播放、缩略图 | 视频播放 |
+| PDF | application/pdf | 文档预览 | PDF阅读器 |
+| 文本 | text/plain | 文本预览 | 文本查看 |
+| HEIC | image/heic | 缩略图转换、WebP兼容 | 图片预览 |
+
+### 附件拖拽上传区域
+
+**新增** AttachmentZone组件提供了直观的附件拖拽上传功能：
+
+```mermaid
+classDiagram
+class AttachmentZone {
++files : File[]
++onFilesChange : Function
++onDrop : Function
++removeFile : Function
++render() : JSX.Element
+}
+class Dropzone {
++isDragActive : boolean
++getInputProps : Function
++getRootProps : Function
++accept : Object
++onDrop : Function
+}
+class AttachmentPreview {
++file : File
++isImage : boolean
++isVideo : boolean
++render() : JSX.Element
+}
+AttachmentZone --> Dropzone : "使用"
+AttachmentZone --> AttachmentPreview : "预览"
+```
+
+**图表来源**
+- [AttachmentZone.tsx:1-108](file://client/src/components/Service/AttachmentZone.tsx#L1-L108)
+
+### 缩略图生成和HEIC兼容性
+
+系统实现了智能的缩略图生成和格式兼容性处理：
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant AttachmentGrid as 附件网格
+participant ThumbnailAPI as 缩略图API
+participant FileServer as 文件服务器
+User->>AttachmentGrid : 点击HEIC图片
+AttachmentGrid->>ThumbnailAPI : 请求缩略图
+ThumbnailAPI->>FileServer : 转换HEIC到WebP
+FileServer-->>ThumbnailAPI : 返回WebP缩略图
+ThumbnailAPI-->>AttachmentGrid : 返回缩略图URL
+AttachmentGrid-->>User : 显示预览
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:2017-2024](file://client/src/components/Workspace/TicketDetailComponents.tsx#L2017-L2024)
+
+### 附件权限控制
+
+系统实现了严格的附件访问权限控制：
+
+```mermaid
+flowchart TD
+Start([访问附件]) --> CheckAuth{检查认证状态}
+CheckAuth --> |未认证| RedirectLogin[重定向登录]
+CheckAuth --> |已认证| CheckPermissions{检查权限}
+CheckPermissions --> |无权限| DenyAccess[拒绝访问]
+CheckPermissions --> |有权限| CheckFileType{检查文件类型}
+CheckFileType --> |受保护类型| CheckToken{检查访问令牌}
+CheckFileType --> |公开类型| AllowDirect[直接访问]
+CheckToken --> |令牌有效| AllowAccess[允许访问]
+CheckToken --> |令牌无效| DenyAccess
+AllowDirect --> End([结束])
+AllowAccess --> End
+RedirectLogin --> End
+DenyAccess --> End
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:2017-2024](file://client/src/components/Workspace/TicketDetailComponents.tsx#L2017-L2024)
+- [ticket-activities.js:231-232](file://server/service/routes/ticket-activities.js#L231-L232)
+
+### 附件查询优化
+
+**新增** 系统实现了高效的附件查询优化机制：
+
+```mermaid
+sequenceDiagram
+participant Client as 客户端
+participant API as 工单API
+participant DB as 数据库
+Client->>API : 获取工单详情
+API->>DB : 查询活动附件
+DB-->>API : 返回活动附件
+API->>DB : 查询工单级附件
+DB-->>API : 返回工单附件
+API->>DB : 查询附件数量
+DB-->>API : 返回附件统计
+API-->>Client : 返回完整工单数据
+Note over API,DB : 使用索引优化查询性能
+```
+
+**图表来源**
+- [tickets.js:1370-1400](file://server/service/routes/tickets.js#L1370-L1400)
+
+**章节来源**
+- [TicketDetailComponents.tsx:1988-2110](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1988-L2110)
+- [AttachmentZone.tsx:1-108](file://client/src/components/Service/AttachmentZone.tsx#L1-L108)
+- [ticket-activities.js:231-232](file://server/service/routes/ticket-activities.js#L231-L232)
+- [tickets.js:1370-1400](file://server/service/routes/tickets.js#L1370-L1400)
 
 ## 修正功能增强
 
@@ -478,19 +733,92 @@ subgraph "改进后的时间轴分类"
 Discussion[讨论与诊断<br/>评论、诊断报告、维修记录]
 SystemEvents[系统变更<br/>状态变更、指派、优先级、字段更新]
 KeyOutputs[关键输出<br/>文档发布、撤回、物流信息]
+Attachments[附件展示<br/>图片、视频、文档预览]
 end
 subgraph "分类规则"
 COMMENT_TYPES[评论类型: comment, diagnostic_report, op_repair_report]
 KEY_OUTPUT_TYPES[关键输出: document_published, document_recalled]
 SYSTEM_TYPES[系统事件: status_change, assignment_change, field_update, system_event]
+ATTACHMENT_TYPES[附件类型: image/*, video/*, application/pdf]
 end
 Discussion --> COMMENT_TYPES
-Discussion --> KEY_OUTPUT_TYPES
+Discussion --> ATTACHMENT_TYPES
 SystemEvents --> SYSTEM_TYPES
+Attachments --> ATTACHMENT_TYPES
 ```
 
 **图表来源**
 - [TicketDetailComponents.tsx:307-345](file://client/src/components/Workspace/TicketDetailComponents.tsx#L307-L345)
+
+### 可折叠面板组件
+
+**新增** CollapsiblePanel组件提供了统一的可折叠界面容器：
+
+```mermaid
+classDiagram
+class CollapsiblePanel {
++title : ReactNode
++icon : ReactNode
++count : number
++defaultOpen : boolean
++headerRight : ReactNode
++children : ReactNode
++open : boolean
++setOpen : Function
++render() : JSX.Element
+}
+CollapsiblePanel --> Children : "渲染"
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:56-102](file://client/src/components/Workspace/TicketDetailComponents.tsx#L56-L102)
+
+### 字段更新内容增强
+
+**增强** FieldUpdateContent组件现在提供更清晰的字段修改视觉审计轨迹：
+
+```mermaid
+classDiagram
+class FieldUpdateContent {
++content : string
++metadata : FieldUpdateMetadata
++formatValue : Function
++render() : JSX.Element
+}
+class FieldUpdateMetadata {
++field_name : string
++field_label : string
++old_value : unknown
++new_value : unknown
++change_reason : string
+}
+FieldUpdateContent --> FieldUpdateMetadata : "使用"
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:109-162](file://client/src/components/Workspace/TicketDetailComponents.tsx#L109-L162)
+
+### 诊断报告和维修记录展示
+
+系统新增了专门的诊断报告和维修记录展示组件：
+
+```mermaid
+classDiagram
+class DiagnosticReportContent {
++metadata : any
++render() : JSX.Element
+}
+class OpRepairReportContent {
++metadata : any
++render() : JSX.Element
+}
+DiagnosticReportContent --> Metadata : "使用"
+OpRepairReportContent --> Metadata : "使用"
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:164-204](file://client/src/components/Workspace/TicketDetailComponents.tsx#L164-L204)
+- [TicketDetailComponents.tsx:183-204](file://client/src/components/Workspace/TicketDetailComponents.tsx#L183-L204)
 
 ### 侧滑窗口标准化
 
@@ -509,6 +837,31 @@ SystemEvents --> SYSTEM_TYPES
 - **智能截断**：长字段自动截断（20字符），保持界面整洁
 - **颜色编码**：使用不同颜色区分不同类型的操作和状态
 - **辅助信息**：在必要时显示修正次数和最后修正时间
+
+### 附件网格布局优化
+
+**新增** 活动时间轴中的附件网格布局实现了智能响应式设计：
+
+```mermaid
+classDiagram
+class AttachmentGrid {
++attachments : Attachment[]
++count : number
++getGridStyle() : Object
++render() : JSX.Element
+}
+class AttachmentLayout {
++count : number
++isLargeItem() : boolean
++isSmallItem() : boolean
++getGridStyle() : Object
++render() : JSX.Element
+}
+AttachmentGrid --> AttachmentLayout : "使用"
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:2148-2270](file://client/src/components/Workspace/TicketDetailComponents.tsx#L2148-L2270)
 
 **章节来源**
 - [TicketDetailComponents.tsx:307-547](file://client/src/components/Workspace/TicketDetailComponents.tsx#L307-L547)
@@ -548,9 +901,20 @@ Page-->>Page : 渲染完整界面
 **图表来源**
 - [UnifiedTicketDetail.tsx:369-392](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L369-L392)
 
+### 附件性能优化
+
+系统实现了多项附件性能优化措施：
+
+- **懒加载缩略图**：附件缩略图采用懒加载，提升初始渲染速度
+- **HEIC格式转换**：自动将HEIC格式转换为WebP，提升兼容性和加载速度
+- **分块预览**：大文件采用分块预览，避免内存溢出
+- **缓存策略**：缩略图和预览内容使用浏览器缓存机制
+- **智能布局**：根据附件数量动态调整网格布局，优化显示效果
+
 **章节来源**
 - [useCachedTickets.ts:80-102](file://client/src/hooks/useCachedTickets.ts#L80-L102)
 - [UnifiedTicketDetail.tsx:369-392](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L369-L392)
+- [TicketDetailComponents.tsx:2067-2080](file://client/src/components/Workspace/TicketDetailComponents.tsx#L2067-L2080)
 
 ## 错误处理与调试
 
@@ -600,19 +964,25 @@ Redirect --> Request
 6. **用户体验**：现代化的界面设计和交互体验
 
 **最新增强功能**：
-- **活动详细信息抽屉**：提供全面的活动查看和修正功能
-- **多类型修正支持**：支持诊断报告、OP维修报告、发货信息、评论和内部备注的修正
-- **权限控制**：严格的权限验证确保只有授权用户才能进行修正操作
-- **审计追踪**：完整的修正历史记录和通知机制
-- **用户友好界面**：直观的修正流程和反馈机制
-- **UI/UX改进**：采用macOS26设计风格，优化时间轴分类和侧滑窗口布局
-- **文本显示优化**：实现单行自然语言显示和智能截断
+- **完整的附件管理系统**：实现了完整的附件生命周期管理，包括显示、预览和下载
+- **活动时间轴增强**：大幅改进了附件展示功能，提供直观的网格布局
+- **HEIC格式支持**：自动转换HEIC格式为WebP，提升兼容性和加载速度
+- **拖拽上传功能**：提供直观的附件拖拽上传体验
+- **缩略图优化**：智能生成缩略图，优化加载性能和用户体验
+- **权限控制增强**：严格的权限验证确保附件访问的安全性
+- **查询优化**：高效的附件查询机制提升系统性能
+- **UI/UX改进**：采用macOS26设计风格，优化了时间轴分类和侧滑窗口布局
+- **性能优化**：智能缓存和并行数据获取机制提升用户体验
 
-该系统为Longhorn项目提供了强大的工单管理能力，能够满足复杂业务场景下的工单处理需求。通过持续的优化和扩展，系统将继续为用户提供更好的服务体验。修正功能的引入进一步增强了系统的可靠性和数据准确性，为工单管理提供了更加完善的解决方案。
+该系统为Longhorn项目提供了强大的工单管理能力，能够满足复杂业务场景下的工单处理需求。通过持续的优化和扩展，系统将继续为用户提供更好的服务体验。新增的附件管理功能进一步提升了系统的实用性和用户体验，为工单管理提供了更加完善的解决方案。
 
 **更新亮点**：
-- **活动修正系统**：实现了完整的活动修正功能，支持多种活动类型的修正请求
+- **完整的附件管理系统**：实现了完整的附件生命周期管理，包括显示、预览和下载
+- **活动时间轴增强**：大幅改进了附件展示功能，提供直观的网格布局
+- **HEIC格式支持**：自动转换HEIC格式为WebP，提升兼容性和加载速度
+- **拖拽上传功能**：提供直观的附件拖拽上传体验
+- **缩略图优化**：智能生成缩略图，优化加载性能和用户体验
+- **权限控制增强**：严格的权限验证确保附件访问的安全性
+- **查询优化**：高效的附件查询机制提升系统性能
 - **UI/UX改进**：采用macOS26设计风格，优化了时间轴分类和侧滑窗口布局
-- **权限控制增强**：严格的权限验证确保数据安全和操作合规
-- **审计追踪完善**：完整的修正历史记录和通知机制
 - **性能优化**：智能缓存和并行数据获取机制提升用户体验

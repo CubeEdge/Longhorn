@@ -57,6 +57,15 @@ interface SystemSettings {
     svc_sla_enabled?: boolean;
     svc_auto_close_days?: number;
     svc_sla_hours?: number;
+    
+    // Product Dropdown Settings
+    show_family_a?: boolean;
+    show_family_b?: boolean;
+    show_family_c?: boolean;
+    show_family_d?: boolean;
+    show_family_e?: boolean;
+    enable_product_type_filter?: boolean;
+    allowed_product_types?: string;
 }
 
 type AdminTab = 'general' | 'intelligence' | 'health' | 'audit' | 'backup' | 'prompts' | 'users';
@@ -1420,6 +1429,81 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, hideTabBar = 
                                                     </div>
                                                 );
                                             })}
+                                        </div>
+                                    )}
+
+                                    {/* 产品型号下拉框配置 */}
+                                    {isSuperAdmin && (
+                                        <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginTop: 16 }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', padding: '12px 20px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(16, 185, 129, 0.03)' }}>
+                                                产品型号下拉框配置
+                                            </div>
+                                            
+                                            {/* 族群显示开关 */}
+                                            <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto', borderBottom: '1px solid var(--glass-border)' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div className="setting-label">产品族群显示控制</div>
+                                                    <div className="setting-desc">控制在创建工单时，无 SN 输入情况下产品型号下拉框中显示哪些族群的产品。不影响基于 SN 的搜索匹配。</div>
+                                                    <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
+                                                        {[
+                                                            { key: 'show_family_a', label: 'A系 - 电影机', default: true },
+                                                            { key: 'show_family_b', label: 'B系 - 摄像机', default: false },
+                                                            { key: 'show_family_c', label: 'C系 - 电子寻像器', default: true },
+                                                            { key: 'show_family_d', label: 'D系 - 其他', default: true },
+                                                            { key: 'show_family_e', label: 'E系 - 配件', default: false }
+                                                        ].map(family => (
+                                                            <label key={family.key} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={settings[family.key as keyof SystemSettings] ?? family.default}
+                                                                    onChange={(e) => setSettings({ ...settings, [family.key]: e.target.checked })}
+                                                                />
+                                                                {family.label}
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* 产品类型过滤开关 */}
+                                            <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto', borderBottom: '1px solid var(--glass-border)' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div className="setting-label">启用产品类型过滤</div>
+                                                    <div className="setting-desc">开启后，仅显示指定产品类型的产品型号；关闭则显示所有类型。</div>
+                                                </div>
+                                                <Switch 
+                                                    checked={settings.enable_product_type_filter !== false} 
+                                                    onChange={v => setSettings({ ...settings, enable_product_type_filter: v })} 
+                                                    activeColor="#10B981" 
+                                                />
+                                            </div>
+
+                                            {/* 允许的产品类型 */}
+                                            {settings.enable_product_type_filter !== false && (
+                                                <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div className="setting-label">允许显示的产品类型</div>
+                                                        <div className="setting-desc">输入产品类型关键字，用逗号分隔。产品型号的产品类型包含任一关键字时即显示。</div>
+                                                        <input
+                                                            type="text"
+                                                            value={settings.allowed_product_types || '电影机,摄像机,电子寻像器,寻像器,套装'}
+                                                            onChange={e => setSettings({ ...settings, allowed_product_types: e.target.value })}
+                                                            placeholder="例如: 电影机,摄像机,电子寻像器"
+                                                            style={{ 
+                                                                width: '100%', 
+                                                                marginTop: 12,
+                                                                padding: '10px 14px', 
+                                                                borderRadius: '8px', 
+                                                                border: '1px solid var(--glass-border)', 
+                                                                background: 'var(--glass-bg-light)', 
+                                                                color: 'var(--text-main)', 
+                                                                fontSize: '14px', 
+                                                                outline: 'none' 
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 

@@ -103,7 +103,7 @@ const ProductSkuDetailPage: React.FC = () => {
                 depth_cm: sku.depth_cm,
                 is_dangerous_goods: sku.is_dangerous_goods,
                 upc: sku.upc,
-                sn_prefix: sku.sn_prefix
+
             });
         }
     }, [sku]);
@@ -263,7 +263,7 @@ const ProductSkuDetailPage: React.FC = () => {
                                                     depth_cm: sku.depth_cm,
                                                     is_dangerous_goods: sku.is_dangerous_goods,
                                                     upc: sku.upc,
-                                                    sn_prefix: sku.sn_prefix
+                                    
                                                 });
                                                 setIsEditModalOpen(true);
                                             }}
@@ -484,10 +484,7 @@ const ProductSkuDetailPage: React.FC = () => {
                                     <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>UPC 条码</div>
                                     <div className="value" style={{ fontWeight: 600, fontSize: '1rem' }}>{sku.upc || '-'}</div>
                                 </div>
-                                <div className="info-item">
-                                    <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>SN 前缀</div>
-                                    <div className="value" style={{ fontWeight: 600, fontSize: '1rem' }}>{sku.sn_prefix || '-'}</div>
-                                </div>
+
                                 <div className="info-item">
                                     <div className="label" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 4 }}>危险品标识</div>
                                     <div className="value" style={{ 
@@ -747,15 +744,7 @@ const ProductSkuDetailPage: React.FC = () => {
                                                 style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
                                             />
                                         </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>SN 前缀</label>
-                                            <input
-                                                type="text" value={editFormData.sn_prefix || ''}
-                                                onChange={e => setEditFormData({ ...editFormData, sn_prefix: e.target.value.toUpperCase() })}
-                                                placeholder="例: KE8"
-                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
-                                            />
-                                        </div>
+
                                     </div>
                                 </div>
                             </div>

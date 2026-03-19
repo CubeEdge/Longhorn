@@ -159,10 +159,10 @@ module.exports = function (db, authenticate) {
             }
 
             // Validate sale_source
-            if (!['invoice', 'customer_statement'].includes(sale_source)) {
+            if (!['invoice', 'customer_statement', 'shipping_record'].includes(sale_source)) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Invalid sale_source. Must be "invoice" or "customer_statement"'
+                    error: 'Invalid sale_source. Must be "invoice", "customer_statement" or "shipping_record"'
                 });
             }
 
@@ -171,6 +171,14 @@ module.exports = function (db, authenticate) {
                 return res.status(400).json({
                     success: false,
                     error: 'Invoice proof is required when sale_source is "invoice"'
+                });
+            }
+
+            // Require shipping record info for shipping_record source
+            if (sale_source === 'shipping_record' && !shipping_record_info) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Shipping record info is required when sale_source is "shipping_record"'
                 });
             }
 

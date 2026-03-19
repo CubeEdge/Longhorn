@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Wrench, AlertCircle, Save, X, Download, Send, FileText, Stethoscope, Plus, Trash2, Settings, ChevronDown, ChevronUp, DollarSign, Package } from 'lucide-react';
+import { Wrench, AlertCircle, Save, X, Download, Send, FileText, Stethoscope, Plus, Trash2, Settings, ChevronDown, ChevronUp, DollarSign, Package, Globe, Check, Edit2, Sparkles } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
-
+import { useToast } from '../../store/useToast';
 import { exportToPDF } from '../../utils/pdfExport';
 import ConfirmModal from '../Service/ConfirmModal';
+import { CustomDatePicker } from '../UI/CustomDatePicker';
 
 interface RepairReportEditorProps {
     isOpen: boolean;
@@ -45,21 +46,21 @@ interface ReportContent {
     };
     device_info: {
         product_name: string;
+        product_name_en?: string;
         serial_number: string;
         firmware_version: string;
         hardware_version: string;
     };
     issue_description: {
         customer_reported: string;
-        symptoms: string[];
     };
     diagnosis: {
         findings: string;
         root_cause: string;
-        troubleshooting_steps: string[];
+        troubleshooting_steps: string;
     };
     repair_process: {
-        actions_taken: string[];
+        actions_taken: string;
         parts_replaced: PartUsed[];
         testing_results: string;
     };
@@ -101,6 +102,14 @@ interface ReportData {
     reviewed_by?: { id: number; display_name: string };
     reviewed_at?: string;
     review_comment?: string;
+    // 日期字段（可从工单同步或手动编辑）
+    received_date?: string;
+    diagnosis_date?: string;
+    repair_date?: string;
+    // 工单创建日期（可编辑）
+    ticket_created_date?: string;
+    // 编制人（MS closing节点负责人或MS部门其他人员）
+    prepared_by?: { id: number; display_name: string } | null;
 }
 
 const DEFAULT_CONTENT: ReportContent = {
@@ -115,16 +124,15 @@ const DEFAULT_CONTENT: ReportContent = {
         hardware_version: ''
     },
     issue_description: {
-        customer_reported: '',
-        symptoms: []
+        customer_reported: ''
     },
     diagnosis: {
         findings: '',
         root_cause: '',
-        troubleshooting_steps: []
+        troubleshooting_steps: ''
     },
     repair_process: {
-        actions_taken: [],
+        actions_taken: '',
         parts_replaced: [],
         testing_results: ''
     },
@@ -145,11 +153,14 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     isOpen, onClose, ticketId, ticketNumber, reportId: initialReportId, currentNode, onSuccess
 }) => {
     const { token, user } = useAuthStore();
+    const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
     const [ticketInfo, setTicketInfo] = useState<any>(null);
+    // MS部门用户列表（用于编制人选择）
+    const [msUsers, setMsUsers] = useState<Array<{ id: number; display_name: string; department_name?: string }>>([]);
     // Confirm modal state for publish/recall actions
     const [confirmAction, setConfirmAction] = useState<{ type: 'publish' | 'recall' | null; isOpen: boolean }>({
         type: null,
@@ -187,10 +198,101 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     const [pdfSettings, setPdfSettings] = useState({
         format: 'a4' as 'a4' | 'letter',
         orientation: 'portrait' as 'portrait' | 'landscape',
-        language: 'original' as 'original' | 'zh-CN' | 'en-US' | 'ja-JP',
         showHeader: true,
         showFooter: true
     });
+    
+    // 预览语言设置（独立于PDF设置，用于实时预览）
+    const [previewLanguage, setPreviewLanguage] = useState<'original' | 'zh-CN' | 'en-US' | 'ja-JP' | 'de-DE'>('original');
+
+    // Translations state
+    const [translations, setTranslations] = useState<Record<string, Record<string, any>>>({});
+    const [activeTranslationLang, setActiveTranslationLang] = useState('en-US');
+    const [translatingFields, setTranslatingFields] = useState<Set<string>>(new Set());
+
+    const handleAITranslate = async (fieldKey: string, langCode: string, sourceText: string) => {
+        if (!sourceText.trim()) return;
+        
+        const fieldLangKey = `${fieldKey}-${langCode}`;
+        setTranslatingFields(prev => new Set(prev).add(fieldLangKey));
+        
+        try {
+            // Directly call Bokeh AI for translation
+            await callBokehAI(fieldKey, langCode, sourceText);
+        } catch (err) {
+            console.error('Translation error:', err);
+            showToast('Bokeh翻译失败，请稍后重试', 'error');
+        } finally {
+            setTranslatingFields(prev => {
+                const next = new Set(prev);
+                next.delete(fieldLangKey);
+                return next;
+            });
+        }
+    };
+
+    const callBokehAI = async (fieldKey: string, langCode: string, sourceText: string) => {
+        try {
+            const langNames: Record<string, string> = {
+                'en-US': 'English',
+                'ja-JP': '日本語',
+                'de-DE': 'Deutsch'
+            };
+            
+            const res = await axios.post('/api/v1/bokeh/chat', {
+                message: `请将以下维修报告内容翻译成${langNames[langCode]}，保持专业术语准确，只返回翻译结果：\n\n${sourceText}`,
+                stream: false
+            }, { headers: { Authorization: `Bearer ${token}` } });
+
+            if (res.data.response) {
+                const translatedText = res.data.response.trim();
+                const updated = {
+                    ...translations,
+                    [langCode]: {
+                        ...translations[langCode],
+                        [fieldKey]: translatedText,
+                        _meta: {
+                            updated_at: new Date().toISOString(),
+                            updated_by: 'Bokeh AI',
+                            is_manual_edit: false
+                        }
+                    }
+                };
+                setTranslations(updated);
+                // 如果有localReportId则保存到后端，否则只存本地state（随报告保存时提交）
+                if (localReportId) {
+                    await saveTranslation(fieldKey, langCode, translatedText, false);
+                }
+                // Show success message
+                const langDisplayNames: Record<string, string> = {
+                    'en-US': 'English',
+                    'ja-JP': '日本語',
+                    'de-DE': 'Deutsch'
+                };
+                showToast(`Bokeh翻译完成：已翻译成${langDisplayNames[langCode]}`, 'success');
+            }
+        } catch (err) {
+            console.error('Bokeh AI error:', err);
+            showToast('Bokeh翻译服务暂时不可用，请稍后重试', 'error');
+        }
+    };
+
+    const saveTranslation = async (fieldKey: string, langCode: string, text: string, isManual: boolean) => {
+        if (!localReportId) return;
+        try {
+            await axios.post(
+                `/api/v1/rma-documents/repair-reports/${localReportId}/translations`,
+                {
+                    lang: langCode,
+                    translations: { [fieldKey]: text },
+                    is_manual_edit: isManual
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+        } catch (err) {
+            console.error('Save translation error:', err);
+        }
+    };
 
     const isReadOnly = reportData.status === 'published' || reportData.status === 'approved' || reportData.status === 'pending_review';
     const isOpMode = currentNode === 'op_repairing';
@@ -198,20 +300,21 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     const canSubmit = canEdit && reportData.content.diagnosis.findings;
     const canExport = true; // 任何时候都可以导出
 
-    // Auto-save logic - only when report exists (localReportId is set)
+    // Auto-save logic - auto-save for both new and existing reports
     useEffect(() => {
-        if (!isOpen || !localReportId || isReadOnly) return;
+        if (!isOpen || isReadOnly) return;
 
         const debounceTimer = setTimeout(() => {
             saveDraft(true); // silent auto-save, don't close modal
         }, 5000); // 5 seconds debounce
 
         return () => clearTimeout(debounceTimer);
-    }, [reportData.content, reportData.service_type, reportData.currency, reportData.payment_status, localReportId]);
+    }, [reportData.content, reportData.service_type, reportData.currency, reportData.payment_status, reportData.prepared_by, translations, localReportId]);
 
     useEffect(() => {
         if (isOpen) {
             fetchTicketInfo();
+            fetchMSUsers();
             if (localReportId) {
                 loadReport();
             } else {
@@ -233,6 +336,29 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         }
     };
 
+    // 获取MS部门用户列表
+    const fetchMSUsers = async () => {
+        try {
+            const res = await axios.get('/api/v1/system/users', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.data.success) {
+                // 过滤MS部门用户
+                const msDeptUsers = res.data.data.filter((u: any) => {
+                    const dept = (u.department_name || u.department || '').toLowerCase();
+                    return dept.includes('市场') || dept.includes('ms') || dept.includes('market');
+                }).map((u: any) => ({
+                    id: u.id,
+                    display_name: u.display_name || u.name,
+                    department_name: u.department_name || u.department
+                }));
+                setMsUsers(msDeptUsers);
+            }
+        } catch (err) {
+            console.error('Failed to fetch MS users:', err);
+        }
+    };
+
     const loadReport = async () => {
         if (!localReportId) return;
         setLoading(true);
@@ -242,9 +368,25 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
             });
             if (res.data.success) {
                 const incomingData = res.data.data;
+                
+                // Load translations if available
+                if (incomingData.translations) {
+                    try {
+                        const parsedTranslations = typeof incomingData.translations === 'string' 
+                            ? JSON.parse(incomingData.translations) 
+                            : incomingData.translations;
+                        setTranslations(parsedTranslations);
+                    } catch (e) {
+                        console.error('Failed to parse translations:', e);
+                    }
+                }
+                
                 // Defensive merge to ensure all content structure exists
-                setReportData({
+                // 保留 prepared_by 和 ticket_created_date 字段（如果后端没有返回）
+                setReportData(prev => ({
                     ...incomingData,
+                    prepared_by: incomingData.prepared_by || prev.prepared_by,
+                    ticket_created_date: incomingData.ticket_created_date || prev.ticket_created_date,
                     content: {
                         ...DEFAULT_CONTENT,
                         ...(incomingData.content || {}),
@@ -257,7 +399,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                         qa_result: { ...DEFAULT_CONTENT.qa_result, ...(incomingData.content?.qa_result || {}) },
                         warranty_terms: { ...DEFAULT_CONTENT.warranty_terms, ...(incomingData.content?.warranty_terms || {}) }
                     }
-                });
+                }));
             }
         } catch (err) {
             console.error('Failed to load report:', err);
@@ -287,21 +429,74 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                     } catch (e) { }
                 }
 
+                // 查找MS closing节点的负责人
+                const allActivities = res.data.activities || [];
+                const msClosingActivity = allActivities.find((a: any) => 
+                    a.activity_type === 'node_transition' && 
+                    a.metadata && 
+                    (typeof a.metadata === 'string' ? JSON.parse(a.metadata).to_node === 'ms_closing' : a.metadata.to_node === 'ms_closing')
+                );
+                
+                // 调试日志
+                console.log('[DEBUG] Ticket assigned_to:', ticket.assigned_to, 'assigned_name:', ticket.assigned_name);
+                console.log('[DEBUG] Ticket current_node:', ticket.current_node);
+                console.log('[DEBUG] msClosingActivity:', msClosingActivity);
+                
+                let defaultPreparedBy = null;
+                if (msClosingActivity && msClosingActivity.actor) {
+                    defaultPreparedBy = {
+                        id: msClosingActivity.actor.id,
+                        display_name: msClosingActivity.actor.display_name || msClosingActivity.actor.name
+                    };
+                    console.log('[DEBUG] Using msClosingActivity actor:', defaultPreparedBy);
+                } else if (ticket.current_node === 'ms_closing' && ticket.assigned_to && ticket.assigned_name) {
+                    // 如果工单当前在 ms_closing 节点，使用当前对接人作为编制人
+                    defaultPreparedBy = {
+                        id: ticket.assigned_to,
+                        display_name: ticket.assigned_name
+                    };
+                    console.log('[DEBUG] Using current ms_closing assigned:', defaultPreparedBy);
+                } else if (ticket.assigned_to && ticket.assigned_name) {
+                    // 兜底：使用当前对接人
+                    defaultPreparedBy = {
+                        id: ticket.assigned_to,
+                        display_name: ticket.assigned_name
+                    };
+                    console.log('[DEBUG] Using fallback assigned:', defaultPreparedBy);
+                } else {
+                    console.log('[DEBUG] No defaultPreparedBy found');
+                }
+
+                // 如果 defaultPreparedBy 不在 msUsers 列表中，添加进去
+                if (defaultPreparedBy) {
+                    setMsUsers(prev => {
+                        const exists = prev.find(u => u.id === defaultPreparedBy.id);
+                        if (exists) return prev;
+                        return [...prev, { 
+                            id: defaultPreparedBy.id, 
+                            display_name: defaultPreparedBy.display_name,
+                            department_name: 'MS'
+                        }];
+                    });
+                }
+                
                 setReportData(prev => ({
                     ...prev,
                     service_type: serviceType,
                     warranty_status: serviceType === 'warranty' ? 'In Warranty' : 'Out of Warranty',
+                    ticket_created_date: ticket.created_at ? ticket.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+                    prepared_by: defaultPreparedBy,
                     content: {
                         ...prev.content,
                         device_info: {
                             product_name: ticket.product_name || '',
+                            product_name_en: ticket.product_name_en || '',
                             serial_number: ticket.serial_number || '',
                             firmware_version: ticket.firmware_version || '',
                             hardware_version: ticket.hardware_version || ''
                         },
                         issue_description: {
-                            customer_reported: ticket.problem_description || '',
-                            symptoms: []
+                            customer_reported: ticket.problem_description || ''
                         }
                     }
                 }));
@@ -328,11 +523,17 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                         ...prev.content.diagnosis,
                                         findings: diagnosticMetadata.diagnosis,
                                         root_cause: diagnosticMetadata.root_cause || '',
-                                        troubleshooting_steps: diagnosticMetadata.troubleshooting_steps || []
+                                        troubleshooting_steps: Array.isArray(diagnosticMetadata.troubleshooting_steps) 
+                                            ? diagnosticMetadata.troubleshooting_steps.join('\n') 
+                                            : (diagnosticMetadata.troubleshooting_steps || '')
                                     },
                                     repair_process: {
                                         ...prev.content.repair_process,
-                                        actions_taken: diagnosticMetadata.repair_advice ? [diagnosticMetadata.repair_advice] : []
+                                        actions_taken: diagnosticMetadata.repair_advice 
+                                            ? diagnosticMetadata.repair_advice 
+                                            : (Array.isArray(diagnosticMetadata.actions_taken) 
+                                                ? diagnosticMetadata.actions_taken.join('\n') 
+                                                : (diagnosticMetadata.actions_taken || ''))
                                     }
                                 }
                             }));
@@ -356,10 +557,11 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             // Import repair process data
                             if (opRepairData.repair_process) {
                                 const rp = opRepairData.repair_process;
-                                // Merge actions_taken (keep existing from diagnostic, add from repair)
-                                const existingActions = newContent.repair_process.actions_taken || [];
-                                const repairActions = rp.actions_taken || [];
-                                newContent.repair_process.actions_taken = [...existingActions, ...repairActions].filter(Boolean);
+                                // Merge actions_taken (concatenate strings with newline)
+                                const existingActions = newContent.repair_process.actions_taken || '';
+                                const repairActions = rp.actions_taken || '';
+                                const combinedActions = [existingActions, repairActions].filter(Boolean).join('\n');
+                                newContent.repair_process.actions_taken = combinedActions;
                                 
                                 // Import parts_replaced with unit_price default
                                 if (rp.parts_replaced && rp.parts_replaced.length > 0) {
@@ -546,11 +748,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     };
 
     const saveDraft = async (silent = false) => {
-        // For auto-save (silent), only proceed if we have a report ID
-        if (silent && !localReportId) {
-            console.log('Auto-save skipped: no report ID yet');
-            return;
-        }
+        // Auto-save is now enabled for both new and existing reports
         if (!silent) setSaving(true);
         try {
             const { total } = calculateTotals();
@@ -565,7 +763,9 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                 payment_status: reportData.payment_status,
                 parts_total: reportData.parts_total,
                 labor_total: reportData.labor_total,
-                shipping_total: reportData.shipping_total
+                shipping_total: reportData.shipping_total,
+                prepared_by: reportData.prepared_by,
+                translations: translations
             };
 
             if (localReportId) {
@@ -723,12 +923,37 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 预览
                             </button>
                         )}
+                        {/* 编辑/预览Tab与关闭按钮间距24px+ */}
+                        <div style={{ width: 24 }} />
+                        {/* X圆形关闭按钮 */}
                         <button
-                            onClick={() => setShowPdfSettings(true)}
-                            title="PDF导出设置"
-                            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', marginLeft: 4 }}
+                            onClick={onClose}
+                            title="关闭"
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: '50%',
+                                background: 'rgba(255,255,255,0.1)',
+                                border: '1px solid rgba(255,255,255,0.15)',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(239,68,68,0.2)';
+                                e.currentTarget.style.color = '#EF4444';
+                                e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.color = 'var(--text-secondary)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                            }}
                         >
-                            <Settings size={18} />
+                            <X size={16} />
                         </button>
                     </div>
                 </div>
@@ -785,48 +1010,128 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 </div>
                             )}
 
-                            {/* RMA基本信息Header Panel */}
+                            {/* RMA基本信息Header Panel - 优化排版 */}
                             {!isOpMode && ticketInfo && (
                                 <div style={{
-                                    background: 'var(--glass-bg)', padding: '16px 20px',
+                                    background: 'var(--glass-bg)', padding: '20px',
                                     borderRadius: 12, border: '1px solid var(--glass-border)',
-                                    display: 'flex', gap: 32, alignItems: 'center', flexWrap: 'wrap',
                                     marginBottom: 20
                                 }}>
-                                    <div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>机器型号 / 序列号</div>
-                                        <div style={{ fontSize: 14, color: 'var(--text-main)', fontWeight: 500 }}>
-                                            {reportData.content.device_info.product_name || '-'} / {reportData.content.device_info.serial_number || '-'}
+                                    {/* 第一行：设备信息 + 编制人 */}
+                                    <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--glass-border)' }}>
+                                        {/* 机器型号/序列号 - 占据更多空间 */}
+                                        <div style={{ flex: 2, minWidth: 200 }}>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>机器型号 / 序列号</div>
+                                            <div style={{ fontSize: 15, color: 'var(--text-main)', fontWeight: 600 }}>
+                                                {reportData.content.device_info.product_name || '-'} / {reportData.content.device_info.serial_number || '-'}
+                                            </div>
+                                        </div>
+                                        {/* 编制人 - MS部门人员选择 */}
+                                        <div style={{ flex: 1, minWidth: 140 }}>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>编制人</div>
+                                            {canEdit ? (
+                                                <select
+                                                    value={reportData.prepared_by?.id || ''}
+                                                    onChange={(e) => {
+                                                        const selectedId = parseInt(e.target.value);
+                                                        const selectedUser = msUsers.find(u => u.id === selectedId);
+                                                        setReportData(prev => ({
+                                                            ...prev,
+                                                            prepared_by: selectedUser ? {
+                                                                id: selectedUser.id,
+                                                                display_name: selectedUser.display_name
+                                                            } : null
+                                                        }));
+                                                    }}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '8px 10px',
+                                                        borderRadius: 6,
+                                                        border: '1px solid var(--glass-border)',
+                                                        background: 'var(--glass-bg-light)',
+                                                        color: 'var(--text-main)',
+                                                        fontSize: 14,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <option value="">请选择编制人</option>
+                                                    {msUsers.map(user => (
+                                                        <option key={user.id} value={user.id}>
+                                                            {user.display_name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div style={{ fontSize: 14, color: 'var(--text-main)', padding: '10px 0' }}>
+                                                    {reportData.prepared_by?.display_name || '-'}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    <div style={{ width: 1, height: 32, background: 'var(--glass-border)' }} />
-                                    <div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>RMA建单日期</div>
-                                        <div style={{ fontSize: 14, color: 'var(--text-main)' }}>
-                                            {ticketInfo.created_at ? new Date(ticketInfo.created_at).toLocaleDateString('zh-CN') : '-'}
+                                    {/* 第二行：关键日期信息（包含工单日期） */}
+                                    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end' }}>
+                                        <div style={{ flex: 1, minWidth: 120 }}>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>工单日期</div>
+                                            {canEdit ? (
+                                                <CustomDatePicker
+                                                    label=""
+                                                    value={reportData.ticket_created_date || ticketInfo.created_at || ''}
+                                                    onChange={(val) => setReportData(prev => ({ ...prev, ticket_created_date: val }))}
+                                                    maxDate={new Date().toISOString().split('T')[0]}
+                                                />
+                                            ) : (
+                                                <div style={{ fontSize: 14, color: 'var(--text-main)', padding: '10px 0' }}>
+                                                    {(reportData.ticket_created_date || ticketInfo.created_at || '-').split('T')[0]}
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                    <div style={{ width: 1, height: 32, background: 'var(--glass-border)' }} />
-                                    <div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>收到日期</div>
-                                        <div style={{ fontSize: 14, color: 'var(--text-main)' }}>
-                                            {ticketInfo.received_date ? new Date(ticketInfo.received_date).toLocaleDateString('zh-CN') : 
-                                             ticketInfo.returned_date ? new Date(ticketInfo.returned_date).toLocaleDateString('zh-CN') : '-'}
+                                        <div style={{ flex: 1, minWidth: 120 }}>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>收到日期</div>
+                                            {canEdit ? (
+                                                <CustomDatePicker
+                                                    label=""
+                                                    value={reportData.received_date || ticketInfo.received_date || ticketInfo.returned_date || ''}
+                                                    onChange={(val) => setReportData(prev => ({ ...prev, received_date: val }))}
+                                                    minDate={reportData.ticket_created_date}
+                                                    maxDate={new Date().toISOString().split('T')[0]}
+                                                />
+                                            ) : (
+                                                <div style={{ fontSize: 14, color: 'var(--text-main)', padding: '10px 0' }}>
+                                                    {(reportData.received_date || ticketInfo.received_date || ticketInfo.returned_date || '-').split('T')[0]}
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                    <div style={{ width: 1, height: 32, background: 'var(--glass-border)' }} />
-                                    <div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>检测日期</div>
-                                        <div style={{ fontSize: 14, color: 'var(--text-main)' }}>
-                                            {ticketInfo.repair_started_at ? new Date(ticketInfo.repair_started_at).toLocaleDateString('zh-CN') : '-'}
+                                        <div style={{ flex: 1, minWidth: 120 }}>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>检测日期</div>
+                                            {canEdit ? (
+                                                <CustomDatePicker
+                                                    label=""
+                                                    value={reportData.diagnosis_date || ticketInfo.repair_started_at || ''}
+                                                    onChange={(val) => setReportData(prev => ({ ...prev, diagnosis_date: val }))}
+                                                    minDate={reportData.received_date}
+                                                    maxDate={new Date().toISOString().split('T')[0]}
+                                                />
+                                            ) : (
+                                                <div style={{ fontSize: 14, color: 'var(--text-main)', padding: '10px 0' }}>
+                                                    {(reportData.diagnosis_date || ticketInfo.repair_started_at || '-').split('T')[0]}
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                    <div style={{ width: 1, height: 32, background: 'var(--glass-border)' }} />
-                                    <div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>维修日期</div>
-                                        <div style={{ fontSize: 14, color: 'var(--text-main)' }}>
-                                            {ticketInfo.repair_completed_at ? new Date(ticketInfo.repair_completed_at).toLocaleDateString('zh-CN') : 
-                                             new Date().toLocaleDateString('zh-CN')}
+                                        <div style={{ flex: 1, minWidth: 120 }}>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>维修日期</div>
+                                            {canEdit ? (
+                                                <CustomDatePicker
+                                                    label=""
+                                                    value={reportData.repair_date || ticketInfo.repair_completed_at || new Date().toISOString().split('T')[0]}
+                                                    onChange={(val) => setReportData(prev => ({ ...prev, repair_date: val }))}
+                                                    minDate={reportData.diagnosis_date}
+                                                    maxDate={new Date().toISOString().split('T')[0]}
+                                                />
+                                            ) : (
+                                                <div style={{ fontSize: 14, color: 'var(--text-main)', padding: '10px 0' }}>
+                                                    {(reportData.repair_date || ticketInfo.repair_completed_at || new Date().toISOString().split('T')[0]).split('T')[0]}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -852,15 +1157,14 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                         onChange={v => updateContent('issue_description.customer_reported', v)}
                                         disabled={!canEdit}
                                         placeholder="客户原始报修描述..."
-                                    />
-                                    <ArrayField
-                                        label="故障症状"
-                                        items={reportData.content.issue_description.symptoms}
-                                        onAdd={() => addArrayItem('issue_description.symptoms', '')}
-                                        onRemove={(i) => removeArrayItem('issue_description.symptoms', i)}
-                                        onChange={(i, v) => updateArrayItem('issue_description.symptoms', i, v)}
-                                        disabled={!canEdit}
-                                        placeholder="症状描述"
+                                        fieldKey="issue_description.customer_reported"
+                                        translations={translations}
+                                        onTranslationsUpdate={setTranslations}
+                                        activeTranslationLang={activeTranslationLang}
+                                        onActiveTranslationLangChange={setActiveTranslationLang}
+                                        translatingFields={translatingFields}
+                                        onAITranslate={handleAITranslate}
+                                        onSaveTranslation={saveTranslation}
                                     />
                                 </Section>
                             )}
@@ -873,6 +1177,14 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     onChange={v => updateContent('diagnosis.findings', v)}
                                     disabled={!canEdit}
                                     placeholder="详细的检测发现..."
+                                    fieldKey="diagnosis.findings"
+                                    translations={translations}
+                                    onTranslationsUpdate={setTranslations}
+                                    activeTranslationLang={activeTranslationLang}
+                                    onActiveTranslationLangChange={setActiveTranslationLang}
+                                    translatingFields={translatingFields}
+                                    onAITranslate={handleAITranslate}
+                                    onSaveTranslation={saveTranslation}
                                 />
                                 <TextArea
                                     label="根本原因"
@@ -880,28 +1192,48 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     onChange={v => updateContent('diagnosis.root_cause', v)}
                                     disabled={!canEdit}
                                     placeholder="故障根本原因分析..."
+                                    fieldKey="diagnosis.root_cause"
+                                    translations={translations}
+                                    onTranslationsUpdate={setTranslations}
+                                    activeTranslationLang={activeTranslationLang}
+                                    onActiveTranslationLangChange={setActiveTranslationLang}
+                                    translatingFields={translatingFields}
+                                    onAITranslate={handleAITranslate}
+                                    onSaveTranslation={saveTranslation}
                                 />
-                                <ArrayField
+                                <TextArea
                                     label="排故步骤"
-                                    items={reportData.content.diagnosis.troubleshooting_steps}
-                                    onAdd={() => addArrayItem('diagnosis.troubleshooting_steps', '')}
-                                    onRemove={(i) => removeArrayItem('diagnosis.troubleshooting_steps', i)}
-                                    onChange={(i, v) => updateArrayItem('diagnosis.troubleshooting_steps', i, v)}
+                                    value={reportData.content.diagnosis.troubleshooting_steps}
+                                    onChange={v => updateContent('diagnosis.troubleshooting_steps', v)}
                                     disabled={!canEdit}
-                                    placeholder="排故步骤"
+                                    placeholder="记录排故步骤，每行一个步骤..."
+                                    fieldKey="diagnosis.troubleshooting_steps"
+                                    translations={translations}
+                                    onTranslationsUpdate={setTranslations}
+                                    activeTranslationLang={activeTranslationLang}
+                                    onActiveTranslationLangChange={setActiveTranslationLang}
+                                    translatingFields={translatingFields}
+                                    onAITranslate={handleAITranslate}
+                                    onSaveTranslation={saveTranslation}
                                 />
                             </Section>
 
                             {/* Repair Process */}
                             <Section title="维修过程" icon={<Wrench size={16} />}>
-                                <ArrayField
+                                <TextArea
                                     label="执行操作"
-                                    items={reportData.content.repair_process.actions_taken}
-                                    onAdd={() => addArrayItem('repair_process.actions_taken', '')}
-                                    onRemove={(i) => removeArrayItem('repair_process.actions_taken', i)}
-                                    onChange={(i, v) => updateArrayItem('repair_process.actions_taken', i, v)}
+                                    value={reportData.content.repair_process.actions_taken}
+                                    onChange={v => updateContent('repair_process.actions_taken', v)}
                                     disabled={!canEdit}
-                                    placeholder="维修操作描述"
+                                    placeholder="记录维修操作，每行一个操作..."
+                                    fieldKey="repair_process.actions_taken"
+                                    translations={translations}
+                                    onTranslationsUpdate={setTranslations}
+                                    activeTranslationLang={activeTranslationLang}
+                                    onActiveTranslationLangChange={setActiveTranslationLang}
+                                    translatingFields={translatingFields}
+                                    onAITranslate={handleAITranslate}
+                                    onSaveTranslation={saveTranslation}
                                 />
                                 <TextArea
                                     label="测试结果"
@@ -909,6 +1241,14 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     onChange={v => updateContent('repair_process.testing_results', v)}
                                     disabled={!canEdit}
                                     placeholder="老化测试及功能验证结果..."
+                                    fieldKey="repair_process.testing_results"
+                                    translations={translations}
+                                    onTranslationsUpdate={setTranslations}
+                                    activeTranslationLang={activeTranslationLang}
+                                    onActiveTranslationLangChange={setActiveTranslationLang}
+                                    translatingFields={translatingFields}
+                                    onAITranslate={handleAITranslate}
+                                    onSaveTranslation={saveTranslation}
                                 />
                                 {/* 更换零件只读展示 - 在维修过程中展示零件信息 */}
                                 {reportData.content.repair_process.parts_replaced.length > 0 && (
@@ -1232,13 +1572,49 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             )}
                         </div>
                     ) : (
-                        <ReportPreview reportData={reportData} ticketInfo={ticketInfo} />
+                        <ReportPreview 
+                            reportData={reportData} 
+                            ticketInfo={ticketInfo} 
+                            language={previewLanguage}
+                            translations={translations}
+                            onLanguageChange={setPreviewLanguage}
+                        />
                     )}
                 </div>
 
-                {/* Footer - 左侧关闭，右侧操作按钮 */}
+                {/* Footer - 左侧设置按钮，右侧操作按钮 */}
                 <div style={{ padding: '16px 24px', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--glass-bg)' }}>
-                    <button onClick={onClose} style={{ padding: '8px 20px', background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', borderRadius: 6 }}>关闭</button>
+                    {/* 左侧：设置按钮 */}
+                    <button
+                        onClick={() => setShowPdfSettings(true)}
+                        title="PDF导出设置"
+                        style={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: '50%',
+                            background: 'transparent',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                            e.currentTarget.style.color = 'var(--text-main)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                        }}
+                    >
+                        <Settings size={18} />
+                    </button>
+                    {/* 右侧：操作按钮组 */}
                     <div style={{ display: 'flex', gap: 8 }}>
                         {canEdit && activeTab === 'edit' && (
                             <button
@@ -1373,16 +1749,6 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 </div>
                             </div>
 
-                            <div style={{ marginBottom: 16 }}>
-                                <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>语言</label>
-                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                    {[{ value: 'original', label: '原文' }, { value: 'zh-CN', label: '中文' }, { value: 'en-US', label: 'English' }, { value: 'ja-JP', label: '日本語' }].map(opt => (
-                                        <button key={opt.value} onClick={() => setPdfSettings(prev => ({ ...prev, language: opt.value as any }))} style={{ padding: '8px 16px', borderRadius: 6, background: pdfSettings.language === opt.value ? 'var(--accent-gold-subtle)' : 'var(--glass-bg-light)', border: `1px solid ${pdfSettings.language === opt.value ? 'var(--accent-gold-muted)' : 'var(--glass-border)'}`, color: pdfSettings.language === opt.value ? 'var(--text-main)' : 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>{opt.label}</button>
-                                    ))}
-                                </div>
-                                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginTop: 6 }}>提示: AI翻译功能开发中...</div>
-                            </div>
-
                             <div style={{ marginBottom: 16, display: 'flex', gap: 16 }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
                                     <input type="checkbox" checked={pdfSettings.showHeader} onChange={e => setPdfSettings(prev => ({ ...prev, showHeader: e.target.checked }))} />显示页眉
@@ -1398,6 +1764,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                         </div>
                     </div>
                 )}
+
+
             </div>
         </div>
     );
@@ -1427,7 +1795,35 @@ const Input: React.FC<{ label: string; value: string; onChange: (v: string) => v
     </div>
 );
 
-const TextArea: React.FC<{ label: string; value: string; onChange: (v: string) => void; disabled?: boolean; placeholder?: string }> = ({ label, value, onChange, disabled, placeholder }) => (
+const TextArea: React.FC<{ 
+    label: string; 
+    value: string; 
+    onChange: (v: string) => void; 
+    disabled?: boolean; 
+    placeholder?: string;
+    fieldKey?: string;
+    translations?: Record<string, Record<string, any>>;
+    onTranslationsUpdate?: (translations: Record<string, Record<string, any>>) => void;
+    activeTranslationLang?: string;
+    onActiveTranslationLangChange?: (lang: string) => void;
+    translatingFields?: Set<string>;
+    onAITranslate?: (fieldKey: string, lang: string, text: string) => void;
+    onSaveTranslation?: (fieldKey: string, lang: string, text: string, isManual: boolean) => void;
+}> = ({ 
+    label, 
+    value, 
+    onChange, 
+    disabled, 
+    placeholder,
+    fieldKey,
+    translations,
+    onTranslationsUpdate,
+    activeTranslationLang,
+    onActiveTranslationLangChange,
+    translatingFields,
+    onAITranslate,
+    onSaveTranslation
+}) => (
     <div style={{ marginBottom: 16 }}>
         <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</label>
         <textarea
@@ -1437,36 +1833,19 @@ const TextArea: React.FC<{ label: string; value: string; onChange: (v: string) =
             placeholder={placeholder}
             style={{ width: '100%', minHeight: 80, padding: 12, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 13, resize: 'vertical', outline: 'none' }}
         />
-    </div>
-);
-
-const ArrayField: React.FC<{ label: string; items: string[]; onAdd: () => void; onRemove: (index: number) => void; onChange: (index: number, value: string) => void; disabled?: boolean; placeholder?: string }> = ({ label, items, onAdd, onRemove, onChange, disabled, placeholder }) => (
-    <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</label>
-            {!disabled && (
-                <button onClick={onAdd} style={{ padding: '4px 12px', background: 'var(--accent-blue)', border: 'none', borderRadius: 4, color: '#000', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Plus size={14} /> 添加
-                </button>
-            )}
-        </div>
-        {items.map((item, index) => (
-            <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                <input
-                    type="text"
-                    value={item}
-                    onChange={e => onChange(index, e.target.value)}
-                    placeholder={placeholder}
-                    disabled={disabled}
-                    style={{ flex: 1, padding: 8, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
-                />
-                {!disabled && (
-                    <button onClick={() => onRemove(index)} style={{ padding: 8, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
-                        <Trash2 size={16} />
-                    </button>
-                )}
-            </div>
-        ))}
+        {/* Inline Translation Panel */}
+        {fieldKey && translations && onTranslationsUpdate && activeTranslationLang && onActiveTranslationLangChange && translatingFields && onAITranslate && onSaveTranslation && (
+            <InlineTranslationPanel
+                fieldKey={fieldKey}
+                originalText={value}
+                translations={translations}
+                activeLang={activeTranslationLang}
+                onActiveLangChange={onActiveTranslationLangChange}
+                translatingFields={translatingFields}
+                onAITranslate={onAITranslate}
+                onSaveTranslation={onSaveTranslation}
+            />
+        )}
     </div>
 );
 
@@ -1486,245 +1865,629 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     );
 };
 
-const ReportPreview: React.FC<{ reportData: ReportData; ticketInfo?: any }> = ({ reportData, ticketInfo }) => (
-    <div style={{ flex: 1, overflow: 'auto', padding: 40, background: '#f5f5f5' }}>
-        <div id="repair-report-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', color: '#333', fontSize: 13 }}>
-            {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: 40, borderBottom: '3px solid #1a365d', paddingBottom: 20 }}>
-                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1a365d' }}>维修报告</h1>
-                <p style={{ margin: '8px 0 0 0', fontSize: 14, color: '#4a5568' }}>Repair Service Report</p>
-            </div>
+// UI标签多语言映射表
+const PREVIEW_LABELS: Record<string, Record<string, string>> = {
+    'original': {
+        title: '维修报告',
+        subtitle: 'Repair Service Report',
+        reportNumber: '报告编号',
+        serviceType: '服务类型',
+        warranty: '保内服务',
+        outOfWarranty: '保外服务',
+        reportDate: '报告日期',
+        preparedBy: '编制',
+        ticketDate: '工单日期',
+        receivedDate: '收货日期',
+        diagnosisDate: '诊断日期',
+        completionDate: '完成日期',
+        section1: '1. 客户信息',
+        customerName: '客户名称',
+        contact: '联系人',
+        phone: '联系电话',
+        email: '联系邮箱',
+        section2: '2. 设备信息',
+        productModel: '产品型号',
+        serialNumber: '序列号',
+        firmwareVersion: '固件版本',
+        section3: '3. 问题描述',
+        customerReported: '客户报修',
+        notProvided: '[未提供]',
+        section4: '4. 技术诊断',
+        findings: '检测结果',
+        rootCause: '故障原因',
+        troubleshootingSteps: '排查步骤',
+        section5: '5. 维修过程',
+        actionsTaken: '维修操作',
+        testingResults: '测试结果',
+        section6: '6. 费用明细',
+        item: '项目',
+        spec: '规格/编号',
+        quantity: '数量',
+        unitPrice: '单价',
+        subtotal: '小计',
+        part: '零件',
+        labor: '工时',
+        other: '其他',
+        noFees: '未记录费用项目',
+        partsSubtotal: '零件小计',
+        laborSubtotal: '工时小计',
+        otherFees: '其他费用',
+        totalAmount: '合计金额',
+        warrantyNote: '* 本次为保内服务，以上费用仅供记录，实际免收。',
+        repairWarranty: '维修保修',
+        days: '天',
+        warrantyExclusions: '本保修仅适用于本次维修更换的部件，不包括:',
+        footer: '本报告由卓曜科技（深圳）有限公司出具 | KINEFINITY TECHNOLOGY CO., LTD.',
+        footerContact: '如有疑问，请联系 service@kinefinity.com',
+        pendingTranslation: '[待翻译]'
+    },
+    'zh-CN': {
+        title: '维修报告',
+        subtitle: 'Repair Service Report',
+        reportNumber: '报告编号',
+        serviceType: '服务类型',
+        warranty: '保内服务',
+        outOfWarranty: '保外服务',
+        reportDate: '报告日期',
+        preparedBy: '编制',
+        ticketDate: '工单日期',
+        receivedDate: '收货日期',
+        diagnosisDate: '诊断日期',
+        completionDate: '完成日期',
+        section1: '1. 客户信息',
+        customerName: '客户名称',
+        contact: '联系人',
+        phone: '联系电话',
+        email: '联系邮箱',
+        section2: '2. 设备信息',
+        productModel: '产品型号',
+        serialNumber: '序列号',
+        firmwareVersion: '固件版本',
+        section3: '3. 问题描述',
+        customerReported: '客户报修',
+        notProvided: '[未提供]',
+        section4: '4. 技术诊断',
+        findings: '检测结果',
+        rootCause: '故障原因',
+        troubleshootingSteps: '排查步骤',
+        section5: '5. 维修过程',
+        actionsTaken: '维修操作',
+        testingResults: '测试结果',
+        section6: '6. 费用明细',
+        item: '项目',
+        spec: '规格/编号',
+        quantity: '数量',
+        unitPrice: '单价',
+        subtotal: '小计',
+        part: '零件',
+        labor: '工时',
+        other: '其他',
+        noFees: '未记录费用项目',
+        partsSubtotal: '零件小计',
+        laborSubtotal: '工时小计',
+        otherFees: '其他费用',
+        totalAmount: '合计金额',
+        warrantyNote: '* 本次为保内服务，以上费用仅供记录，实际免收。',
+        repairWarranty: '维修保修',
+        days: '天',
+        warrantyExclusions: '本保修仅适用于本次维修更换的部件，不包括:',
+        footer: '本报告由卓曜科技（深圳）有限公司出具 | KINEFINITY TECHNOLOGY CO., LTD.',
+        footerContact: '如有疑问，请联系 service@kinefinity.com',
+        pendingTranslation: '[待翻译]'
+    },
+    'en-US': {
+        title: 'Repair Report',
+        subtitle: 'Repair Service Report',
+        reportNumber: 'Report No.',
+        serviceType: 'Service Type',
+        warranty: 'In Warranty',
+        outOfWarranty: 'Out of Warranty',
+        reportDate: 'Report Date',
+        preparedBy: 'Prepared by',
+        ticketDate: 'Ticket Date',
+        receivedDate: 'Received Date',
+        diagnosisDate: 'Diagnosis Date',
+        completionDate: 'Completion Date',
+        section1: '1. Customer Information',
+        customerName: 'Customer Name',
+        contact: 'Contact Person',
+        phone: 'Phone',
+        email: 'Email',
+        section2: '2. Device Information',
+        productModel: 'Product Model',
+        serialNumber: 'Serial Number',
+        firmwareVersion: 'Firmware Version',
+        section3: '3. Issue Description',
+        customerReported: 'Customer Reported',
+        notProvided: '[Not Provided]',
+        section4: '4. Technical Diagnosis',
+        findings: 'Findings',
+        rootCause: 'Root Cause',
+        troubleshootingSteps: 'Troubleshooting Steps',
+        section5: '5. Repair Process',
+        actionsTaken: 'Actions Taken',
+        testingResults: 'Testing Results',
+        section6: '6. Cost Details',
+        item: 'Item',
+        spec: 'Spec/Part No.',
+        quantity: 'Qty',
+        unitPrice: 'Unit Price',
+        subtotal: 'Subtotal',
+        part: 'Part',
+        labor: 'Labor',
+        other: 'Other',
+        noFees: 'No fees recorded',
+        partsSubtotal: 'Parts Subtotal',
+        laborSubtotal: 'Labor Subtotal',
+        otherFees: 'Other Fees',
+        totalAmount: 'Total Amount',
+        warrantyNote: '* This is a warranty service. Above costs are for record only.',
+        repairWarranty: 'Repair Warranty',
+        days: 'days',
+        warrantyExclusions: 'This warranty applies only to parts replaced in this repair, excluding:',
+        footer: 'Issued by KINEFINITY TECHNOLOGY CO., LTD.',
+        footerContact: 'For inquiries, contact service@kinefinity.com',
+        pendingTranslation: '[Pending Translation]'
+    },
+    'ja-JP': {
+        title: '修理報告書',
+        subtitle: 'Repair Service Report',
+        reportNumber: '報告番号',
+        serviceType: 'サービスタイプ',
+        warranty: '保証期内',
+        outOfWarranty: '保証期外',
+        reportDate: '報告日',
+        preparedBy: '作成者',
+        ticketDate: 'チケット日',
+        receivedDate: '受領日',
+        diagnosisDate: '診断日',
+        completionDate: '完了日',
+        section1: '1. 顧客情報',
+        customerName: '顧客名',
+        contact: '担当者',
+        phone: '電話',
+        email: 'メール',
+        section2: '2. 機器情報',
+        productModel: '製品型番',
+        serialNumber: 'シリアル番号',
+        firmwareVersion: 'ファームウェア',
+        section3: '3. 問題の説明',
+        customerReported: '顧客報告',
+        notProvided: '[未提供]',
+        section4: '4. 技術診断',
+        findings: '検査結果',
+        rootCause: '根本原因',
+        troubleshootingSteps: 'トラブルシューティング',
+        section5: '5. 修理プロセス',
+        actionsTaken: '実施した作業',
+        testingResults: 'テスト結果',
+        section6: '6. 費用明細',
+        item: '項目',
+        spec: '仕様/部品番号',
+        quantity: '数量',
+        unitPrice: '単価',
+        subtotal: '小計',
+        part: '部品',
+        labor: '工数',
+        other: 'その他',
+        noFees: '費用記録なし',
+        partsSubtotal: '部品小計',
+        laborSubtotal: '工数小計',
+        otherFees: 'その他費用',
+        totalAmount: '合計金額',
+        warrantyNote: '* 保証サービスのため、上記費用は記録用です。',
+        repairWarranty: '修理保証',
+        days: '日間',
+        warrantyExclusions: '本保証は今回の修理で交換された部品にのみ適用され、以下を除きます:',
+        footer: 'KINEFINITY TECHNOLOGY CO., LTD. 発行',
+        footerContact: 'お問い合わせ: service@kinefinity.com',
+        pendingTranslation: '[翻訳待ち]'
+    },
+    'de-DE': {
+        title: 'Reparaturbericht',
+        subtitle: 'Repair Service Report',
+        reportNumber: 'Bericht Nr.',
+        serviceType: 'Serviceart',
+        warranty: 'Garantie',
+        outOfWarranty: 'Außerhalb Garantie',
+        reportDate: 'Berichtsdatum',
+        preparedBy: 'Erstellt von',
+        ticketDate: 'Ticketdatum',
+        receivedDate: 'Empfangsdatum',
+        diagnosisDate: 'Diagnosedatum',
+        completionDate: 'Fertigstellungsdatum',
+        section1: '1. Kundeninformation',
+        customerName: 'Kundenname',
+        contact: 'Ansprechpartner',
+        phone: 'Telefon',
+        email: 'E-Mail',
+        section2: '2. Geräteinformation',
+        productModel: 'Produktmodell',
+        serialNumber: 'Seriennummer',
+        firmwareVersion: 'Firmware-Version',
+        section3: '3. Problembeschreibung',
+        customerReported: 'Kundenmeldung',
+        notProvided: '[Nicht angegeben]',
+        section4: '4. Technische Diagnose',
+        findings: 'Befund',
+        rootCause: 'Ursache',
+        troubleshootingSteps: 'Fehlerbehebung',
+        section5: '5. Reparaturprozess',
+        actionsTaken: 'Durchgeführte Arbeiten',
+        testingResults: 'Testergebnisse',
+        section6: '6. Kostendetails',
+        item: 'Position',
+        spec: 'Spez./Teil-Nr.',
+        quantity: 'Menge',
+        unitPrice: 'Einzelpreis',
+        subtotal: 'Zwischensumme',
+        part: 'Teil',
+        labor: 'Arbeit',
+        other: 'Sonstiges',
+        noFees: 'Keine Kosten erfasst',
+        partsSubtotal: 'Teile Zwischensumme',
+        laborSubtotal: 'Arbeit Zwischensumme',
+        otherFees: 'Sonstige Kosten',
+        totalAmount: 'Gesamtbetrag',
+        warrantyNote: '* Garantieservice. Obige Kosten nur zu Dokumentationszwecken.',
+        repairWarranty: 'Reparaturgarantie',
+        days: 'Tage',
+        warrantyExclusions: 'Diese Garantie gilt nur für in dieser Reparatur ausgetauschte Teile, ausgenommen:',
+        footer: 'Herausgegeben von KINEFINITY TECHNOLOGY CO., LTD.',
+        footerContact: 'Kontakt: service@kinefinity.com',
+        pendingTranslation: '[Übersetzung ausstehend]'
+    }
+};
 
-            {/* Report Info Header */}
-            <div style={{ marginBottom: 30, padding: 16, background: '#f7fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
-                    <div style={{ display: 'flex', gap: 32 }}>
-                        <div>
-                            <div style={{ fontSize: 11, color: '#718096' }}>报告编号</div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: '#1a365d' }}>{reportData.report_number || 'DRAFT'}</div>
-                        </div>
-                        <div>
-                            <div style={{ fontSize: 11, color: '#718096' }}>服务类型</div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: reportData.service_type === 'warranty' ? '#38a169' : '#d69e2e' }}>
-                                {reportData.service_type === 'warranty' ? '保内服务' : '保外服务'}
+// 语言切换按钮组件
+const LanguageSwitcher: React.FC<{
+    currentLanguage: string;
+    onLanguageChange: (lang: 'original' | 'zh-CN' | 'en-US' | 'ja-JP' | 'de-DE') => void;
+}> = ({ currentLanguage, onLanguageChange }) => {
+    const languages = [
+        { value: 'original', label: '原文' },
+        { value: 'zh-CN', label: '中文' },
+        { value: 'en-US', label: 'English' },
+        { value: 'ja-JP', label: '日本語' },
+        { value: 'de-DE', label: 'Deutsch' }
+    ];
+
+    return (
+        <div style={{
+            display: 'flex',
+            gap: 8,
+            padding: '12px 16px',
+            background: '#fff',
+            borderBottom: '1px solid #e2e8f0',
+            justifyContent: 'center',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10
+        }}>
+            {languages.map(lang => (
+                <button
+                    key={lang.value}
+                    onClick={() => onLanguageChange(lang.value as any)}
+                    style={{
+                        padding: '6px 14px',
+                        borderRadius: 6,
+                        background: currentLanguage === lang.value ? 'rgba(255,215,0,0.15)' : 'transparent',
+                        border: `1px solid ${currentLanguage === lang.value ? '#FFD200' : '#e2e8f0'}`,
+                        color: currentLanguage === lang.value ? '#1a365d' : '#718096',
+                        fontSize: 13,
+                        fontWeight: currentLanguage === lang.value ? 600 : 400,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    {lang.label}
+                </button>
+            ))}
+        </div>
+    );
+};
+
+const ReportPreview: React.FC<{
+    reportData: ReportData;
+    ticketInfo?: any;
+    language: 'original' | 'zh-CN' | 'en-US' | 'ja-JP' | 'de-DE';
+    translations: Record<string, Record<string, any>>;
+    onLanguageChange: (lang: 'original' | 'zh-CN' | 'en-US' | 'ja-JP' | 'de-DE') => void;
+}> = ({ reportData, ticketInfo, language, translations, onLanguageChange }) => {
+    // 获取UI标签
+    const t = PREVIEW_LABELS[language] || PREVIEW_LABELS['original'];
+
+    // 获取翻译内容（带待翻译标记）
+    const getTranslatedContent = (fieldKey: string, originalValue: string): { text: string; isPending: boolean } => {
+        if (!originalValue || language === 'original' || language === 'zh-CN') {
+            return { text: originalValue || '', isPending: false };
+        }
+        const translated = translations[language]?.[fieldKey];
+        if (translated) {
+            return { text: translated, isPending: false };
+        }
+        // 无翻译时返回原文 + [待翻译]标记
+        return { text: originalValue, isPending: true };
+    };
+    
+    // 渲染带待翻译标记的内容
+    const renderTranslatedContent = (fieldKey: string, originalValue: string) => {
+        const { text, isPending } = getTranslatedContent(fieldKey, originalValue);
+        if (!isPending) return text;
+        return (
+            <>
+                {text}
+                <span style={{
+                    color: '#EF4444',
+                    fontWeight: 700,
+                    fontSize: '0.85em',
+                    marginLeft: 4,
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    padding: '2px 6px',
+                    borderRadius: 4,
+                    border: '1px solid rgba(239, 68, 68, 0.3)'
+                }}>
+                    {t.pendingTranslation}
+                </span>
+            </>
+        );
+    };
+
+    return (
+        <div style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}>
+            {/* 语言切换按钮 */}
+            <LanguageSwitcher currentLanguage={language} onLanguageChange={onLanguageChange} />
+            
+            <div id="repair-report-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', color: '#333', fontSize: 13 }}>
+                {/* Header */}
+                <div style={{ textAlign: 'center', marginBottom: 40, borderBottom: '3px solid #1a365d', paddingBottom: 20 }}>
+                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1a365d' }}>{t.title}</h1>
+                    <p style={{ margin: '8px 0 0 0', fontSize: 14, color: '#4a5568' }}>{t.subtitle}</p>
+                </div>
+
+                {/* Report Info Header */}
+                <div style={{ marginBottom: 30, padding: 16, background: '#f7fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', gap: 32 }}>
+                            <div>
+                                <div style={{ fontSize: 11, color: '#718096' }}>{t.reportNumber}</div>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: '#1a365d' }}>{reportData.report_number || 'DRAFT'}</div>
+                            </div>
+                            <div>
+                                <div style={{ fontSize: 11, color: '#718096' }}>{t.serviceType}</div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: reportData.service_type === 'warranty' ? '#38a169' : '#d69e2e' }}>
+                                    {reportData.service_type === 'warranty' ? t.warranty : t.outOfWarranty}
+                                </div>
                             </div>
                         </div>
+                        <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 11, color: '#718096' }}>{t.reportDate}</div>
+                            <div style={{ fontSize: 13 }}>{new Date().toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language)}</div>
+                            {(reportData.prepared_by || reportData.created_by) && (
+                                <div style={{ fontSize: 11, color: '#718096', marginTop: 4 }}>
+                                    {t.preparedBy}: {reportData.prepared_by?.display_name || reportData.created_by?.display_name}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: 11, color: '#718096' }}>报告日期</div>
-                        <div style={{ fontSize: 13 }}>{new Date().toLocaleDateString('zh-CN')}</div>
-                        {reportData.created_by && (
-                            <div style={{ fontSize: 11, color: '#718096', marginTop: 4 }}>
-                                编制: {reportData.created_by.display_name}
+                    {ticketInfo && (
+                        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                            <div>
+                                <div style={{ fontSize: 10, color: '#718096' }}>{t.ticketDate}</div>
+                                <div style={{ fontSize: 12, fontWeight: 500 }}>
+                                    {reportData.ticket_created_date 
+                                        ? new Date(reportData.ticket_created_date).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
+                                        : ticketInfo.created_at 
+                                            ? new Date(ticketInfo.created_at).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
+                                            : '-'}
+                                </div>
                             </div>
-                        )}
-                    </div>
-                </div>
-                {/* 关键日期 */}
-                {ticketInfo && (
-                    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-                        <div>
-                            <div style={{ fontSize: 10, color: '#718096' }}>工单日期</div>
-                            <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.created_at ? new Date(ticketInfo.created_at).toLocaleDateString('zh-CN') : '-'}</div>
+                            <div style={{ width: 1, background: '#e2e8f0' }} />
+                            <div>
+                                <div style={{ fontSize: 10, color: '#718096' }}>{t.receivedDate}</div>
+                                <div style={{ fontSize: 12, fontWeight: 500 }}>
+                                    {reportData.received_date 
+                                        ? new Date(reportData.received_date).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
+                                        : ticketInfo.received_date 
+                                            ? new Date(ticketInfo.received_date).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
+                                            : ticketInfo.returned_date 
+                                                ? new Date(ticketInfo.returned_date).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
+                                                : '-'}
+                                </div>
+                            </div>
+                            <div style={{ width: 1, background: '#e2e8f0' }} />
+                            <div>
+                                <div style={{ fontSize: 10, color: '#718096' }}>{t.diagnosisDate}</div>
+                                <div style={{ fontSize: 12, fontWeight: 500 }}>
+                                    {reportData.diagnosis_date 
+                                        ? new Date(reportData.diagnosis_date).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
+                                        : ticketInfo.repair_started_at 
+                                            ? new Date(ticketInfo.repair_started_at).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
+                                            : '-'}
+                                </div>
+                            </div>
+                            <div style={{ width: 1, background: '#e2e8f0' }} />
+                            <div>
+                                <div style={{ fontSize: 10, color: '#718096' }}>{t.completionDate}</div>
+                                <div style={{ fontSize: 12, fontWeight: 500 }}>
+                                    {reportData.repair_date 
+                                        ? new Date(reportData.repair_date).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
+                                        : ticketInfo.repair_completed_at 
+                                            ? new Date(ticketInfo.repair_completed_at).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
+                                            : new Date().toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language)}
+                                </div>
+                            </div>
                         </div>
-                        <div style={{ width: 1, background: '#e2e8f0' }} />
-                        <div>
-                            <div style={{ fontSize: 10, color: '#718096' }}>收货日期</div>
-                            <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.received_date ? new Date(ticketInfo.received_date).toLocaleDateString('zh-CN') : ticketInfo.returned_date ? new Date(ticketInfo.returned_date).toLocaleDateString('zh-CN') : '-'}</div>
-                        </div>
-                        <div style={{ width: 1, background: '#e2e8f0' }} />
-                        <div>
-                            <div style={{ fontSize: 10, color: '#718096' }}>诊断日期</div>
-                            <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.repair_started_at ? new Date(ticketInfo.repair_started_at).toLocaleDateString('zh-CN') : '-'}</div>
-                        </div>
-                        <div style={{ width: 1, background: '#e2e8f0' }} />
-                        <div>
-                            <div style={{ fontSize: 10, color: '#718096' }}>完成日期</div>
-                            <div style={{ fontSize: 12, fontWeight: 500 }}>{ticketInfo.repair_completed_at ? new Date(ticketInfo.repair_completed_at).toLocaleDateString('zh-CN') : new Date().toLocaleDateString('zh-CN')}</div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* 1. 客户信息 */}
-            <SectionPreview title="1. 客户信息">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <InfoRow label="客户名称" value={ticketInfo?.customer_name || ticketInfo?.account_name || '-'} />
-                    <InfoRow label="联系人" value={ticketInfo?.contact_name || '-'} />
-                    <InfoRow label="联系电话" value={ticketInfo?.contact_phone || '-'} />
-                    <InfoRow label="联系邮箱" value={ticketInfo?.contact_email || '-'} />
+                    )}
                 </div>
-            </SectionPreview>
 
-            {/* 2. 设备信息 */}
-            <SectionPreview title="2. 设备信息">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                    <InfoRow label="产品型号" value={reportData.content.device_info.product_name} />
-                    <InfoRow label="序列号" value={reportData.content.device_info.serial_number} />
-                    <InfoRow label="固件版本" value={reportData.content.device_info.firmware_version} />
-                </div>
-            </SectionPreview>
-
-            {/* 3. 问题描述 */}
-            <SectionPreview title="3. 问题描述">
-                <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>客户报修:</div>
-                    <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontStyle: 'italic', fontSize: 13 }}>
-                        {reportData.content.issue_description.customer_reported || '[未提供]'}
+                {/* 1. 客户信息 */}
+                <SectionPreview title={t.section1}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <InfoRow label={t.customerName} value={ticketInfo?.customer_name || ticketInfo?.account_name || '-'} />
+                        <InfoRow label={t.contact} value={ticketInfo?.contact_name || '-'} />
+                        <InfoRow label={t.phone} value={ticketInfo?.contact_phone || '-'} />
+                        <InfoRow label={t.email} value={ticketInfo?.contact_email || '-'} />
                     </div>
-                </div>
-                {reportData.content.issue_description.symptoms.length > 0 && (
-                    <div>
-                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>故障现象:</div>
-                        <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
-                            {reportData.content.issue_description.symptoms.map((s: string, i: number) => (
-                                <li key={i} style={{ marginBottom: 4 }}>{s}</li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-            </SectionPreview>
+                </SectionPreview>
 
-            {/* 4. 技术诊断 */}
-            <SectionPreview title="4. 技术诊断">
-                <InfoBlock label="检测结果" value={reportData.content.diagnosis.findings} />
-                <InfoBlock label="故障原因" value={reportData.content.diagnosis.root_cause} />
-                {reportData.content.diagnosis.troubleshooting_steps.length > 0 && (
-                    <div>
-                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>排查步骤:</div>
-                        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
-                            {reportData.content.diagnosis.troubleshooting_steps.map((s: string, i: number) => (
-                                <li key={i} style={{ marginBottom: 4 }}>{s}</li>
-                            ))}
-                        </ol>
+                {/* 2. 设备信息 */}
+                <SectionPreview title={t.section2}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                        <InfoRow 
+                            label={t.productModel} 
+                            value={(language !== 'original' && language !== 'zh-CN' && reportData.content.device_info.product_name_en) 
+                                ? reportData.content.device_info.product_name_en 
+                                : reportData.content.device_info.product_name} 
+                        />
+                        <InfoRow label={t.serialNumber} value={reportData.content.device_info.serial_number} />
+                        <InfoRow label={t.firmwareVersion} value={reportData.content.device_info.firmware_version} />
                     </div>
-                )}
-            </SectionPreview>
+                </SectionPreview>
 
-            {/* 5. 维修过程 */}
-            <SectionPreview title="5. 维修过程">
-                {reportData.content.repair_process.actions_taken.length > 0 && (
+                {/* 3. 问题描述 */}
+                <SectionPreview title={t.section3}>
                     <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>维修操作:</div>
-                        <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
-                            {reportData.content.repair_process.actions_taken.map((a: string, i: number) => (
-                                <li key={i} style={{ marginBottom: 4 }}>{a}</li>
-                            ))}
-                        </ul>
+                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>{t.customerReported}:</div>
+                        <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontStyle: 'italic', fontSize: 13 }}>
+                            {reportData.content.issue_description.customer_reported 
+                                ? renderTranslatedContent('customer_reported', reportData.content.issue_description.customer_reported)
+                                : t.notProvided}
+                        </div>
                     </div>
-                )}
-                <InfoBlock label="测试结果" value={reportData.content.repair_process.testing_results} />
-            </SectionPreview>
+                </SectionPreview>
 
-            {/* 6. 费用明细表 (合并原来的费用详情和费用汇总) */}
-            <SectionPreview title="6. 费用明细">
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}>
-                    <thead>
-                        <tr style={{ background: '#edf2f7' }}>
-                            <th style={{ padding: 10, textAlign: 'left', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>项目</th>
-                            <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>规格/编号</th>
-                            <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>数量</th>
-                            <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>单价</th>
-                            <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>小计</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {/* 零件 */}
-                        {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => (
-                            <tr key={`part-${i}`}>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>零件: {part.name}</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center', fontFamily: 'monospace', fontSize: 11 }}>{part.part_number || '-'}</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{part.quantity}</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(part.unit_price || 0).toFixed(2)}</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}</td>
+                {/* 4. 技术诊断 */}
+                <SectionPreview title={t.section4}>
+                    <InfoBlock label={t.findings} value={renderTranslatedContent('findings', reportData.content.diagnosis.findings)} />
+                    <InfoBlock label={t.rootCause} value={renderTranslatedContent('root_cause', reportData.content.diagnosis.root_cause)} />
+                    {reportData.content.diagnosis.troubleshooting_steps && (
+                        <div>
+                            <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>{t.troubleshootingSteps}:</div>
+                            <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                                {renderTranslatedContent('troubleshooting_steps', reportData.content.diagnosis.troubleshooting_steps)}
+                            </div>
+                        </div>
+                    )}
+                </SectionPreview>
+
+                {/* 5. 维修过程 */}
+                <SectionPreview title={t.section5}>
+                    {reportData.content.repair_process.actions_taken && (
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>{t.actionsTaken}:</div>
+                            <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                                {renderTranslatedContent('actions_taken', reportData.content.repair_process.actions_taken)}
+                            </div>
+                        </div>
+                    )}
+                    <InfoBlock label={t.testingResults} value={renderTranslatedContent('testing_results', reportData.content.repair_process.testing_results)} />
+                </SectionPreview>
+
+                {/* 6. 费用明细表 */}
+                <SectionPreview title={t.section6}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}>
+                        <thead>
+                            <tr style={{ background: '#edf2f7' }}>
+                                <th style={{ padding: 10, textAlign: 'left', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>{t.item}</th>
+                                <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>{t.spec}</th>
+                                <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>{t.quantity}</th>
+                                <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>{t.unitPrice}</th>
+                                <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>{t.subtotal}</th>
                             </tr>
-                        ))}
-                        {/* 工时 */}
-                        {reportData.content.labor_charges.map((charge: LaborCharge, i: number) => (
-                            <tr key={`labor-${i}`}>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>工时: {charge.description}</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{charge.hours}小时</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>1</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(charge.rate || 0).toFixed(2)}/小时</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(charge.total || 0).toFixed(2)}</td>
-                            </tr>
-                        ))}
-                        {/* 其他费用 */}
-                        {reportData.content.other_fees.map((fee: OtherFee, i: number) => (
-                            <tr key={`fee-${i}`}>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>其他: {fee.description || '未命名费用'}</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>-</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>1</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>-</td>
-                                <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(fee.amount || 0).toFixed(2)}</td>
-                            </tr>
-                        ))}
-                        {/* 无费用项目时显示空行 */}
-                        {reportData.content.repair_process.parts_replaced.length === 0 && 
-                         reportData.content.labor_charges.length === 0 && 
-                         reportData.content.other_fees.length === 0 && (
-                            <tr>
-                                <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#a0aec0' }}>未记录费用项目</td>
-                            </tr>
-                        )}
-                    </tbody>
-                    <tfoot>
-                        <tr style={{ background: '#f7fafc' }}>
-                            <td colSpan={3} style={{ padding: 10 }}></td>
-                            <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>零件小计:</td>
-                            <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.parts_total || 0).toFixed(2)}</td>
-                        </tr>
-                        <tr style={{ background: '#f7fafc' }}>
-                            <td colSpan={3} style={{ padding: 10 }}></td>
-                            <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>工时小计:</td>
-                            <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.labor_total || 0).toFixed(2)}</td>
-                        </tr>
-                        {reportData.content.other_fees.length > 0 && (
+                        </thead>
+                        <tbody>
+                            {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => (
+                                <tr key={`part-${i}`}>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>{t.part}: {part.name}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{part.part_number || '-'}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{part.quantity}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(part.unit_price || 0).toFixed(2)}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}</td>
+                                </tr>
+                            ))}
+                            {reportData.content.labor_charges.map((charge: LaborCharge, i: number) => (
+                                <tr key={`labor-${i}`}>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>{t.labor}: {charge.description}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{charge.hours}{language === 'en-US' ? 'hrs' : language === 'de-DE' ? 'Std' : language === 'ja-JP' ? '時間' : '小时'}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>1</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(charge.rate || 0).toFixed(2)}/{language === 'en-US' ? 'hr' : language === 'de-DE' ? 'Std' : language === 'ja-JP' ? '時間' : '小时'}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(charge.total || 0).toFixed(2)}</td>
+                                </tr>
+                            ))}
+                            {reportData.content.other_fees.map((fee: OtherFee, i: number) => (
+                                <tr key={`fee-${i}`}>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>{t.other}: {fee.description || (language === 'zh-CN' || language === 'original' ? '未命名费用' : 'Unnamed Fee')}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>-</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>1</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>-</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(fee.amount || 0).toFixed(2)}</td>
+                                </tr>
+                            ))}
+                            {reportData.content.repair_process.parts_replaced.length === 0 && 
+                             reportData.content.labor_charges.length === 0 && 
+                             reportData.content.other_fees.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#a0aec0' }}>{t.noFees}</td>
+                                </tr>
+                            )}
+                        </tbody>
+                        <tfoot>
                             <tr style={{ background: '#f7fafc' }}>
                                 <td colSpan={3} style={{ padding: 10 }}></td>
-                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>其他费用:</td>
-                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.content.other_fees.reduce((sum, fee) => sum + fee.amount, 0)).toFixed(2)}</td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>{t.partsSubtotal}:</td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.parts_total || 0).toFixed(2)}</td>
                             </tr>
-                        )}
-                        <tr style={{ background: '#1a365d' }}>
-                            <td colSpan={3} style={{ padding: 12 }}></td>
-                            <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: 'var(--text-main)', fontSize: 14 }}>合计金额:</td>
-                            <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: 'var(--text-main)', fontSize: 14 }}>{reportData.currency} {Number(reportData.total_cost || 0).toLocaleString()}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-                {reportData.service_type === 'warranty' && (
-                    <div style={{ fontSize: 12, color: '#38a169', fontStyle: 'italic', textAlign: 'right' }}>
-                        * 本次为保内服务，以上费用仅供记录，实际免收。
-                    </div>
-                )}
-            </SectionPreview>
+                            <tr style={{ background: '#f7fafc' }}>
+                                <td colSpan={3} style={{ padding: 10 }}></td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>{t.laborSubtotal}:</td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.labor_total || 0).toFixed(2)}</td>
+                            </tr>
+                            {reportData.content.other_fees.length > 0 && (
+                                <tr style={{ background: '#f7fafc' }}>
+                                    <td colSpan={3} style={{ padding: 10 }}></td>
+                                    <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>{t.otherFees}:</td>
+                                    <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.content.other_fees.reduce((sum, fee) => sum + fee.amount, 0)).toFixed(2)}</td>
+                                </tr>
+                            )}
+                            <tr style={{ background: '#ffffff', borderTop: '2px solid #1a365d' }}>
+                                <td colSpan={3} style={{ padding: 12 }}></td>
+                                <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: '#1a365d', fontSize: 14 }}>{t.totalAmount}:</td>
+                                <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: '#1a365d', fontSize: 14 }}>{reportData.currency} {Number(reportData.total_cost || 0).toLocaleString()}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    {reportData.service_type === 'warranty' && (
+                        <div style={{ fontSize: 12, color: '#38a169', fontStyle: 'italic', textAlign: 'right' }}>
+                            {t.warrantyNote}
+                        </div>
+                    )}
+                </SectionPreview>
 
-            {/* Footer - 包含保修条款 */}
-            <div style={{ marginTop: 40, paddingTop: 20, borderTop: '2px solid #e2e8f0' }}>
-                {/* 维修保修条款 */}
-                <div style={{ padding: 14, background: '#ebf8ff', borderRadius: 8, border: '1px solid #90cdf4', marginBottom: 20 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#2b6cb0', marginBottom: 6 }}>
-                        维修保修: {reportData.content.warranty_terms.repair_warranty_days} 天
+                {/* Footer - 包含保修条款 */}
+                <div style={{ marginTop: 40, paddingTop: 20, borderTop: '2px solid #e2e8f0' }}>
+                    <div style={{ padding: 14, background: '#ebf8ff', borderRadius: 8, border: '1px solid #90cdf4', marginBottom: 20 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#2b6cb0', marginBottom: 6 }}>
+                            {t.repairWarranty}: {reportData.content.warranty_terms.repair_warranty_days} {t.days}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#4a5568' }}>
+                            {t.warrantyExclusions}
+                        </div>
+                        <ul style={{ margin: '6px 0 0 0', paddingLeft: 20, fontSize: 12, color: '#4a5568' }}>
+                            {reportData.content.warranty_terms.exclusions.map((e: string, i: number) => (
+                                <li key={i}>{e}</li>
+                            ))}
+                        </ul>
                     </div>
-                    <div style={{ fontSize: 12, color: '#4a5568' }}>
-                        本保修仅适用于本次维修更换的部件，不包括:
+                    <div style={{ textAlign: 'center' }}>
+                        <p style={{ fontSize: 12, color: '#a0aec0' }}>{t.footer}</p>
+                        <p style={{ fontSize: 12, color: '#a0aec0', marginTop: 4 }}>{t.footerContact}</p>
                     </div>
-                    <ul style={{ margin: '6px 0 0 0', paddingLeft: 20, fontSize: 12, color: '#4a5568' }}>
-                        {reportData.content.warranty_terms.exclusions.map((e: string, i: number) => (
-                            <li key={i}>{e}</li>
-                        ))}
-                    </ul>
-                </div>
-                {/* 公司信息 */}
-                <div style={{ textAlign: 'center' }}>
-                    <p style={{ fontSize: 12, color: '#a0aec0' }}>本报告由卓曜科技（深圳）有限公司出具 | KINEFINITY TECHNOLOGY CO., LTD.</p>
-                    <p style={{ fontSize: 12, color: '#a0aec0', marginTop: 4 }}>如有疑问，请联系 service@kinefinity.com</p>
                 </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 // Fee Sub-section Component with collapsible functionality
 const FeeSubSection: React.FC<{ 
@@ -1775,7 +2538,7 @@ const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) =
     </div>
 );
 
-const InfoBlock: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const InfoBlock: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
     <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 12, color: '#718096', marginBottom: 4 }}>{label}:</div>
         <div style={{ padding: 10, background: '#f7fafc', borderRadius: 6, lineHeight: 1.5, fontSize: 13 }}>
@@ -1783,3 +2546,238 @@ const InfoBlock: React.FC<{ label: string; value: string }> = ({ label, value })
         </div>
     </div>
 );
+
+// Inline Translation Panel Component
+const InlineTranslationPanel: React.FC<{
+    fieldKey: string;
+    originalText: string;
+    translations: Record<string, Record<string, any>>;
+    activeLang: string;
+    onActiveLangChange: (lang: string) => void;
+    translatingFields: Set<string>;
+    onAITranslate: (fieldKey: string, lang: string, text: string) => void;
+    onSaveTranslation: (fieldKey: string, lang: string, text: string, isManual: boolean) => void;
+}> = ({
+    fieldKey,
+    originalText,
+    translations,
+    activeLang,
+    onActiveLangChange,
+    translatingFields,
+    onAITranslate,
+    onSaveTranslation
+}) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editValue, setEditValue] = useState('');
+
+    const SUPPORTED_LANGUAGES = [
+        { code: 'en-US', label: 'English', flag: '🇺🇸' },
+        { code: 'ja-JP', label: '日本語', flag: '🇯🇵' },
+        { code: 'de-DE', label: 'Deutsch', flag: '🇩🇪' }
+    ];
+
+    const getTranslationStatus = (langCode: string) => {
+        const hasTranslation = translations[langCode]?.[fieldKey];
+        const isManual = translations[langCode]?._meta?.is_manual_edit;
+        
+        if (!hasTranslation) return { status: 'none', icon: null };
+        if (isManual) return { status: 'manual', icon: <Check size={10} style={{ color: '#10B981' }} /> };
+        return { status: 'ai', icon: <Sparkles size={10} style={{ color: '#3B82F6' }} /> };
+    };
+
+    const currentTranslation = translations[activeLang]?.[fieldKey] || '';
+    const isTranslating = translatingFields.has(`${fieldKey}-${activeLang}`);
+
+    useEffect(() => {
+        setEditValue(currentTranslation);
+    }, [currentTranslation, activeLang]);
+
+    const handleSaveEdit = () => {
+        onSaveTranslation(fieldKey, activeLang, editValue, true);
+        setIsEditing(false);
+    };
+
+    const translatedCount = SUPPORTED_LANGUAGES.filter(lang => 
+        translations[lang.code]?.[fieldKey]
+    ).length;
+
+    if (!originalText.trim()) return null;
+
+    return (
+        <div style={{ marginTop: 8 }}>
+            {/* Toggle Button */}
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    fontSize: 12, color: translatedCount > 0 ? '#10B981' : 'var(--text-tertiary)',
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    padding: 0
+                }}
+            >
+                <Globe size={12} />
+                <span>
+                    {translatedCount > 0 
+                        ? `已翻译 ${translatedCount}/${SUPPORTED_LANGUAGES.length} 种语言` 
+                        : '🌐 翻译此字段'}
+                </span>
+                <ChevronDown 
+                    size={12} 
+                    style={{ 
+                        transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s'
+                    }} 
+                />
+            </button>
+
+            {/* Expanded Panel */}
+            {isExpanded && (
+                <div style={{
+                    marginTop: 10, padding: 12,
+                    background: 'rgba(0,0,0,0.2)',
+                    borderRadius: 8,
+                    border: '1px solid rgba(255,255,255,0.06)'
+                }}>
+                    {/* Language Tabs */}
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                        {SUPPORTED_LANGUAGES.map(lang => {
+                            const status = getTranslationStatus(lang.code);
+                            return (
+                                <button
+                                    key={lang.code}
+                                    onClick={() => {
+                                        onActiveLangChange(lang.code);
+                                        setIsEditing(false);
+                                    }}
+                                    style={{
+                                        padding: '6px 10px', borderRadius: 6,
+                                        background: activeLang === lang.code ? 'rgba(255,215,0,0.15)' : 'transparent',
+                                        border: `1px solid ${activeLang === lang.code ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                                        color: activeLang === lang.code ? '#FFD200' : 'var(--text-secondary)',
+                                        fontSize: 11, cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: 4
+                                    }}
+                                >
+                                    <span>{lang.flag}</span>
+                                    <span>{lang.label}</span>
+                                    {status.icon}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Translation Content */}
+                    <div>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            marginBottom: 6
+                        }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+                                {SUPPORTED_LANGUAGES.find(l => l.code === activeLang)?.label} 译文
+                            </span>
+                            
+                            {!isEditing && (
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                    <button
+                                        onClick={() => onAITranslate(fieldKey, activeLang, originalText)}
+                                        disabled={isTranslating}
+                                        style={{
+                                            padding: '4px 10px', borderRadius: 4,
+                                            background: 'rgba(59,130,246,0.15)',
+                                            border: '1px solid rgba(59,130,246,0.3)',
+                                            color: '#3B82F6', fontSize: 11,
+                                            cursor: isTranslating ? 'not-allowed' : 'pointer',
+                                            display: 'flex', alignItems: 'center', gap: 4,
+                                            opacity: isTranslating ? 0.6 : 1
+                                        }}
+                                    >
+                                        <Sparkles size={10} />
+                                        {isTranslating ? '翻译中...' : 'Bokeh翻译'}
+                                    </button>
+                                    {currentTranslation && (
+                                        <button
+                                            onClick={() => setIsEditing(true)}
+                                            style={{
+                                                padding: '4px 10px', borderRadius: 4,
+                                                background: 'rgba(255,215,0,0.15)',
+                                                border: '1px solid rgba(255,215,0,0.3)',
+                                                color: '#FFD200', fontSize: 11,
+                                                cursor: 'pointer', display: 'flex',
+                                                alignItems: 'center', gap: 4
+                                            }}
+                                        >
+                                            <Edit2 size={10} /> 修正
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {isEditing ? (
+                            <div>
+                                <textarea
+                                    value={editValue}
+                                    onChange={e => setEditValue(e.target.value)}
+                                    style={{
+                                        width: '100%', minHeight: 60, padding: 8,
+                                        borderRadius: 6, background: 'rgba(0,0,0,0.3)',
+                                        border: '1px solid rgba(255,215,0,0.3)',
+                                        color: '#fff', fontSize: 12, lineHeight: 1.5,
+                                        resize: 'vertical', fontFamily: 'inherit'
+                                    }}
+                                />
+                                <div style={{
+                                    display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 6
+                                }}>
+                                    <button
+                                        onClick={() => {
+                                            setIsEditing(false);
+                                            setEditValue(currentTranslation);
+                                        }}
+                                        style={{
+                                            padding: '4px 10px', borderRadius: 4,
+                                            background: 'transparent',
+                                            border: '1px solid rgba(255,255,255,0.2)',
+                                            color: 'var(--text-secondary)', fontSize: 11,
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        取消
+                                    </button>
+                                    <button
+                                        onClick={handleSaveEdit}
+                                        style={{
+                                            padding: '4px 10px', borderRadius: 4,
+                                            background: '#FFD200', border: 'none',
+                                            color: '#000', fontSize: 11,
+                                            cursor: 'pointer', fontWeight: 500,
+                                            display: 'flex', alignItems: 'center', gap: 4
+                                        }}
+                                    >
+                                        <Check size={10} /> 保存
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{
+                                padding: 10, borderRadius: 6,
+                                background: currentTranslation ? 'rgba(0,0,0,0.3)' : 'transparent',
+                                border: `1px solid ${currentTranslation ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.1)'}`,
+                                color: currentTranslation ? 'var(--text-main)' : 'var(--text-tertiary)',
+                                fontSize: 12, lineHeight: 1.5, minHeight: 40,
+                                whiteSpace: 'pre-wrap'
+                            }}>
+                                {currentTranslation || (
+                                    <span style={{ fontStyle: 'italic' }}>
+                                        暂无译文，点击 "Bokeh翻译" 生成
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};

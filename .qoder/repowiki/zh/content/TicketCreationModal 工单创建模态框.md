@@ -1,4 +1,3 @@
-<docs>
 # TicketCreationModal 工单创建模态框
 
 <cite>
@@ -18,18 +17,17 @@
 - [Service_PRD.md](file://docs/Service_PRD.md)
 - [Service PRD_P2.md](file://docs/Service_PRD_P2.md)
 - [permission.js](file://server/service/middleware/permission.js)
+- [TicketDetailComponents.tsx](file://client/src/components/Workspace/TicketDetailComponents.tsx)
+- [ticket-activities.js](file://server/service/routes/ticket-activities.js)
 </cite>
 
 ## 更新摘要
 **变更内容**
-- 新增120行代码，改进客户识别和上下文切换功能
-- 增强设备状态实时可视化功能，提供机器详情卡状态指示
-- 改进智能账户联系人解析，支持主联系人自动关联
-- 集成产品注册流程，支持未入库设备的保修注册
-- 新增机器详情卡功能，实时显示设备状态和保修信息
-- 改进序列号验证逻辑，支持设备状态检查和自动匹配
-- 新增双重身份模型支持，完善访客快照处理机制
-- 增强上下文切换功能，支持账户和序列号的独立查询
+- 新增附件管理功能，支持拖拽上传、文件预览和多文件管理
+- 增强权限控制系统，MS Lead用户可在工单创建活动中查看修正按钮
+- 改进文件上传处理机制，支持图片、视频、PDF等多种格式
+- 优化附件UI组件，提供更好的用户体验
+- 增强编辑场景下的附件管理能力
 
 ## 目录
 1. [简介](#简介)
@@ -37,26 +35,32 @@
 3. [核心组件](#核心组件)
 4. [架构概览](#架构概览)
 5. [详细组件分析](#详细组件分析)
-6. [设备状态实时可视化](#设备状态实时可视化)
-7. [智能账户联系人解析](#智能账户联系人解析)
-8. [产品注册流程](#产品注册流程)
-9. [机器详情卡功能](#机器详情卡功能)
-10. [序列号验证增强](#序列号验证增强)
-11. [CRM 集成功能](#crm-集成功能)
-12. [AI 辅助功能](#ai-辅助功能)
-13. [智能字段填充](#智能字段填充)
-14. [多模态输入支持](#多模态输入支持)
-15. [后端 AI 服务](#后端-ai-服务)
-16. [依赖关系分析](#依赖关系分析)
-17. [性能考虑](#性能考虑)
-18. [故障排除指南](#故障排除指南)
-19. [结论](#结论)
+6. [附件管理功能](#附件管理功能)
+7. [权限控制系统增强](#权限控制系统增强)
+8. [设备状态实时可视化](#设备状态实时可视化)
+9. [智能账户联系人解析](#智能账户联系人解析)
+10. [产品注册流程](#产品注册流程)
+11. [机器详情卡功能](#机器详情卡功能)
+12. [序列号验证增强](#序列号验证增强)
+13. [CRM 集成功能](#crm-集成功能)
+14. [AI 辅助功能](#ai-辅助功能)
+15. [智能字段填充](#智能字段填充)
+16. [多模态输入支持](#多模态输入支持)
+17. [后端 AI 服务](#后端-ai-服务)
+18. [依赖关系分析](#依赖关系分析)
+19. [性能考虑](#性能考虑)
+20. [故障排除指南](#故障排除指南)
+21. [结论](#结论)
 
 ## 简介
 
 TicketCreationModal 是 Longhorn 服务管理系统中的关键组件，提供统一的工单创建界面，支持三种类型的工单：咨询工单（Inquiry）、RMA 返厂单（RMA）和经销商维修单（DealerRepair）。该模态框采用现代化的设计风格，集成了 CRM 集成、AI 辅助功能、智能字段填充和多模态输入支持，为用户提供智能化的工单创建体验。
 
 **更新** 该组件现已深度集成了设备状态实时可视化功能，通过智能解析用户输入的自然语言内容，自动生成结构化的工单数据，显著提升了工单创建的智能化水平和用户体验。新增的120行代码进一步增强了客户识别和上下文切换功能，完善了双重身份模型的支持。
+
+**附件管理功能**：新增的附件管理功能支持拖拽上传、文件预览和多文件管理，为工单创建提供了更丰富的多媒体支持。
+
+**权限控制系统增强**：增强了权限控制系统，MS Lead用户现在可以在工单创建活动中查看修正按钮，提升了市场部门的工单管理能力。
 
 **设备状态实时可视化**：新增的设备状态可视化功能能够实时显示设备的注册状态、保修状态和在保状态，通过颜色编码和状态指示器为用户提供直观的设备信息展示。
 
@@ -83,6 +87,7 @@ TicketCreationModal[工单创建模态框]
 TicketAiWizard[AI 工单向导]
 ServiceRoutes[服务模块路由]
 CustomerContextSidebar[客户上下文侧边栏]
+TicketDetailComponents[工单详情组件]
 end
 subgraph "数据层"
 useTicketStore[状态管理]
@@ -91,6 +96,7 @@ LanguageStore[国际化状态]
 ContextAPI[设备上下文 API]
 ProductsAPI[产品 API]
 WarrantyAPI[保修注册 API]
+TicketActivitiesAPI[工单活动 API]
 end
 subgraph "业务页面"
 InquiryPage[咨询工单页面]
@@ -120,6 +126,11 @@ StatusIndicator[状态指示器]
 WarrantyChecker[保修检查器]
 ProductRegistrar[产品注册器]
 ContextSwitcher[上下文切换器]
+end
+subgraph "权限控制系统"
+PermissionMiddleware[权限中间件]
+MSLeadAccess[MS Lead 权限]
+ActivityCorrection[活动修正权限]
 end
 App --> MainLayout
 MainLayout --> TicketCreationModal
@@ -151,12 +162,18 @@ WarrantyAPI --> ProductRegistrar
 ServiceRoutes --> InquiryPage
 ServiceRoutes --> RMAPage
 ServiceRoutes --> DealerPage
+TicketDetailComponents --> PermissionMiddleware
+TicketDetailComponents --> MSLeadAccess
+TicketDetailComponents --> ActivityCorrection
+TicketActivitiesAPI --> PermissionMiddleware
+TicketActivitiesAPI --> ActivityCorrection
 ```
 
 **图表来源**
-- [TicketCreationModal.tsx:1-1102](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1102)
+- [TicketCreationModal.tsx:1-1096](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1096)
 - [TicketAiWizard.tsx:1-269](file://client/src/components/TicketAiWizard.tsx#L1-L269)
 - [CustomerContextSidebar.tsx:59-135](file://client/src/components/Service/CustomerContextSidebar.tsx#L59-L135)
+- [TicketDetailComponents.tsx:1224-1235](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1224-L1235)
 - [context.js:346-484](file://server/service/routes/context.js#L346-L484)
 - [products.js:32-120](file://server/service/routes/products.js#L32-L120)
 
@@ -184,6 +201,8 @@ TicketCreationModal 是一个功能完整的工单创建组件，具有以下核
 - **双重身份模型**：支持匿名用户的工单创建
 - **访客快照处理**：完善访客信息的存储和使用机制
 - **上下文切换**：支持账户和序列号的独立查询和切换
+- **附件管理**：支持拖拽上传、文件预览和多文件管理
+- **权限控制增强**：MS Lead用户可查看工单创建活动的修正按钮
 
 #### 技术实现特点
 - 使用React Hooks进行状态管理
@@ -203,9 +222,11 @@ TicketCreationModal 是一个功能完整的工单创建组件，具有以下核
 - **新增** 双重身份模型支持
 - **新增** 访客快照处理机制
 - **新增** 上下文切换功能
+- **新增** 附件管理功能，支持拖拽上传和文件预览
+- **新增** 增强的权限控制系统，支持MS Lead用户权限
 
 **章节来源**
-- [TicketCreationModal.tsx:1-1102](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1102)
+- [TicketCreationModal.tsx:1-1096](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1096)
 
 ### TicketAiWizard 组件
 
@@ -253,7 +274,7 @@ TicketCreationModal 是一个功能完整的工单创建组件，具有以下核
 
 ## 架构概览
 
-TicketCreationModal 采用了清晰的分层架构设计，确保了组件间的松耦合和高内聚，并集成了 CRM 集成、AI 功能和设备状态可视化：
+TicketCreationModal 采用了清晰的分层架构设计，确保了组件间的松耦合和高内聚，并集成了 CRM 集成、AI 功能、设备状态可视化和附件管理：
 
 ```mermaid
 graph TD
@@ -270,6 +291,7 @@ StatusIndicator[状态指示器]
 WarrantyModal[保修注册模态框]
 ProductModal[产品入库模态框]
 ContextSidebar[客户上下文侧边栏]
+AttachmentManager[附件管理器]
 end
 subgraph "状态管理层"
 Store[zustand store]
@@ -279,6 +301,7 @@ GhostFields[AI 填充字段]
 DeviceState[设备状态]
 WarrantyState[保修状态]
 ContextState[上下文状态]
+AttachmentState[附件状态]
 end
 subgraph "CRM 集成层"
 AccountsAPI[账户 API]
@@ -309,6 +332,11 @@ WarrantyChecker[保修状态检查]
 ProductRegistrar[产品注册器]
 ContextSwitcher[上下文切换器]
 end
+subgraph "权限控制层"
+PermissionMiddleware[权限中间件]
+MSLeadAccess[MS Lead 权限控制]
+ActivityCorrection[活动修正权限]
+end
 subgraph "数据访问层"
 API[API客户端]
 Auth[认证管理]
@@ -317,6 +345,7 @@ DB[CRM 数据库]
 DeviceDB[设备数据库]
 WarrantyDB[保修数据库]
 ContextDB[上下文数据库]
+TicketActivitiesDB[工单活动数据库]
 end
 subgraph "业务逻辑层"
 Validation[表单验证]
@@ -333,6 +362,8 @@ WarrantyFlow[保修流程]
 ContextSwitching[上下文切换]
 DualIdentityFlow[双重身份流程]
 ReporterSnapshotFlow[访客快照流程]
+AttachmentManagement[附件管理]
+PermissionControl[权限控制]
 end
 Modal --> Form
 Modal --> Upload
@@ -341,6 +372,7 @@ Modal --> CRMLookup
 Modal --> AISandbox
 Modal --> DeviceCard
 Modal --> ContextSidebar
+Modal --> AttachmentManager
 Modal --> Store
 AiWizard --> AIService
 AiWizard --> Parser
@@ -365,6 +397,8 @@ DeviceCard --> ProductRegistrar
 ContextSidebar --> ContextAPI
 ContextSidebar --> ContextSwitcher
 ContextSidebar --> ContextDB
+AttachmentManager --> AttachmentState
+AttachmentManager --> PermissionControl
 Modal --> AIIntegration
 Modal --> CRMIntegration
 Modal --> SmartFill
@@ -376,12 +410,15 @@ Modal --> WarrantyFlow
 Modal --> ContextSwitching
 Modal --> DualIdentityFlow
 Modal --> ReporterSnapshotFlow
+Modal --> AttachmentManagement
+Modal --> PermissionControl
 Store --> Draft
 Store --> UIState
 Store --> GhostFields
 Store --> DeviceState
 Store --> WarrantyState
 Store --> ContextState
+Store --> AttachmentState
 Modal --> API
 API --> Auth
 API --> Cache
@@ -391,9 +428,10 @@ Modal --> ErrorHandling
 ```
 
 **图表来源**
-- [TicketCreationModal.tsx:1-1102](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1102)
+- [TicketCreationModal.tsx:1-1096](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1096)
 - [TicketAiWizard.tsx:1-269](file://client/src/components/TicketAiWizard.tsx#L1-L269)
 - [CustomerContextSidebar.tsx:59-135](file://client/src/components/Service/CustomerContextSidebar.tsx#L59-L135)
+- [TicketDetailComponents.tsx:1224-1235](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1224-L1235)
 - [useTicketStore.ts:1-68](file://client/src/store/useTicketStore.ts#L1-L68)
 - [context.js:346-484](file://server/service/routes/context.js#L346-L484)
 - [products.js:32-120](file://server/service/routes/products.js#L32-L120)
@@ -402,7 +440,7 @@ Modal --> ErrorHandling
 
 ### 状态管理架构
 
-TicketCreationModal 通过自定义的Zustand store实现状态管理，提供了完整的工单草稿管理功能，包括新增的 AI 填充字段状态、设备状态和上下文状态：
+TicketCreationModal 通过自定义的Zustand store实现状态管理，提供了完整的工单草稿管理功能，包括新增的 AI 填充字段状态、设备状态、上下文状态和附件状态：
 
 ```mermaid
 classDiagram
@@ -411,12 +449,19 @@ class TicketStore {
 +TicketType ticketType
 +Record~TicketType, TicketDraft~ drafts
 +Set~string~ ghostFields
++boolean isOpen
++TicketType ticketType
++Record~TicketType, TicketDraft~ drafts
++Set~string~ ghostFields
++File[] attachments
 +openModal(type) void
 +closeModal() void
 +updateDraft(type, data) void
 +clearDraft(type) void
 +markGhostField(field) void
 +clearGhostFields() void
++setAttachments(files) void
++removeAttachment(index) void
 }
 class TicketDraft {
 +string customer_name
@@ -454,6 +499,11 @@ class ContextState {
 +boolean loading
 +any contextData
 }
+class AttachmentState {
++File[] attachments
++boolean isUploading
++string uploadProgress
+}
 class CRMLookup {
 +string query
 +any[] results
@@ -485,16 +535,95 @@ TicketStore --> DeviceState : manages
 TicketStore --> ContextState : manages
 TicketStore --> WarrantyState : manages
 TicketStore --> DualIdentityState : manages
+TicketStore --> AttachmentState : manages
 TicketDraft --> TicketType : uses
 DeviceState --> WarrantyState : controls
 ContextState --> DeviceState : provides
 DualIdentityState --> TicketDraft : populates
+AttachmentState --> TicketDraft : supports
 ```
 
 **图表来源**
 - [useTicketStore.ts:4-68](file://client/src/store/useTicketStore.ts#L4-L68)
 - [TicketCreationModal.tsx:17-196](file://client/src/components/Service/TicketCreationModal.tsx#L17-L196)
 - [TicketCreationModal.tsx:203-242](file://client/src/components/Service/TicketCreationModal.tsx#L203-L242)
+
+### 附件管理功能架构
+
+**新增** 附件管理功能展现了完整的文件上传和管理架构：
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant AttachmentManager as 附件管理器
+participant FileInput as 文件输入
+participant DragDrop as 拖拽区域
+participant Preview as 文件预览
+participant UploadAPI as 上传API
+User->>AttachmentManager : 点击添加附件
+AttachmentManager->>FileInput : 触发文件选择
+FileInput->>AttachmentManager : 返回选择的文件
+AttachmentManager->>Preview : 生成文件预览
+Preview->>AttachmentManager : 显示文件列表
+User->>DragDrop : 拖拽文件到区域
+DragDrop->>AttachmentManager : 处理拖拽文件
+AttachmentManager->>Preview : 添加到文件列表
+User->>AttachmentManager : 点击删除文件
+AttachmentManager->>Preview : 移除文件预览
+User->>AttachmentManager : 点击上传按钮
+AttachmentManager->>UploadAPI : 上传附件
+UploadAPI-->>AttachmentManager : 返回上传结果
+AttachmentManager->>User : 显示上传状态
+```
+
+**更新** 附件管理系统包括：
+
+- **拖拽上传支持**：支持拖拽文件到指定区域进行上传
+- **文件预览功能**：自动为图片、视频生成预览缩略图
+- **多文件管理**：支持同时管理多个文件的上传和删除
+- **文件类型识别**：根据文件类型显示不同的图标和信息
+- **上传状态跟踪**：实时显示文件上传进度和状态
+- **删除功能**：支持删除不需要的附件文件
+- **大小限制**：支持50MB文件大小限制
+- **格式验证**：验证文件格式的合法性
+
+**图表来源**
+- [TicketCreationModal.tsx:940-967](file://client/src/components/Service/TicketCreationModal.tsx#L940-L967)
+- [TicketCreationModal.tsx:559-584](file://client/src/components/Service/TicketCreationModal.tsx#L559-L584)
+
+### 权限控制系统增强架构
+
+**新增** 权限控制系统增强展现了MS Lead用户权限控制的完整架构：
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant PermissionMiddleware as 权限中间件
+participant ActivityCorrection as 活动修正权限
+participant TicketDetailComponents as 工单详情组件
+User->>PermissionMiddleware : 请求访问权限
+PermissionMiddleware->>PermissionMiddleware : 检查用户角色
+PermissionMiddleware->>PermissionMiddleware : 验证部门信息
+PermissionMiddleware->>ActivityCorrection : 验证MS Lead权限
+ActivityCorrection->>TicketDetailComponents : 允许显示修正按钮
+TicketDetailComponents->>User : 显示修正按钮
+User->>TicketDetailComponents : 点击修正按钮
+TicketDetailComponents->>User : 打开修正弹窗
+```
+
+**更新** 权限控制系统增强包括：
+
+- **MS Lead权限控制**：MS Lead用户可查看工单创建活动的修正按钮
+- **部门归属验证**：验证用户所属部门与活动部门的匹配关系
+- **原操作人权限**：原操作人始终可以更正自己的内容
+- **Admin/Exec权限**：Admin和Exec用户拥有最高权限
+- **活动类型权限**：不同活动类型有不同的权限要求
+- **权限继承机制**：支持权限的继承和传递
+- **实时权限验证**：在用户操作时实时验证权限状态
+
+**图表来源**
+- [TicketDetailComponents.tsx:1224-1235](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1224-L1235)
+- [ticket-activities.js:659-680](file://server/service/routes/ticket-activities.js#L659-L680)
 
 ### 设备状态实时可视化架构
 
@@ -935,7 +1064,7 @@ ContextSidebar --> RealTimeUpdate[实时更新]
 
 ### 视觉设计系统
 
-**新增** 组件实现了完整的视觉设计系统，包括设备状态可视化和 CRM 集成的视觉元素：
+**新增** 组件实现了完整的视觉设计系统，包括设备状态可视化、附件管理和 CRM 集成的视觉元素：
 
 ```mermaid
 flowchart TD
@@ -958,10 +1087,14 @@ ColorCoding --> KineYellow[Kine Yellow - 金色主题]
 ColorCoding --> GhostField[AI 填充 - 蓝色高亮]
 ColorCoding --> SuccessGreen[成功状态 - 绿色高亮]
 ColorCoding --> DeviceStatus[设备状态 - 多色编码]
+ColorCoding --> AttachmentPreview[附件预览 - 金色边框]
 DeviceStatus --> UnregisteredRed[未入库 - 红色]
 DeviceStatus --> NeedsRegistrationYellow[需注册 - 黄色]
 DeviceStatus --> ExpiredOrange[过保 - 橙色]
 DeviceStatus --> ValidGreen[有效 - 绿色]
+AttachmentPreview --> AttachmentIcon[附件图标]
+AttachmentPreview --> AttachmentName[附件名称]
+AttachmentPreview --> RemoveButton[删除按钮]
 ```
 
 **更新** 视觉设计系统包括：
@@ -972,6 +1105,7 @@ DeviceStatus --> ValidGreen[有效 - 绿色]
 - **Kine Yellow 主题**：新增的金色渐变色彩（#FFD700）作为主要视觉元素
 - **设备状态颜色**：未入库(红色)、需注册(黄色)、过保(橙色)、有效(绿色)
 - **AI 填充高亮**：蓝色边框和阴影效果标识AI填充的字段
+- **附件预览样式**：金色边框和阴影效果标识附件预览
 - **统一排版**：一致的字体大小、行高和间距
 - **动画效果**：0.2秒的开合动画，0.2秒的过渡效果
 
@@ -1008,6 +1142,7 @@ FormData --> Upload[上传到服务器]
 - **拖拽支持**：支持拖拽文件到上传区域
 - **类型识别**：根据文件类型显示不同图标
 - **多模态支持**：支持OCR和PDF解析功能
+- **附件管理**：支持附件的添加、删除和预览
 
 **图表来源**
 - [TicketCreationModal.tsx:283-292](file://client/src/components/Service/TicketCreationModal.tsx#L283-L292)
@@ -1015,7 +1150,7 @@ FormData --> Upload[上传到服务器]
 
 ### 草稿持久化机制
 
-**新增** 组件实现了完整的草稿持久化机制，包括 AI 填充字段的状态管理和设备状态：
+**新增** 组件实现了完整的草稿持久化机制，包括 AI 填充字段的状态管理、设备状态和附件状态：
 
 ```mermaid
 flowchart TD
@@ -1024,13 +1159,19 @@ AutoSave --> LocalStorage[本地存储]
 LocalStorage --> Zustand[状态管理]
 Zustand --> Component[组件状态]
 Component --> Form[表单数据]
+Component --> Attachments[附件数据]
 Form --> UserInput[用户输入]
+Attachments --> UserInput
 UserInput --> FieldChange[字段变更]
 FieldChange --> UpdateDraft[更新草稿]
+FieldChange --> UpdateAttachments[更新附件]
 UpdateDraft --> Persist[持久化存储]
+UpdateAttachments --> Persist
 Persist --> Reload[页面重载]
 Reload --> LoadDraft[加载草稿]
+Reload --> LoadAttachments[加载附件]
 LoadDraft --> RestoreForm[恢复表单]
+LoadAttachments --> RestoreAttachments[恢复附件]
 FieldChange --> MarkGhost[标记AI字段]
 MarkGhost --> GhostFields[高亮显示]
 FieldChange --> UpdateDevice[更新设备状态]
@@ -1040,22 +1181,255 @@ UpdateDevice --> DeviceState[设备状态管理]
 **更新** 草稿持久化系统包括：
 
 - **实时保存**：用户输入时自动保存到本地存储
-- **跨页面持久化**：页面刷新后仍能恢复草稿
+- **跨页面持久化**：页面刷新后仍能恢复草稿和附件
 - **类型隔离**：不同工单类型的草稿独立存储
 - **AI 字段状态**：记录AI填充的字段状态
 - **设备状态持久化**：记录设备状态和保修状态
+- **附件状态持久化**：记录附件的添加、删除和上传状态
 - **状态指示**：底部显示"草稿已自动保存"状态
-- **清理机制**：工单创建成功后自动清理草稿
+- **清理机制**：工单创建成功后自动清理草稿和附件
 
 **图表来源**
 - [TicketCreationModal.tsx:234-245](file://client/src/components/Service/TicketCreationModal.tsx#L234-L245)
 - [useTicketStore.ts:40-68](file://client/src/store/useTicketStore.ts#L40-L68)
 
 **章节来源**
-- [TicketCreationModal.tsx:1-1102](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1102)
+- [TicketCreationModal.tsx:1-1096](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1096)
 - [TicketAiWizard.tsx:1-269](file://client/src/components/TicketAiWizard.tsx#L1-L269)
 - [CustomerContextSidebar.tsx:59-135](file://client/src/components/Service/CustomerContextSidebar.tsx#L59-L135)
+- [TicketDetailComponents.tsx:1224-1235](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1224-L1235)
 - [useTicketStore.ts:1-68](file://client/src/store/useTicketStore.ts#L1-L68)
+
+## 附件管理功能
+
+**新增** 附件管理功能是本次更新的重要创新，为工单创建提供了完整的文件上传和管理能力：
+
+### 功能概述
+
+附件管理功能支持多种文件格式的上传、预览和管理，为工单创建提供了更丰富的多媒体支持：
+
+- **拖拽上传支持**：支持拖拽文件到指定区域进行上传
+- **文件预览功能**：自动为图片、视频生成预览缩略图
+- **多文件管理**：支持同时管理多个文件的上传和删除
+- **文件类型识别**：根据文件类型显示不同的图标和信息
+- **上传状态跟踪**：实时显示文件上传进度和状态
+- **删除功能**：支持删除不需要的附件文件
+- **大小限制**：支持50MB文件大小限制
+- **格式验证**：验证文件格式的合法性
+
+### 技术架构
+
+```mermaid
+flowchart TD
+AttachmentManager[附件管理器] --> FileInput[文件输入组件]
+AttachmentManager --> DragDrop[拖拽区域]
+AttachmentManager --> AttachmentList[附件列表]
+AttachmentManager --> Preview[文件预览]
+AttachmentManager --> UploadAPI[上传API]
+AttachmentManager --> AttachmentState[附件状态管理]
+FileInput --> FileValidation[文件验证]
+DragDrop --> FileValidation
+FileValidation --> |支持格式| FileProcessing[文件处理]
+FileValidation --> |不支持格式| ErrorHandling[错误处理]
+FileProcessing --> Preview
+Preview --> AttachmentList
+AttachmentList --> RemoveButton[删除按钮]
+RemoveButton --> FileRemoval[文件移除]
+AttachmentList --> UploadButton[上传按钮]
+UploadButton --> UploadAPI
+UploadAPI --> UploadComplete[上传完成]
+UploadComplete --> AttachmentState
+AttachmentState --> UIUpdate[界面更新]
+UIUpdate --> UserFeedback[用户反馈]
+```
+
+### 文件上传处理流程
+
+**新增** 文件上传处理流程展现了完整的文件处理机制：
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant AttachmentManager as 附件管理器
+participant FileInput as 文件输入
+participant DragDrop as 拖拽区域
+participant FileValidation as 文件验证
+participant Preview as 文件预览
+participant UploadAPI as 上传API
+User->>AttachmentManager : 点击添加附件
+AttachmentManager->>FileInput : 触发文件选择
+FileInput->>AttachmentManager : 返回选择的文件
+AttachmentManager->>FileValidation : 验证文件格式和大小
+FileValidation->>Preview : 生成文件预览
+Preview->>AttachmentManager : 显示文件列表
+User->>DragDrop : 拖拽文件到区域
+DragDrop->>FileValidation : 处理拖拽文件
+FileValidation->>Preview : 添加到文件列表
+User->>AttachmentManager : 点击删除文件
+AttachmentManager->>Preview : 移除文件预览
+User->>AttachmentManager : 点击上传按钮
+AttachmentManager->>UploadAPI : 上传附件
+UploadAPI-->>AttachmentManager : 返回上传结果
+AttachmentManager->>User : 显示上传状态
+```
+
+### 文件类型支持
+
+**新增** 附件管理功能支持的文件类型：
+
+- **图片格式**：JPG、PNG、BMP、TIFF、HEIC、HEIF等
+- **视频格式**：MP4、AVI、MOV、WMV等
+- **文档格式**：PDF、DOC、DOCX、TXT等
+- **压缩格式**：ZIP、RAR、7Z等
+- **其他格式**：支持常见的办公和媒体文件格式
+
+### 文件预览机制
+
+**新增** 文件预览机制展现了完整的预览处理架构：
+
+- **图片预览**：自动生成缩略图，支持点击放大查看
+- **视频预览**：显示视频缩略图和时长信息
+- **文档预览**：显示文档图标和文件名
+- **文件大小显示**：显示文件的大小信息
+- **删除按钮**：每个附件都有独立的删除按钮
+- **错误处理**：支持预览失败的错误处理
+
+### 上传状态管理
+
+**新增** 上传状态管理展现了完整的状态跟踪机制：
+
+- **上传进度**：实时显示文件上传进度
+- **上传状态**：显示文件的上传状态（待上传、上传中、上传成功、上传失败）
+- **错误信息**：显示上传过程中的错误信息
+- **重试机制**：支持上传失败时的重试操作
+- **完成回调**：上传完成后执行相应的回调函数
+
+### 错误处理机制
+
+附件管理功能具备完善的错误处理能力：
+
+- **格式不支持**：显示错误提示并建议正确的文件格式
+- **大小超出限制**：显示大小限制并提供压缩建议
+- **上传失败**：提供详细的错误信息和重试选项
+- **网络异常**：提供离线处理和重试机制
+- **预览失败**：提供预览失败的降级方案
+
+**章节来源**
+- [TicketCreationModal.tsx:940-967](file://client/src/components/Service/TicketCreationModal.tsx#L940-L967)
+- [TicketCreationModal.tsx:559-584](file://client/src/components/Service/TicketCreationModal.tsx#L559-L584)
+
+## 权限控制系统增强
+
+**新增** 权限控制系统增强功能是本次更新的重要组成部分，显著提升了工单管理的权限控制能力：
+
+### 功能概述
+
+权限控制系统增强支持MS Lead用户在工单创建活动中查看修正按钮，提升了市场部门的工单管理能力：
+
+- **MS Lead权限控制**：MS Lead用户可查看工单创建活动的修正按钮
+- **部门归属验证**：验证用户所属部门与活动部门的匹配关系
+- **原操作人权限**：原操作人始终可以更正自己的内容
+- **Admin/Exec权限**：Admin和Exec用户拥有最高权限
+- **活动类型权限**：不同活动类型有不同的权限要求
+- **权限继承机制**：支持权限的继承和传递
+- **实时权限验证**：在用户操作时实时验证权限状态
+
+### 权限控制架构
+
+```mermaid
+flowchart TD
+PermissionControl[权限控制系统] --> UserAuth[用户认证]
+PermissionControl --> RoleCheck[角色检查]
+PermissionControl --> DepartmentCheck[部门检查]
+PermissionControl --> ActivityTypeCheck[活动类型检查]
+UserAuth --> RoleCheck
+RoleCheck --> DepartmentCheck
+DepartmentCheck --> ActivityTypeCheck
+ActivityTypeCheck --> PermissionDecision[权限决策]
+PermissionDecision --> AllowAccess[允许访问]
+PermissionDecision --> DenyAccess[拒绝访问]
+AllowAccess --> CorrectionButton[显示修正按钮]
+DenyAccess --> HideButton[隐藏按钮]
+```
+
+### MS Lead权限控制机制
+
+**新增** MS Lead权限控制机制展现了完整的权限验证架构：
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant PermissionMiddleware as 权限中间件
+participant ActivityCorrection as 活动修正权限
+participant TicketDetailComponents as 工单详情组件
+User->>PermissionMiddleware : 请求访问权限
+PermissionMiddleware->>PermissionMiddleware : 检查用户角色
+PermissionMiddleware->>PermissionMiddleware : 验证部门信息
+PermissionMiddleware->>ActivityCorrection : 验证MS Lead权限
+ActivityCorrection->>ActivityCorrection : 检查活动类型
+ActivityCorrection->>ActivityCorrection : 验证部门匹配
+ActivityCorrection->>TicketDetailComponents : 允许显示修正按钮
+TicketDetailComponents->>User : 显示修正按钮
+User->>TicketDetailComponents : 点击修正按钮
+TicketDetailComponents->>User : 打开修正弹窗
+```
+
+### 权限验证流程
+
+**新增** 权限验证流程展现了完整的权限检查机制：
+
+```mermaid
+flowchart TD
+PermissionCheck[权限验证] --> UserRole[用户角色检查]
+UserRole --> |Admin/Exec| FullAccess[完全访问权限]
+UserRole --> |Lead| DepartmentCheck[部门检查]
+UserRole --> |普通用户| LimitedAccess[有限访问权限]
+DepartmentCheck --> |MS Lead| MSAccess[MS部门访问权限]
+DepartmentCheck --> |其他Lead| DeptAccess[部门访问权限]
+DepartmentCheck --> |无Lead| NoAccess[无访问权限]
+MSAccess --> ActivityType[活动类型检查]
+DeptAccess --> ActivityType
+ActivityType --> |创建工单活动| CorrectionButton[显示修正按钮]
+ActivityType --> |其他活动类型| NoButton[不显示按钮]
+LimitedAccess --> NoButton
+FullAccess --> CorrectionButton
+NoAccess --> NoButton
+```
+
+### 活动类型权限控制
+
+**新增** 活动类型权限控制展现了不同活动类型的权限要求：
+
+- **创建工单活动**：MS Lead可查看修正按钮
+- **维修记录活动**：OP部门Lead可查看修正按钮
+- **诊断报告活动**：OP部门Lead可查看修正按钮
+- **评论活动**：原操作人可查看修正按钮
+- **内部备注活动**：原操作人可查看修正按钮
+- **发货信息活动**：原操作人可查看修正按钮
+
+### 权限继承和传递机制
+
+**新增** 权限继承和传递机制展现了权限的传递和继承：
+
+- **部门权限继承**：Lead继承部门的权限
+- **活动权限传递**：原操作人继承修改权限
+- **Admin/Exec权限传递**：Admin和Exec拥有全局权限
+- **MS Lead权限传递**：MS Lead拥有市场部门的特殊权限
+- **权限验证链**：多层权限验证确保安全性
+
+### 错误处理机制
+
+权限控制系统具备完善的错误处理能力：
+
+- **权限不足**：显示权限不足的错误信息
+- **用户未认证**：重定向到登录页面
+- **活动不存在**：显示活动不存在的错误信息
+- **权限验证失败**：提供详细的权限错误信息
+- **权限继承失败**：提供权限继承失败的降级方案
+
+**章节来源**
+- [TicketDetailComponents.tsx:1224-1235](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1224-L1235)
+- [ticket-activities.js:659-680](file://server/service/routes/ticket-activities.js#L659-L680)
 
 ## 设备状态实时可视化
 
@@ -1897,7 +2271,7 @@ API --> Client
 
 ### 组件间依赖关系
 
-TicketCreationModal 与应用其他组件形成了清晰的依赖关系，包括新增的设备状态可视化、产品注册流程和双重身份模型：
+TicketCreationModal 与应用其他组件形成了清晰的依赖关系，包括新增的设备状态可视化、产品注册流程、双重身份模型和附件管理：
 
 ```mermaid
 graph LR
@@ -1921,6 +2295,8 @@ ProductModal[产品入库模态框]
 WarrantyModal[保修注册模态框]
 CustomerContextSidebar[客户上下文侧边栏]
 UnifiedCustomerModal[统一客户模态框]
+AttachmentManager[附件管理器]
+TicketDetailComponents[工单详情组件]
 end
 subgraph "页面组件"
 InquiryPage[InquiryTicketCreatePage]
@@ -1956,6 +2332,11 @@ WarrantyChecker[保修状态检查]
 ProductRegistrar[产品注册器]
 ContextSwitcher[上下文切换器]
 end
+subgraph "权限控制服务"
+PermissionMiddleware[权限中间件]
+MSLeadAccess[MS Lead 权限]
+ActivityCorrection[活动修正权限]
+end
 subgraph "后端服务"
 ServerAPI[后端 API]
 Auth[认证管理]
@@ -1964,6 +2345,7 @@ DB[CRM 数据库]
 DeviceDB[设备数据库]
 WarrantyDB[保修数据库]
 ContextDB[上下文数据库]
+TicketActivitiesDB[工单活动数据库]
 end
 subgraph "业务逻辑层"
 Validation[表单验证]
@@ -1980,12 +2362,15 @@ WarrantyFlow[保修流程]
 ContextSwitching[上下文切换]
 DualIdentityFlow[双重身份流程]
 ReporterSnapshotFlow[访客快照流程]
+AttachmentManagement[附件管理]
+PermissionControl[权限控制]
 EndUserDetection[访客检测流程]
 UnifiedCustomerFlow[统一客户流程]
 end
 React --> TicketCreationModal
 React --> TicketAiWizard
 React --> CustomerContextSidebar
+React --> TicketDetailComponents
 Axios --> TicketCreationModal
 Axios --> TicketAiWizard
 Axios --> AccountsAPI
@@ -1993,9 +2378,12 @@ Axios --> ContactsAPI
 Axios --> ContextAPI
 Axios --> WarrantyAPI
 Axios --> ProductAPI
+Axios --> AttachmentManager
+Axios --> TicketActivitiesDB
 Lucide --> TicketCreationModal
 Lucide --> TicketAiWizard
 Lucide --> CustomerContextSidebar
+Lucide --> TicketDetailComponents
 Zustand --> useTicketStore
 OpenAI --> AIService
 TicketCreationModal --> useTicketStore
@@ -2008,6 +2396,7 @@ TicketCreationModal --> DeviceCard
 TicketCreationModal --> ProductModal
 TicketCreationModal --> WarrantyModal
 TicketCreationModal --> CustomerContextSidebar
+TicketCreationModal --> AttachmentManager
 TicketAiWizard --> AIService
 CRMLookup --> AccountsAPI
 CRMLookup --> ContactsAPI
@@ -2030,6 +2419,11 @@ CustomerContextSidebar --> ContextSwitcher
 CustomerContextSidebar --> ContextDB
 ProductModal --> ProductRegistrar
 WarrantyModal --> WarrantyChecker
+AttachmentManager --> AttachmentState
+AttachmentManager --> PermissionControl
+TicketDetailComponents --> PermissionMiddleware
+TicketDetailComponents --> MSLeadAccess
+TicketDetailComponents --> ActivityCorrection
 AIService --> BokehAssistant
 AIService --> OCRService
 AIService --> PDFParser
@@ -2044,9 +2438,10 @@ UnifiedCustomerModal --> ReporterSnapshot
 ```
 
 **图表来源**
-- [TicketCreationModal.tsx:1-1102](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1102)
+- [TicketCreationModal.tsx:1-1096](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1096)
 - [TicketAiWizard.tsx:1-269](file://client/src/components/TicketAiWizard.tsx#L1-L269)
 - [CustomerContextSidebar.tsx:59-135](file://client/src/components/Service/CustomerContextSidebar.tsx#L59-L135)
+- [TicketDetailComponents.tsx:1224-1235](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1224-L1235)
 - [useTicketStore.ts:1-68](file://client/src/store/useTicketStore.ts#L1-L68)
 - [context.js:346-484](file://server/service/routes/context.js#L346-L484)
 - [products.js:32-120](file://server/service/routes/products.js#L32-L120)
@@ -2069,15 +2464,19 @@ UnifiedCustomerModal --> ReporterSnapshot
 | 产品注册服务 | 自定义API | 产品信息注册 | 专用API |
 | 上下文服务 | 自定义API | 客户上下文查询 | 专用API |
 | 统一客户服务 | 自定义API | 客户信息管理 | 专用API |
+| 附件管理服务 | 自定义API | 文件上传管理 | 专用API |
+| 权限控制服务 | 自定义API | 访问权限管理 | 专用API |
 | 后端服务 | Node.js + OpenAI | AI模型推理 | 专用API |
 | OCR服务 | Tesseract.js | 图像文字识别 | ^4.0.0 |
 | PDF解析 | pdfjs-dist | PDF文档处理 | ^3.0.0 |
 | 权限控制 | 自定义中间件 | 访问权限管理 | 专用中间件 |
+| 活动修正服务 | 自定义API | 工单活动修正 | 专用API |
 
 **章节来源**
-- [TicketCreationModal.tsx:1-1102](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1102)
+- [TicketCreationModal.tsx:1-1096](file://client/src/components/Service/TicketCreationModal.tsx#L1-L1096)
 - [TicketAiWizard.tsx:1-269](file://client/src/components/TicketAiWizard.tsx#L1-L269)
 - [CustomerContextSidebar.tsx:59-135](file://client/src/components/Service/CustomerContextSidebar.tsx#L59-L135)
+- [TicketDetailComponents.tsx:1224-1235](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1224-L1235)
 - [useTicketStore.ts:1-68](file://client/src/store/useTicketStore.ts#L1-L68)
 
 ## 性能考虑
@@ -2098,6 +2497,7 @@ ParallelFetch --> Contacts[获取联系人信息]
 ParallelFetch --> DeviceInfo[获取设备信息]
 ParallelFetch --> WarrantyInfo[获取保修信息]
 ParallelFetch --> ContextData[获取上下文数据]
+ParallelFetch --> Attachments[获取附件信息]
 Products --> Combine[合并数据]
 Dealers --> Combine
 Accounts --> Combine
@@ -2105,6 +2505,7 @@ Contacts --> Combine
 DeviceInfo --> Combine
 WarrantyInfo --> Combine
 ContextData --> Combine
+Attachments --> Combine
 Combine --> Ready[准备就绪]
 Ready --> Render[渲染表单]
 Wait --> Render
@@ -2134,6 +2535,7 @@ Wait --> Render
 - **模型选择**：根据任务复杂度选择合适的AI模型
 - **多模态优化**：针对不同文件格式优化解析算法
 - **并发处理**：支持多AI服务的并发调用
+- **附件处理优化**：针对附件上传进行性能优化
 
 ### 设备状态可视化性能优化
 
@@ -2155,12 +2557,33 @@ Wait --> Render
 - **实时更新**：使用防抖机制避免频繁的界面更新
 - **错误处理**：提供查询失败的降级方案
 
+### 权限控制系统性能优化
+
+**新增** 权限控制系统性能优化策略：
+
+- **权限缓存**：对用户权限进行缓存，提升权限检查性能
+- **权限预加载**：在用户登录时预加载权限信息
+- **权限验证优化**：优化权限验证算法，减少验证时间
+- **权限继承缓存**：缓存权限继承关系，提升权限传递性能
+- **实时权限验证**：在用户操作时实时验证权限状态
+
+### 附件管理性能优化
+
+**新增** 附件管理功能性能优化策略：
+
+- **文件预览优化**：优化图片和视频预览的生成和显示
+- **上传进度优化**：优化文件上传进度的显示和更新
+- **并发上传**：支持多文件并发上传
+- **断点续传**：支持大文件的断点续传功能
+- **上传队列管理**：管理上传队列，避免过多并发上传
+- **内存管理**：优化文件预览的内存使用
+
 ### 内存管理策略
 
 组件采用了有效的内存管理策略来避免性能问题：
 
 - **懒加载机制**：仅在模态框打开时才获取初始数据
-- **状态清理**：提交完成后自动清理草稿和附件状态
+- **状态清理**：提交完成后自动清理草稿、附件和权限状态
 - **事件监听器管理**：正确清理组件卸载时的事件监听器
 - **新增** 优化的样式系统，减少不必要的DOM操作
 - **新增** 动画性能优化，使用CSS动画而非JavaScript动画
@@ -2171,6 +2594,8 @@ Wait --> Render
 - **新增** 产品注册状态的内存管理，避免重复注册
 - **新增** 上下文数据的缓存管理，提升查询性能
 - **新增** 双重身份数据的内存管理，避免重复处理
+- **新增** 附件数据的内存管理，优化文件预览和上传
+- **新增** 权限状态的内存管理，提升权限检查性能
 
 ## 故障排除指南
 
@@ -2208,11 +2633,13 @@ Wait --> Render
 - 文件格式不支持
 - 文件大小超过限制
 - 服务器存储空间不足
+- 网络连接问题
 
 **解决方案**：
 - 检查文件格式是否为图片、视频或PDF
 - 确认文件大小不超过50MB限制
 - 联系系统管理员检查服务器状态
+- 检查网络连接状态
 
 #### 4. 工单创建失败
 **问题症状**：提交后无响应或显示错误消息
@@ -2220,11 +2647,13 @@ Wait --> Render
 - 必填字段缺失
 - 服务器验证失败
 - 网络超时
+- 附件上传失败
 
 **解决方案**：
 - 检查所有必填字段是否填写完整
 - 查看具体的错误提示信息
 - 重试提交操作
+- 检查附件是否上传成功
 
 #### 5. AI 功能异常
 **问题症状**：AI 解析失败或返回空结果
@@ -2232,6 +2661,7 @@ Wait --> Render
 - 文本内容格式不规范
 - AI 服务暂时不可用
 - 网络连接问题
+- 附件解析失败
 
 **解决方案**：
 - 检查输入的文本格式和内容质量
@@ -2245,6 +2675,7 @@ Wait --> Render
 - 序列号格式不正确
 - 设备不存在
 - 网络连接问题
+- 设备状态检查失败
 
 **解决方案**：
 - 确认序列号格式符合要求（至少5个字符）
@@ -2258,6 +2689,7 @@ Wait --> Render
 - 文件格式不支持
 - 文件损坏
 - AI 服务异常
+- 附件解析失败
 
 **解决方案**：
 - 确认文件格式是否受支持
@@ -2271,6 +2703,7 @@ Wait --> Render
 - 设备状态检查API异常
 - 网络连接问题
 - 设备状态缓存失效
+- 权限不足
 
 **解决方案**：
 - 检查设备状态检查API的可用性
@@ -2284,11 +2717,13 @@ Wait --> Render
 - 产品信息不完整
 - 权限不足
 - 数据库连接异常
+- 设备状态异常
 
 **解决方案**：
 - 检查产品信息是否填写完整
 - 确认用户权限是否足够
 - 查看数据库连接状态
+- 检查设备状态是否正常
 - 联系系统管理员检查服务状态
 
 #### 10. 双重身份模型异常
@@ -2381,7 +2816,38 @@ Wait --> Render
 - 检查权限中间件是否正常工作
 - 联系系统管理员检查服务状态
 
-#### 16. Kine Yellow 主题显示问题
+#### 16. 附件管理问题
+**问题症状**：附件上传或预览异常
+**可能原因**：
+- 文件格式不支持
+- 文件大小超出限制
+- 网络连接问题
+- 服务器存储空间不足
+- 附件预览失败
+
+**解决方案**：
+- 确认文件格式是否受支持
+- 检查文件大小是否超过限制
+- 检查网络连接状态
+- 联系系统管理员检查服务器状态
+- 查看浏览器开发者工具的网络面板
+
+#### 17. 权限控制系统问题
+**问题症状**：MS Lead用户无法查看修正按钮
+**可能原因**：
+- 权限验证逻辑异常
+- 部门信息不匹配
+- 活动类型权限异常
+- 权限中间件异常
+
+**解决方案**：
+- 检查权限验证逻辑是否正常
+- 确认用户部门信息是否正确
+- 检查活动类型权限设置
+- 查看权限中间件日志
+- 联系系统管理员检查权限配置
+
+#### 18. Kine Yellow 主题显示问题
 **问题症状**：金色主题颜色显示异常
 **可能原因**：
 - CSS变量未正确加载
@@ -2431,6 +2897,8 @@ TicketCreationModal 工单创建模态框是一个设计精良、功能完善的
 23. **双重身份模型**：支持匿名用户的工单创建
 24. **访客快照处理**：完善访客信息的存储和使用机制
 25. **上下文切换功能**：支持账户和序列号的独立查询和切换
+26. **附件管理功能**：支持拖拽上传、文件预览和多文件管理
+27. **权限控制系统增强**：MS Lead用户可查看工单创建活动的修正按钮
 
 ### 技术亮点
 
@@ -2451,6 +2919,8 @@ TicketCreationModal 工单创建模态框是一个设计精良、功能完善的
 - **双重身份模型**：支持匿名用户的工单创建
 - **访客快照处理**：完善访客信息的存储和使用
 - **上下文切换**：支持账户和序列号的独立查询
+- **附件管理优化**：拖拽上传和文件预览功能
+- **权限控制增强**：MS Lead用户权限支持
 - **响应式双列布局**：在大屏幕上提供双列，在小屏幕上自动调整为单列
 - **统一交互设计**：跨工单类型的共享用户体验
 - **类型特定字段**：根据工单类型动态显示相应字段
@@ -2463,6 +2933,33 @@ TicketCreationModal 工单创建模态框是一个设计精良、功能完善的
 - **终端用户解析**：专门处理访客信息的AI服务
 - **联系人解析能力**：智能匹配联系人信息
 - **权限中间件**：严格的访问权限控制
+
+### 附件管理功能价值
+
+**新增** 附件管理功能为系统带来了显著的价值提升：
+
+- **拖拽上传支持**：提供更便捷的文件上传方式
+- **文件预览功能**：提升文件管理的可视化体验
+- **多文件管理**：支持批量文件的上传和管理
+- **文件类型识别**：自动识别和分类不同类型的文件
+- **上传状态跟踪**：实时显示文件上传进度
+- **删除功能**：提供便捷的文件删除操作
+- **大小限制**：确保文件大小在合理范围内
+- **格式验证**：保证文件格式的合法性
+- **错误处理**：提供完善的错误处理机制
+
+### 权限控制系统增强价值
+
+**新增** 权限控制系统增强功能为系统带来了显著的价值提升：
+
+- **MS Lead权限支持**：MS Lead用户可查看工单创建活动的修正按钮
+- **部门归属验证**：确保权限验证的准确性
+- **原操作人权限**：保护原操作人的修改权利
+- **Admin/Exec权限**：提供最高级别的权限支持
+- **活动类型权限**：根据不同活动类型设置相应的权限
+- **权限继承机制**：简化权限管理的复杂性
+- **实时权限验证**：确保权限验证的及时性
+- **权限错误处理**：提供详细的权限错误信息
 
 ### 设备状态可视化价值
 
@@ -2524,14 +3021,43 @@ TicketCreationModal 工单创建模态框是一个设计精良、功能完善的
 - **实时更新机制**：支持查询参数的实时变更和界面更新
 - **权限控制集成**：基于用户权限的访问控制和数据脱敏
 
+### 附件管理功能价值
+
+**新增** 附件管理功能为系统带来了显著的价值提升：
+
+- **拖拽上传支持**：提供更便捷的文件上传方式
+- **文件预览功能**：提升文件管理的可视化体验
+- **多文件管理**：支持批量文件的上传和管理
+- **文件类型识别**：自动识别和分类不同类型的文件
+- **上传状态跟踪**：实时显示文件上传进度
+- **删除功能**：提供便捷的文件删除操作
+- **大小限制**：确保文件大小在合理范围内
+- **格式验证**：保证文件格式的合法性
+- **错误处理**：提供完善的错误处理机制
+
+### 权限控制系统增强价值
+
+**新增** 权限控制系统增强功能为系统带来了显著的价值提升：
+
+- **MS Lead权限支持**：MS Lead用户可查看工单创建活动的修正按钮
+- **部门归属验证**：确保权限验证的准确性
+- **原操作人权限**：保护原操作人的修改权利
+- **Admin/Exec权限**：提供最高级别的权限支持
+- **活动类型权限**：根据不同活动类型设置相应的权限
+- **权限继承机制**：简化权限管理的复杂性
+- **实时权限验证**：确保权限验证的及时性
+- **权限错误处理**：提供详细的权限错误信息
+
 该组件为 Longhorn 服务管理系统提供了坚实的基础，为后续的功能扩展和维护奠定了良好的技术基础。其现代化的设计和优秀的用户体验使其成为企业级应用开发的优秀范例。
 
 **统一创建弹窗设计理念**的成功实施，标志着 Longhorn 服务管理系统在用户体验和开发效率方面达到了新的高度。通过标准化的工单创建流程，用户可以在不同工单类型之间无缝切换，同时享受一致的界面设计和交互体验。
 
-**设备状态实时可视化**、**智能账户联系人解析**、**产品注册流程**、**机器详情卡功能**、**双重身份模型**和**上下文切换功能**的深度集成，进一步提升了系统的智能化水平，为未来的功能扩展和技术升级奠定了坚实的基础。这些创新功能不仅改善了当前的用户体验，也为 Longhorn 系统的持续发展注入了新的活力。
+**设备状态实时可视化**、**智能账户联系人解析**、**产品注册流程**、**机器详情卡功能**、**双重身份模型**、**上下文切换功能**、**附件管理功能**和**权限控制系统增强**的深度集成，进一步提升了系统的智能化水平，为未来的功能扩展和技术升级奠定了坚实的基础。这些创新功能不仅改善了当前的用户体验，也为 Longhorn 系统的持续发展注入了新的活力。
 
 **Kine Yellow 主题**的引入为系统增添了专业的品牌视觉形象，金色渐变色彩营造了高端、专业的品牌氛围，提升了用户的信任感和满意度。
 
-通过这次全面的设备状态可视化、智能功能增强和上下文切换功能改进，Longhorn 工单创建系统已经从传统的表单填写工具转变为智能化的工单创建助手，为用户提供了更加高效、准确和便捷的服务体验。这种转变不仅提升了工作效率，也为企业的数字化转型提供了强有力的技术支撑。
+通过这次全面的设备状态可视化、智能功能增强、附件管理和权限控制系统改进，Longhorn 工单创建系统已经从传统的表单填写工具转变为智能化的工单创建助手，为用户提供了更加高效、准确和便捷的服务体验。这种转变不仅提升了工作效率，也为企业的数字化转型提供了强有力的技术支撑。
 
-新增的120行代码进一步完善了系统的功能完整性，特别是在客户识别和上下文切换方面的改进，使得系统能够更好地服务于各种类型的用户需求，从匿名访客到正式客户，从简单咨询到复杂维修，都能提供相应的支持和服务。
+新增的120行代码进一步完善了系统的功能完整性，特别是在客户识别、上下文切换、附件管理和权限控制方面的改进，使得系统能够更好地服务于各种类型的用户需求，从匿名访客到正式客户，从简单咨询到复杂维修，都能提供相应的支持和服务。
+
+**附件管理功能**和**权限控制系统增强**的引入，标志着 Longhorn 系统在文件管理和权限控制方面达到了新的高度，为用户提供了更加丰富和安全的工单创建体验。这些功能的集成不仅提升了系统的实用性，也为未来的功能扩展和技术升级奠定了坚实的基础。

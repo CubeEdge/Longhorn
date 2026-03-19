@@ -1,16 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Calendar, AlertTriangle, Save, Loader2, Upload, FileText, Box, Building, User, ChevronDown } from 'lucide-react';
+import { X, AlertTriangle, Save, Loader2, Upload, FileText, Box, Building, User, ChevronDown, Plus } from 'lucide-react';
 import axios from 'axios';
+import { format } from 'date-fns';
 import { useAuthStore } from '../../store/useAuthStore';
+import { CustomDatePicker } from '../UI/CustomDatePicker';
+import UnifiedCustomerModal from './UnifiedCustomerModal';
 
 // 保修数据结构（用于暂存传递给父组件）
 export interface WarrantyRegistrationData {
-    saleSource: 'invoice' | 'customer_statement';
+    saleSource: 'invoice' | 'customer_statement' | 'shipping_record';
     saleDate: string;
     warrantyMonths: number;
     invoiceFile?: File;
     invoiceFileName?: string;
     remarks?: string;
+    // 发货记录信息
+    shippingRecordInfo?: string;
+    // 客户陈述信息
+    customerStatementInfo?: string;
     selectedDealerId?: number | '';
     selectedOwnerId?: number | '';
     selectedModelName: string;
@@ -36,11 +43,13 @@ interface ProductWarrantyRegistrationModalProps {
     };
     // 更改模式：预加载已有保修数据
     existingWarrantyData?: {
-        saleSource?: 'invoice' | 'customer_statement';
+        saleSource?: 'invoice' | 'customer_statement' | 'shipping_record';
         saleDate?: string;
         warrantyMonths?: number;
         dealerId?: number;
         ownerId?: number;
+        shippingRecordInfo?: string;
+        customerStatementInfo?: string;
     };
 }
 
@@ -56,6 +65,7 @@ interface ProductInfo {
     current_owner_id?: number;
     current_owner_name?: string;
     ship_to_dealer_date?: string;
+    production_date?: string;
 }
 
 interface Dealer {
@@ -76,6 +86,9 @@ interface ProductModel {
     id: number;
     name_zh: string;
     model_code: string;
+    sn_prefix?: string;
+    product_type?: string;
+    product_family?: string;
 }
 
 interface ProductSku {
@@ -99,7 +112,9 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
     const { token } = useAuthStore();
     const [loading, setLoading] = useState(false);
     const [, setFetchingProduct] = useState(false);
-    const [saleSource, setSaleSource] = useState<'invoice' | 'customer_statement' | ''>('');
+    const [saleSource, setSaleSource] = useState<'invoice' | 'customer_statement' | 'shipping_record' | ''>('');
+    const [shippingRecordInfo, setShippingRecordInfo] = useState('');
+    const [customerStatementInfo, setCustomerStatementInfo] = useState('');
     const [saleDate, setSaleDate] = useState('');
     const [warrantyMonths, setWarrantyMonths] = useState(24);
     const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
@@ -109,7 +124,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
     const [isSuccess, setIsSuccess] = useState(false);
 
     // Product info from database
-    const [, setProductInfo] = useState<ProductInfo | null>(null);
+    const [productInfo, setProductInfo] = useState<ProductInfo | null>(null);
     const [dealers, setDealers] = useState<Dealer[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [selectedDealerId, setSelectedDealerId] = useState<number | ''>('');
@@ -121,6 +136,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
     const [skus, setSkus] = useState<ProductSku[]>([]);
     const [selectedModelName, setSelectedModelName] = useState('');
     const [selectedSkuId, setSelectedSkuId] = useState<number | ''>('');
+    const [, setProductDropdownSettings] = useState<any>(null);
     
     // Product line and family (for creating new products)
     const [selectedProductLine, setSelectedProductLine] = useState<'Camera' | 'EVF' | 'Accessory'>('Camera');
@@ -131,6 +147,9 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
     const [showOwnerDropdown, setShowOwnerDropdown] = useState(false);
     const [searchingOwners, setSearchingOwners] = useState(false);
     const ownerDropdownRef = useRef<HTMLDivElement>(null);
+    
+    // Add customer modal
+    const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
 
     // Fetch product details and reference data when modal opens
     useEffect(() => {
@@ -145,6 +164,8 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                 if (existingWarrantyData.warrantyMonths) setWarrantyMonths(existingWarrantyData.warrantyMonths);
                 if (existingWarrantyData.dealerId) setSelectedDealerId(existingWarrantyData.dealerId);
                 if (existingWarrantyData.ownerId) setSelectedOwnerId(existingWarrantyData.ownerId);
+                if (existingWarrantyData.shippingRecordInfo) setShippingRecordInfo(existingWarrantyData.shippingRecordInfo);
+                if (existingWarrantyData.customerStatementInfo) setCustomerStatementInfo(existingWarrantyData.customerStatementInfo);
             }
         }
     }, [isOpen, serialNumber]);
@@ -217,7 +238,8 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                     sold_to_dealer_name: data.warranty_info?.sold_to_dealer_name,
                     current_owner_id: data.warranty_info?.current_owner_id,
                     current_owner_name: data.warranty_info?.current_owner_name,
-                    ship_to_dealer_date: data.warranty_info?.ship_to_dealer_date
+                    ship_to_dealer_date: data.warranty_info?.ship_to_dealer_date,
+                    production_date: data.product.production_date
                 });
 
                 // Pre-select dealer and owner if already associated
@@ -242,33 +264,106 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
 
     const fetchProductCatalogs = async () => {
         try {
-            const [modelsRes, skusRes] = await Promise.all([
+            const [modelsRes, skusRes, settingsRes] = await Promise.all([
                 axios.get('/api/v1/admin/product-models', { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('/api/v1/admin/product-skus', { headers: { Authorization: `Bearer ${token}` } })
+                axios.get('/api/v1/admin/product-skus', { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get('/api/v1/system/public-settings', { headers: { Authorization: `Bearer ${token}` } })
             ]);
+            
+            // 保存系统设置
+            if (settingsRes.data.success) {
+                setProductDropdownSettings(settingsRes.data.data.product_dropdown);
+            }
+            
             if (modelsRes.data.success) {
-                const modelsData = modelsRes.data.data || [];
+                let modelsData = modelsRes.data.data || [];
+                
+                // SN前缀自动匹配产品型号（用于判断是否有SN输入）
+                const snInput = serialNumber.trim().toUpperCase();
+                
+                // 应用系统设置过滤（SN为空时）
+                if (snInput.length === 0 && settingsRes.data.success) {
+                    const settings = settingsRes.data.data.product_dropdown;
+                    if (settings) {
+                        const familyVisibility = settings.family_visibility || { A: true, B: false, C: true, D: true, E: false };
+                        const enableTypeFilter = settings.enable_type_filter !== false;
+                        const allowedTypes = settings.allowed_types || ['电影机', '摄像机', '电子寻像器', '寻像器', '套装'];
+                        
+                        modelsData = modelsData.filter((p: ProductModel) => {
+                            // 必须是启用的族群
+                            if (!familyVisibility[p.product_family as keyof typeof familyVisibility]) return false;
+                            
+                            // 必须有 sn_prefix
+                            if (!p.sn_prefix) return false;
+                            
+                            // 检查产品类型过滤
+                            if (enableTypeFilter) {
+                                const productType = (p.product_type || '').toLowerCase();
+                                const matchesType = allowedTypes.some((type: string) => 
+                                    productType.includes(type.toLowerCase())
+                                );
+                                if (!matchesType) return false;
+                            }
+                            
+                            return true;
+                        });
+                    }
+                }
+                
                 setModels(modelsData);
-                if (productName) {
+                
+                // SN前缀自动匹配产品型号
+                const matchedByPrefix = modelsData.filter((p: ProductModel) => 
+                    p.sn_prefix && (
+                        p.sn_prefix.toUpperCase() === snInput ||  // 精确匹配
+                        snInput.startsWith(p.sn_prefix.toUpperCase())  // 输入以产品前缀开头
+                    )
+                );
+                
+                if (matchedByPrefix.length === 1) {
+                    // 只有一个精确匹配，自动选择产品型号并填充产品线和族群
+                    const matched = matchedByPrefix[0];
+                    setSelectedModelName(matched.name_zh);
+                    
+                    // 自动填充产品线和族群
+                    if (matched.product_type) {
+                        const line = mapProductTypeToLine(matched.product_type);
+                        if (line) setSelectedProductLine(line);
+                    }
+                    if (matched.product_family) {
+                        setSelectedProductFamily(matched.product_family as 'A' | 'B' | 'C' | 'D' | 'E');
+                    }
+                } else if (productName) {
+                    // 通过productName匹配（原有逻辑）
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const matched = modelsData.find((p: any) =>
                         p.name_zh.toLowerCase() === productName.toLowerCase() ||
                         p.model_code.toLowerCase() === productName.toLowerCase() ||
                         productName.toLowerCase().includes(p.name_zh.toLowerCase())
                     );
-                    if (matched) setSelectedModelName(matched.name_zh);
+                    if (matched) {
+                        setSelectedModelName(matched.name_zh);
+                        // 自动填充产品线和族群
+                        if (matched.product_type) {
+                            const line = mapProductTypeToLine(matched.product_type);
+                            if (line) setSelectedProductLine(line);
+                        }
+                        if (matched.product_family) {
+                            setSelectedProductFamily(matched.product_family as 'A' | 'B' | 'C' | 'D' | 'E');
+                        }
+                    }
                 }
             }
             if (skusRes.data.success) {
                 setSkus(skusRes.data.data || []);
             }
 
-            // 应用从ProductModal传入的预填数据
+            // 应用从ProductModal传入的预填数据（优先级低于SN前缀匹配）
             if (prefillData) {
-                if (prefillData.productLine) {
+                if (prefillData.productLine && !selectedProductLine) {
                     setSelectedProductLine(prefillData.productLine);
                 }
-                if (prefillData.productFamily) {
+                if (prefillData.productFamily && !selectedProductFamily) {
                     setSelectedProductFamily(prefillData.productFamily);
                 }
                 if (prefillData.skuId) {
@@ -278,6 +373,13 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
         } catch (err) {
             console.error('Failed to fetch product models/skus:', err);
         }
+    };
+    
+    // 辅助函数：将product_type映射到产品线
+    const mapProductTypeToLine = (productType: string): 'Camera' | 'EVF' | 'Accessory' | null => {
+        if (productType.includes('电影机') || productType.includes('摄像机')) return 'Camera';
+        if (productType.includes('寻像器')) return 'EVF';
+        return 'Accessory';
     };
 
 
@@ -356,6 +458,14 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
             setError('请上传发票凭证');
             return;
         }
+        if (saleSource === 'shipping_record' && !shippingRecordInfo.trim()) {
+            setError('请输入发货记录信息');
+            return;
+        }
+        if (saleSource === 'customer_statement' && !customerStatementInfo.trim()) {
+            setError('请输入客户陈述信息');
+            return;
+        }
 
         setLoading(true);
         setError(null);
@@ -368,12 +478,14 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
             if (isNewProduct) {
                 // 场景C：产品未入库 - 暂存数据，由父组件（ProductModal）统一提交
                 const warrantyData: WarrantyRegistrationData = {
-                    saleSource: saleSource as 'invoice' | 'customer_statement',
+                    saleSource: saleSource as 'invoice' | 'customer_statement' | 'shipping_record',
                     saleDate,
                     warrantyMonths,
                     invoiceFile: invoiceFile || undefined,
                     invoiceFileName: invoiceFileName || undefined,
                     remarks,
+                    shippingRecordInfo: saleSource === 'shipping_record' ? shippingRecordInfo : undefined,
+                    customerStatementInfo: saleSource === 'customer_statement' ? customerStatementInfo : undefined,
                     selectedDealerId,
                     selectedOwnerId,
                     selectedModelName,
@@ -424,6 +536,8 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                 warranty_months: warrantyMonths,
                 sales_invoice_proof: invoiceProofUrl,
                 remarks: remarks,
+                shipping_record_info: saleSource === 'shipping_record' ? shippingRecordInfo : null,
+                customer_statement_info: saleSource === 'customer_statement' ? customerStatementInfo : null,
                 sold_to_dealer_id: selectedDealerId || null,
                 current_owner_id: selectedOwnerId || null
             }, {
@@ -624,8 +738,26 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                                         </div>
                                                     )}
                                                     {ownerSearchQuery && customers.length === 0 && !searchingOwners && (
-                                                        <div style={{ padding: 12, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
-                                                            未找到匹配的客户
+                                                        <div style={{ padding: 12, textAlign: 'center' }}>
+                                                            <div style={{ color: 'var(--text-tertiary)', fontSize: 12, marginBottom: 8 }}>
+                                                                未找到匹配的客户
+                                                            </div>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setShowOwnerDropdown(false);
+                                                                    setShowAddCustomerModal(true);
+                                                                }}
+                                                                className="btn-kine-lowkey"
+                                                                style={{
+                                                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                                                    padding: '6px 12px',
+                                                                    borderRadius: 6,
+                                                                    fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                                                                }}
+                                                            >
+                                                                <Plus size={14} />
+                                                                新建客户
+                                                            </button>
                                                         </div>
                                                     )}
                                                     {customers.map((customer) => (
@@ -685,7 +817,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10, letterSpacing: '-0.01em' }}>
                                             销售日期来源 <span style={{ color: '#EF4444' }}>*</span>
                                         </div>
-                                        <div style={{ display: 'flex', gap: 12 }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                                             <button
                                                 type="button"
                                                 onClick={() => setSaleSource('invoice')}
@@ -699,6 +831,20 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                                 }}
                                             >
                                                 有发票
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSaleSource('shipping_record')}
+                                                style={{
+                                                    flex: 1, height: 44, borderRadius: 10,
+                                                    border: `2px solid ${saleSource === 'shipping_record' ? '#3B82F6' : 'var(--glass-border)'} `,
+                                                    background: saleSource === 'shipping_record' ? 'rgba(59,130,246,0.1)' : 'var(--glass-bg)',
+                                                    color: saleSource === 'shipping_record' ? '#3B82F6' : 'var(--text-main)',
+                                                    cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                发货记录
                                             </button>
                                             <button
                                                 type="button"
@@ -722,26 +868,13 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                                 <div>
-                                                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                                                        {saleSource === 'invoice' ? '发票日期' : '销售日期'}
-                                                        <span style={{ color: '#EF4444' }}>*</span>
-                                                    </label>
-                                                    <div style={{ position: 'relative' }}>
-                                                        <input
-                                                            type="date"
-                                                            value={saleDate}
-                                                            onChange={(e) => setSaleDate(e.target.value)}
-                                                            style={{
-                                                                width: '100%', height: 44, padding: '0 10px', paddingLeft: 36,
-                                                                background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
-                                                                borderRadius: 8, color: 'var(--text-main)', fontSize: 13, outline: 'none'
-                                                            }}
-                                                        />
-                                                        <Calendar size={16} style={{
-                                                            position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
-                                                            color: 'var(--text-tertiary)', pointerEvents: 'none'
-                                                        }} />
-                                                    </div>
+                                                    <CustomDatePicker
+                                                        value={saleDate}
+                                                        onChange={setSaleDate}
+                                                        label={`${saleSource === 'invoice' ? '发票日期' : saleSource === 'shipping_record' ? '发货日期' : '销售日期'} *`}
+                                                        minDate={productInfo?.production_date}
+                                                        maxDate={format(new Date(), 'yyyy-MM-dd')}
+                                                    />
                                                 </div>
                                                 <div>
                                                     <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
@@ -799,6 +932,46 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                                     </div>
                                                 </div>
                                             )}
+
+                                            {/* Shipping Record Info */}
+                                            {saleSource === 'shipping_record' && (
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                                        发货记录信息 <span style={{ color: '#EF4444' }}>*</span>
+                                                    </label>
+                                                    <textarea
+                                                        value={shippingRecordInfo}
+                                                        onChange={(e) => setShippingRecordInfo(e.target.value)}
+                                                        placeholder="请输入发货记录的相关信息，如发货单号、发货日期、收货方等..."
+                                                        style={{
+                                                            width: '100%', minHeight: 80, padding: 10,
+                                                            background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                                                            borderRadius: 8, color: 'var(--text-main)', fontSize: 13, outline: 'none',
+                                                            resize: 'vertical', fontFamily: 'inherit'
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Customer Statement Info */}
+                                            {saleSource === 'customer_statement' && (
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                                        客户陈述信息 <span style={{ color: '#EF4444' }}>*</span>
+                                                    </label>
+                                                    <textarea
+                                                        value={customerStatementInfo}
+                                                        onChange={(e) => setCustomerStatementInfo(e.target.value)}
+                                                        placeholder="请输入客户提供的重要陈述信息..."
+                                                        style={{
+                                                            width: '100%', minHeight: 80, padding: 10,
+                                                            background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                                                            borderRadius: 8, color: 'var(--text-main)', fontSize: 13, outline: 'none',
+                                                            resize: 'vertical', fontFamily: 'inherit'
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -845,8 +1018,21 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                                 <select
                                                     value={selectedModelName}
                                                     onChange={(e) => {
-                                                        setSelectedModelName(e.target.value);
+                                                        const modelName = e.target.value;
+                                                        setSelectedModelName(modelName);
                                                         setSelectedSkuId(''); // Reset SKU when model changes
+                                                        
+                                                        // 自动填充产品线和族群
+                                                        const selectedModel = models.find(m => m.name_zh === modelName);
+                                                        if (selectedModel) {
+                                                            if (selectedModel.product_type) {
+                                                                const line = mapProductTypeToLine(selectedModel.product_type);
+                                                                if (line) setSelectedProductLine(line);
+                                                            }
+                                                            if (selectedModel.product_family) {
+                                                                setSelectedProductFamily(selectedModel.product_family as 'A' | 'B' | 'C' | 'D' | 'E');
+                                                            }
+                                                        }
                                                     }}
                                                     style={{
                                                         width: '100%', height: 48, padding: '0 16px', paddingLeft: 44,
@@ -897,7 +1083,7 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                             <div>
                                                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, letterSpacing: '-0.01em' }}>
-                                                    产品线 <span style={{ color: '#EF4444' }}>*</span>
+                                                    分类 <span style={{ color: '#EF4444' }}>*</span>
                                                 </div>
                                                 <div style={{ position: 'relative' }}>
                                                     <select
@@ -1011,6 +1197,24 @@ export const ProductWarrantyRegistrationModal: React.FC<ProductWarrantyRegistrat
                     to { opacity: 1; transform: scale(1); }
 }
 `}</style>
+            
+            {/* Add Customer Modal */}
+            <UnifiedCustomerModal
+                isOpen={showAddCustomerModal}
+                onClose={() => setShowAddCustomerModal(false)}
+                onSuccess={(accountId, accountName) => {
+                    setSelectedOwnerId(accountId);
+                    setOwnerSearchQuery(accountName);
+                    setShowAddCustomerModal(false);
+                    // Refresh customers list
+                    setCustomers(prev => [...prev, { id: accountId, name: accountName }]);
+                }}
+                prefillData={{
+                    name: ownerSearchQuery
+                }}
+                defaultMode="individual"
+                defaultLifecycleStage="ACTIVE"
+            />
         </div>
     );
 };

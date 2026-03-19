@@ -20,7 +20,9 @@ module.exports = function (db, authenticate) {
                 SELECT system_name, ai_search_history_limit, show_daily_word, notification_refresh_interval, require_finance_confirmation,
                        inquiry_sla_enabled, inquiry_auto_close_days, inquiry_sla_hours,
                        rma_sla_enabled, rma_auto_close_days, rma_sla_hours,
-                       svc_sla_enabled, svc_auto_close_days, svc_sla_hours
+                       svc_sla_enabled, svc_auto_close_days, svc_sla_hours,
+                       show_family_a, show_family_b, show_family_c, show_family_d, show_family_e,
+                       enable_product_type_filter, allowed_product_types
                 FROM system_settings LIMIT 1
             `).get();
 
@@ -44,7 +46,20 @@ module.exports = function (db, authenticate) {
 
                     svc_sla_enabled: settings?.svc_sla_enabled !== 0,
                     svc_auto_close_days: parseInt(settings?.svc_auto_close_days) || 7,
-                    svc_sla_hours: parseInt(settings?.svc_sla_hours) || 24
+                    svc_sla_hours: parseInt(settings?.svc_sla_hours) || 24,
+                    
+                    // Product Dropdown Settings
+                    product_dropdown: {
+                        family_visibility: {
+                            A: settings?.show_family_a !== 0,
+                            B: settings?.show_family_b !== 0,
+                            C: settings?.show_family_c !== 0,
+                            D: settings?.show_family_d !== 0,
+                            E: settings?.show_family_e !== 0
+                        },
+                        enable_type_filter: settings?.enable_product_type_filter !== 0,
+                        allowed_types: (settings?.allowed_product_types || '电影机,摄像机,电子寻像器,寻像器,套装').split(',')
+                    }
                 }
             });
         } catch (err) {
@@ -170,7 +185,8 @@ module.exports = function (db, authenticate) {
                     id,
                     name_zh as name, 
                     product_type as line, 
-                    product_family as family
+                    product_family as family,
+                    sn_prefix
                 FROM product_models 
                 WHERE is_active = 1
             `;

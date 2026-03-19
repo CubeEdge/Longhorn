@@ -27,16 +27,17 @@
 - [server/service/ai_service.js](file://server/service/ai_service.js)
 - [server/service/routes/settings.js](file://server/service/routes/settings.js)
 - [server/service/routes/bokeh.js](file://server/service/routes/bokeh.js)
-- [server/service/migrations/011_ticket_search_index.sql](file://server/service/migrations/011_ticket_search_index.sql#L8-L80)
+- [server/service/migrations/011_ticket_search_index.sql:8-80](file://server/service/migrations/011_ticket_search_index.sql#L8-L80)
 - [server/scripts/index_all_tickets.js](file://server/scripts/index_all_tickets.js)
 - [client/src/components/Admin/AdminSettings.tsx](file://client/src/components/Admin/AdminSettings.tsx)
+- [client/src/index.css](file://client/src/index.css)
 </cite>
 
 ## 更新摘要
 **所做更改**
-- 更新Bokeh编辑器面板和球体组件的视觉样式优化，从紫色渐变更新为青色到淡紫色渐变
-- 增强UI视觉一致性，统一品牌色彩主题
-- 优化渐变色配置，提升组件视觉效果
+- 更新BokehOrb组件的视觉效果增强，包括渐变背景、阴影效果和边框透明度的具体数值调整
+- 增强UI视觉一致性，确保在不同显示条件下更好的可见性和深度感知
+- 优化Bokeh编辑器面板和球体组件的视觉样式，从紫色渐变更新为青色到淡紫色渐变
 
 ## 目录
 1. [简介](#简介)
@@ -128,9 +129,9 @@ BokehAPI --> DB
 ```
 
 **图表来源**
-- [client/package.json](file://client/package.json#L1-L46)
-- [server/package.json](file://server/package.json#L1-L31)
-- [ios/LonghornApp/LonghornApp.swift](file://ios/LonghornApp/LonghornApp.swift#L1-L26)
+- [client/package.json:1-46](file://client/package.json#L1-L46)
+- [server/package.json:1-31](file://server/package.json#L1-L31)
+- [ios/LonghornApp/LonghornApp.swift:1-26](file://ios/LonghornApp/LonghornApp.swift#L1-L26)
 
 ### 目录组织
 
@@ -143,7 +144,7 @@ BokehAPI --> DB
 - **scripts/**：部署和运维脚本
 
 **章节来源**
-- [docs/README.md](file://docs/README.md#L1-L19)
+- [docs/README.md:1-19](file://docs/README.md#L1-L19)
 
 ## 核心组件
 
@@ -184,8 +185,8 @@ iOS应用采用SwiftUI和MVVM架构：
 - **离线支持**：本地数据缓存和同步机制
 
 **章节来源**
-- [client/package.json](file://client/package.json#L12-L30)
-- [server/package.json](file://server/package.json#L15-L29)
+- [client/package.json:12-30](file://client/package.json#L12-L30)
+- [server/package.json:15-29](file://server/package.json#L15-L29)
 
 ## 架构概览
 
@@ -245,8 +246,8 @@ WikiIndex --> SQLite
 ```
 
 **图表来源**
-- [server/index.js](file://server/index.js#L1-L50)
-- [client/src/App.tsx](file://client/src/App.tsx#L96-L211)
+- [server/index.js:1-50](file://server/index.js#L1-L50)
+- [client/src/App.tsx:96-211](file://client/src/App.tsx#L96-L211)
 
 ### 数据流架构
 
@@ -292,8 +293,8 @@ BokehUI-->>Client : 显示响应
 ```
 
 **图表来源**
-- [server/service/routes/auth.js](file://server/service/routes/auth.js#L21-L101)
-- [client/src/store/useAuthStore.ts](file://client/src/store/useAuthStore.ts#L17-L30)
+- [server/service/routes/auth.js:21-101](file://server/service/routes/auth.js#L21-L101)
+- [client/src/store/useAuthStore.ts:17-30](file://client/src/store/useAuthStore.ts#L17-L30)
 
 ## 详细组件分析
 
@@ -334,7 +335,7 @@ User --> Permission : has
 ```
 
 **图表来源**
-- [server/service/routes/auth.js](file://server/service/routes/auth.js#L14-L277)
+- [server/service/routes/auth.js:14-277](file://server/service/routes/auth.js#L14-L277)
 
 #### 权限模型
 
@@ -347,7 +348,7 @@ User --> Permission : has
 | Full | 完全权限 | 管理所有文件和用户
 
 **章节来源**
-- [server/service/routes/auth.js](file://server/service/routes/auth.js#L209-L274)
+- [server/service/routes/auth.js:209-274](file://server/service/routes/auth.js#L209-L274)
 
 ### 文件管理系统
 
@@ -390,7 +391,7 @@ Deny --> End
 ```
 
 **图表来源**
-- [client/src/components/FileBrowser.tsx](file://client/src/components/FileBrowser.tsx#L158-L200)
+- [client/src/components/FileBrowser.tsx:158-200](file://client/src/components/FileBrowser.tsx#L158-L200)
 
 #### 文件处理流程
 
@@ -402,7 +403,7 @@ Deny --> End
 - **压缩包**：支持ZIP文件的解压和浏览
 
 **章节来源**
-- [server/index.js](file://server/index.js#L777-L800)
+- [server/index.js:777-800](file://server/index.js#L777-L800)
 
 ### 服务工单系统
 
@@ -480,7 +481,7 @@ DEALER_REPAIRS }o--|| PRODUCTS : "关联"
 ```
 
 **图表来源**
-- [docs/Service_DataModel.md](file://docs/Service_DataModel.md#L150-L304)
+- [docs/Service_DataModel.md:150-304](file://docs/Service_DataModel.md#L150-L304)
 
 #### 工单流转流程
 
@@ -500,10 +501,10 @@ RMA工单 --> [*]
 ```
 
 **图表来源**
-- [server/service/routes/dealer-repairs.js](file://server/service/routes/dealer-repairs.js#L106-L145)
+- [server/service/routes/dealer-repairs.js:106-145](file://server/service/routes/dealer-repairs.js#L106-L145)
 
 **章节来源**
-- [docs/Service_DataModel.md](file://docs/Service_DataModel.md#L148-L304)
+- [docs/Service_DataModel.md:148-304](file://docs/Service_DataModel.md#L148-L304)
 
 ### 知识库系统
 
@@ -549,7 +550,7 @@ KnowledgeArticle --> TroubleshootingStep : "包含步骤"
 ```
 
 **图表来源**
-- [docs/Service_DataModel.md](file://docs/Service_DataModel.md#L391-L488)
+- [docs/Service_DataModel.md:391-488](file://docs/Service_DataModel.md#L391-L488)
 
 ## Bokeh AI聊天界面系统
 
@@ -602,9 +603,9 @@ ContextMgr --> ContextStore
 ```
 
 **图表来源**
-- [client/src/components/Bokeh/BokehContainer.tsx](file://client/src/components/Bokeh/BokehContainer.tsx#L15-L104)
-- [client/src/components/Bokeh/BokehOrb.tsx](file://client/src/components/Bokeh/BokehOrb.tsx#L8-L80)
-- [client/src/components/Bokeh/BokehPanel.tsx](file://client/src/components/Bokeh/BokehPanel.tsx#L21-L246)
+- [client/src/components/Bokeh/BokehContainer.tsx:15-104](file://client/src/components/Bokeh/BokehContainer.tsx#L15-L104)
+- [client/src/components/Bokeh/BokehOrb.tsx:8-80](file://client/src/components/Bokeh/BokehOrb.tsx#L8-L80)
+- [client/src/components/Bokeh/BokehPanel.tsx:21-246](file://client/src/components/Bokeh/BokehPanel.tsx#L21-L246)
 
 ### 核心组件详解
 
@@ -729,7 +730,7 @@ const sendMessage = async (text: string) => {
 ```
 
 **章节来源**
-- [client/src/components/Bokeh/BokehContainer.tsx](file://client/src/components/Bokeh/BokehContainer.tsx#L15-L104)
+- [client/src/components/Bokeh/BokehContainer.tsx:15-104](file://client/src/components/Bokeh/BokehContainer.tsx#L15-L104)
 
 #### BokehOrb - 悬浮球组件
 
@@ -741,24 +742,34 @@ BokehOrb是聊天界面的入口点，采用悬浮球设计，提供直观的用
 - **拖拽功能**：可拖拽到屏幕任意位置
 - **工具提示**：悬停显示快捷键提示
 
+**渐变背景配置**：
+```typescript
+// 青色到淡紫色径向渐变 - 增强的透明度设置
+background: 'radial-gradient(circle at center, rgba(16, 185, 129, 0.45) 0%, rgba(142, 36, 170, 0.75) 100%)'
+```
+
+**阴影效果增强**：
+```typescript
+// 增强的阴影效果 - 提升深度感知
+boxShadow: '0 0 24px rgba(142, 36, 170, 0.6), 0 0 12px rgba(16, 185, 129, 0.4)'
+```
+
+**边框透明度提升**：
+```typescript
+// 边框透明度从 rgba(16, 185, 129, 0.4) 提升为 rgba(16, 185, 129, 0.5)
+border: '1px solid rgba(16, 185, 129, 0.5)'
+```
+
 **动画实现**：
 ```typescript
-// 脉冲动画
+// 脉冲动画 - 增强的视觉效果
 animate={{
     boxShadow: [
-        '0 0 15px rgba(0, 191, 165, 0.3)',
-        '0 0 25px rgba(142, 36, 170, 0.5)',
-        '0 0 15px rgba(0, 191, 165, 0.3)'
+        '0 0 18px rgba(16, 185, 129, 0.5), 0 0 8px rgba(16, 185, 129, 0.3)',
+        '0 0 40px rgba(142, 36, 170, 0.9), 0 0 15px rgba(142, 36, 170, 0.5)',
+        '0 0 18px rgba(16, 185, 129, 0.5), 0 0 8px rgba(16, 185, 129, 0.3)'
     ],
-    scale: [1, 1.05, 1],
-}}
-
-// 拖拽约束
-dragConstraints={{ 
-    left: -window.innerWidth + 50, 
-    right: 0, 
-    top: -window.innerHeight + 50, 
-    bottom: 0 
+    scale: [1, 1.03, 1],
 }}
 ```
 
@@ -768,7 +779,7 @@ dragConstraints={{
 - 支持鼠标拖拽到屏幕边缘
 
 **章节来源**
-- [client/src/components/Bokeh/BokehOrb.tsx](file://client/src/components/Bokeh/BokehOrb.tsx#L8-L80)
+- [client/src/components/Bokeh/BokehOrb.tsx:8-80](file://client/src/components/Bokeh/BokehOrb.tsx#L8-L80)
 
 #### BokehPanel - 聊天面板组件
 
@@ -828,8 +839,8 @@ const getBannerContent = () => {
             };
         default:
             return null;
-    }
-};
+        }
+    };
 ```
 
 **快捷操作功能**：
@@ -845,7 +856,7 @@ const getBannerContent = () => {
 - 输入验证和空消息过滤
 
 **章节来源**
-- [client/src/components/Bokeh/BokehPanel.tsx](file://client/src/components/Bokeh/BokehPanel.tsx#L21-L246)
+- [client/src/components/Bokeh/BokehPanel.tsx:21-246](file://client/src/components/Bokeh/BokehPanel.tsx#L21-L246)
 
 ### AI服务集成
 
@@ -896,8 +907,8 @@ Guidelines:
 - **数据源控制**：可配置的知识库和工单数据源
 
 **章节来源**
-- [server/service/ai_service.js](file://server/service/ai_service.js#L164-L215)
-- [server/service/routes/settings.js](file://server/service/routes/settings.js#L20-L91)
+- [server/service/ai_service.js:164-215](file://server/service/ai_service.js#L164-L215)
+- [server/service/routes/settings.js:20-91](file://server/service/routes/settings.js#L20-L91)
 
 ### 实时消息处理
 
@@ -924,8 +935,8 @@ useEffect(() => {
 - **编辑器模式**：智能检测编辑器上下文并提供相应建议
 
 **章节来源**
-- [client/src/components/Bokeh/BokehPanel.tsx](file://client/src/components/Bokeh/BokehPanel.tsx#L25-L29)
-- [client/src/components/Bokeh/BokehContainer.tsx](file://client/src/components/Bokeh/BokehContainer.tsx#L46-L54)
+- [client/src/components/Bokeh/BokehPanel.tsx:25-29](file://client/src/components/Bokeh/BokehPanel.tsx#L25-L29)
+- [client/src/components/Bokeh/BokehContainer.tsx:46-54](file://client/src/components/Bokeh/BokehContainer.tsx#L46-L54)
 
 ## KinefinityWiki深度集成
 
@@ -974,8 +985,8 @@ EventBus --> BokehAssistant
 ```
 
 **图表来源**
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L143-L170)
-- [client/src/components/Bokeh/BokehContainer.tsx](file://client/src/components/Bokeh/BokehContainer.tsx#L21-L21)
+- [client/src/components/KinefinityWiki.tsx:143-170](file://client/src/components/KinefinityWiki.tsx#L143-L170)
+- [client/src/components/Bokeh/BokehContainer.tsx:21-21](file://client/src/components/Bokeh/BokehContainer.tsx#L21-L21)
 
 ### 核心组件详解
 
@@ -1059,7 +1070,7 @@ const getContextSummary = (): string => {
 ```
 
 **章节来源**
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L682-L698)
+- [client/src/components/KinefinityWiki.tsx:682-698](file://client/src/components/KinefinityWiki.tsx#L682-L698)
 - [client/src/store/useBokehContext.ts](file://client/src/store/useBokehContext.ts)
 
 #### 搜索模式智能检测
@@ -1161,8 +1172,8 @@ const performAiSearch = async (query: string) => {
 ```
 
 **章节来源**
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L525-L541)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L556-L593)
+- [client/src/components/KinefinityWiki.tsx:525-541](file://client/src/components/KinefinityWiki.tsx#L525-L541)
+- [client/src/components/KinefinityWiki.tsx:556-593](file://client/src/components/KinefinityWiki.tsx#L556-L593)
 
 #### Bokeh编辑器面板
 
@@ -1316,9 +1327,9 @@ const handleRejectChange = () => {
 ```
 
 **章节来源**
-- [client/src/components/Bokeh/BokehEditorPanel.tsx](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L53-L58)
-- [client/src/components/Bokeh/BokehEditorPanel.tsx](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L103-L142)
-- [client/src/components/Bokeh/BokehEditorPanel.tsx](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L184-L209)
+- [client/src/components/Bokeh/BokehEditorPanel.tsx:53-58](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L53-L58)
+- [client/src/components/Bokeh/BokehEditorPanel.tsx:103-142](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L103-L142)
+- [client/src/components/Bokeh/BokehEditorPanel.tsx:184-209](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L184-L209)
 
 ## AI搜索模式检测
 
@@ -1443,9 +1454,9 @@ const detectSearchType = (query: string): boolean => {
 ```
 
 **章节来源**
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L525-L541)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L2416-L2439)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L2441-L2479)
+- [client/src/components/KinefinityWiki.tsx:525-541](file://client/src/components/KinefinityWiki.tsx#L525-L541)
+- [client/src/components/KinefinityWiki.tsx:2416-2439](file://client/src/components/KinefinityWiki.tsx#L2416-L2439)
+- [client/src/components/KinefinityWiki.tsx:2441-2479](file://client/src/components/KinefinityWiki.tsx#L2441-L2479)
 
 ## Bokeh格式化功能
 
@@ -1533,8 +1544,8 @@ const formatResponse = {
 - 引用格式统一
 
 **章节来源**
-- [client/src/components/Bokeh/BokehEditorPanel.tsx](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L90-L101)
-- [client/src/components/Bokeh/BokehEditorPanel.tsx](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L104-L142)
+- [client/src/components/Bokeh/BokehEditorPanel.tsx:90-101](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L90-L101)
+- [client/src/components/Bokeh/BokehEditorPanel.tsx:104-142](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L104-L142)
 
 ## 章节聚合与整章阅读
 
@@ -2028,12 +2039,12 @@ useEffect(() => {
 ```
 
 **章节来源**
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L187-L196)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L198-L240)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L1107-L1116)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L1790-L1815)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L1886-L1940)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L2016-L2126)
+- [client/src/components/KinefinityWiki.tsx:187-196](file://client/src/components/KinefinityWiki.tsx#L187-L196)
+- [client/src/components/KinefinityWiki.tsx:198-240](file://client/src/components/KinefinityWiki.tsx#L198-L240)
+- [client/src/components/KinefinityWiki.tsx:1107-1116](file://client/src/components/KinefinityWiki.tsx#L1107-L1116)
+- [client/src/components/KinefinityWiki.tsx:1790-1815](file://client/src/components/KinefinityWiki.tsx#L1790-L1815)
+- [client/src/components/KinefinityWiki.tsx:1886-1940](file://client/src/components/KinefinityWiki.tsx#L1886-L1940)
+- [client/src/components/KinefinityWiki.tsx:2016-2126](file://client/src/components/KinefinityWiki.tsx#L2016-L2126)
 
 ## 工单链接解析系统
 
@@ -2071,8 +2082,8 @@ TicketDB --> ProductDB
 ```
 
 **图表来源**
-- [client/src/components/Bokeh/TicketLink.tsx](file://client/src/components/Bokeh/TicketLink.tsx#L65-L106)
-- [client/src/components/Bokeh/TicketDetailDialog.tsx](file://client/src/components/Bokeh/TicketDetailDialog.tsx#L44-L62)
+- [client/src/components/Bokeh/TicketLink.tsx:65-106](file://client/src/components/Bokeh/TicketLink.tsx#L65-L106)
+- [client/src/components/Bokeh/TicketDetailDialog.tsx:44-62](file://client/src/components/Bokeh/TicketDetailDialog.tsx#L44-L62)
 
 ### 核心组件详解
 
@@ -2105,7 +2116,7 @@ onMouseEnter={(e) => {
 ```
 
 **章节来源**
-- [client/src/components/Bokeh/TicketLink.tsx](file://client/src/components/Bokeh/TicketLink.tsx#L10-L59)
+- [client/src/components/Bokeh/TicketLink.tsx:10-59](file://client/src/components/Bokeh/TicketLink.tsx#L10-L59)
 
 #### TicketDetailDialog - 工单详情对话框
 
@@ -2156,7 +2167,7 @@ TicketDetailDialog提供工单详细信息的弹窗显示，支持在系统中�
 ```
 
 **章节来源**
-- [client/src/components/Bokeh/TicketDetailDialog.tsx](file://client/src/components/Bokeh/TicketDetailDialog.tsx#L14-L284)
+- [client/src/components/Bokeh/TicketDetailDialog.tsx:14-284](file://client/src/components/Bokeh/TicketDetailDialog.tsx#L14-L284)
 
 ### 工单链接解析流程
 
@@ -2177,10 +2188,10 @@ OpenInSystem --> End
 ```
 
 **图表来源**
-- [client/src/components/Bokeh/BokehPanel.tsx](file://client/src/components/Bokeh/BokehPanel.tsx#L148-L155)
+- [client/src/components/Bokeh/BokehPanel.tsx:148-155](file://client/src/components/Bokeh/BokehPanel.tsx#L148-L155)
 
 **章节来源**
-- [client/src/components/Bokeh/BokehPanel.tsx](file://client/src/components/Bokeh/BokehPanel.tsx#L54-L61)
+- [client/src/components/Bokeh/BokehPanel.tsx:54-61](file://client/src/components/Bokeh/BokehPanel.tsx#L54-L61)
 
 ## AI搜索和索引管理
 
@@ -2216,8 +2227,8 @@ AIService --> TicketSearchIndex
 ```
 
 **图表来源**
-- [server/service/routes/bokeh.js](file://server/service/routes/bokeh.js#L14-L145)
-- [server/service/migrations/011_ticket_search_index.sql](file://server/service/migrations/011_ticket_search_index.sql#L52-L80)
+- [server/service/routes/bokeh.js:14-145](file://server/service/routes/bokeh.js#L14-L145)
+- [server/service/migrations/011_ticket_search_index.sql:52-80](file://server/service/migrations/011_ticket_search_index.sql#L52-L80)
 
 ### 核心组件详解
 
@@ -2281,7 +2292,7 @@ aiSummary = await aiService.generate('chat',
 ```
 
 **章节来源**
-- [server/service/routes/bokeh.js](file://server/service/routes/bokeh.js#L14-L145)
+- [server/service/routes/bokeh.js:14-145](file://server/service/routes/bokeh.js#L14-L145)
 
 #### TicketIndexAPI - 工单索引API
 
@@ -2333,7 +2344,7 @@ if (ticketData.dealer_id) {
 ```
 
 **章节来源**
-- [server/service/routes/bokeh.js](file://server/service/routes/bokeh.js#L147-L354)
+- [server/service/routes/bokeh.js:147-354](file://server/service/routes/bokeh.js#L147-L354)
 
 #### 数据库索引设计
 
@@ -2392,7 +2403,7 @@ END;
 ```
 
 **章节来源**
-- [server/service/migrations/011_ticket_search_index.sql](file://server/service/migrations/011_ticket_search_index.sql#L8-L80)
+- [server/service/migrations/011_ticket_search_index.sql:8-80](file://server/service/migrations/011_ticket_search_index.sql#L8-L80)
 
 ### 搜索和索引流程
 
@@ -2414,10 +2425,10 @@ BokehAPI-->>Client : 返回搜索结果和摘要
 ```
 
 **图表来源**
-- [server/service/routes/bokeh.js](file://server/service/routes/bokeh.js#L58-L140)
+- [server/service/routes/bokeh.js:58-140](file://server/service/routes/bokeh.js#L58-L140)
 
 **章节来源**
-- [server/service/routes/bokeh.js](file://server/service/routes/bokeh.js#L14-L145)
+- [server/service/routes/bokeh.js:14-145](file://server/service/routes/bokeh.js#L14-L145)
 
 ## 并发搜索与关键词提取
 
@@ -2456,7 +2467,7 @@ AIPanel --> TogglePanel
 ```
 
 **图表来源**
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L548-L552)
+- [client/src/components/KinefinityWiki.tsx:548-552](file://client/src/components/KinefinityWiki.tsx#L548-L552)
 
 ### 关键词提取算法
 
@@ -2705,10 +2716,10 @@ useEffect(() => {
 ```
 
 **章节来源**
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L530-L562)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L600-L629)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L631-L646)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L2704-L2722)
+- [client/src/components/KinefinityWiki.tsx:530-562](file://client/src/components/KinefinityWiki.tsx#L530-L562)
+- [client/src/components/KinefinityWiki.tsx:600-629](file://client/src/components/KinefinityWiki.tsx#L600-L629)
+- [client/src/components/KinefinityWiki.tsx:631-646](file://client/src/components/KinefinityWiki.tsx#L631-L646)
+- [client/src/components/KinefinityWiki.tsx:2704-2722](file://client/src/components/KinefinityWiki.tsx#L2704-L2722)
 
 ### AI搜索增强
 
@@ -2748,8 +2759,8 @@ if (needsTicketSearch) {
 ```
 
 **章节来源**
-- [server/service/ai_service.js](file://server/service/ai_service.js#L345-L374)
-- [server/service/routes/bokeh.js](file://server/service/routes/bokeh.js#L96-L107)
+- [server/service/ai_service.js:345-374](file://server/service/ai_service.js#L345-L374)
+- [server/service/routes/bokeh.js:96-107](file://server/service/routes/bokeh.js#L96-L107)
 
 ## 视觉样式优化
 
@@ -2770,13 +2781,13 @@ if (needsTicketSearch) {
 **渐变背景配置**：
 ```typescript
 // 青色到淡紫色径向渐变
-background: 'radial-gradient(circle at center, rgba(0, 191, 165, 0.35) 0%, rgba(142, 36, 170, 0.65) 100%)'
+background: 'radial-gradient(circle at center, rgba(16, 185, 129, 0.45) 0%, rgba(142, 36, 170, 0.75) 100%)'
 
-// 阴影效果
-boxShadow: '0 0 24px rgba(142, 36, 170, 0.5), 0 0 12px rgba(0, 191, 165, 0.3)'
+// 增强的阴影效果
+boxShadow: '0 0 24px rgba(142, 36, 170, 0.6), 0 0 12px rgba(16, 185, 129, 0.4)'
 
-// 边框样式
-border: '1px solid rgba(0, 191, 165, 0.4)'
+// 边框透明度提升
+border: '1px solid rgba(16, 185, 129, 0.5)'
 ```
 
 **动画效果增强**：
@@ -2800,7 +2811,7 @@ background: 'linear-gradient(135deg, #00BFA5, #8E24AA)'
 background: 'rgba(0, 191, 165, 0.15)'
 
 // 边框样式
-border: '1px solid rgba(0, 191, 165, 0.4)'
+border: '1px solid rgba(0, 191, 165, 0.5)'
 ```
 
 **面板视觉设计**：
@@ -2845,7 +2856,7 @@ background: isOptimizing
     ? 'rgba(0, 191, 165, 0.1)' 
     : 'linear-gradient(135deg, #00BFA5 0%, #8E24AA 100%)'
 
-// 阴影效果
+// 增强的阴影效果
 boxShadow: isOptimizing ? 'none' : '0 0 12px rgba(0, 191, 165, 0.3)'
 ```
 
@@ -2875,10 +2886,10 @@ boxShadow: isOptimizing ? 'none' : '0 0 12px rgba(0, 191, 165, 0.3)'
 - **阴影变化**：0.4秒缓动动画
 
 **章节来源**
-- [client/src/components/Bokeh/BokehOrb.tsx](file://client/src/components/Bokeh/BokehOrb.tsx#L23-L27)
-- [client/src/components/Bokeh/BokehEditorPanel.tsx](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L257-L269)
-- [client/src/components/Bokeh/BokehPanel.tsx](file://client/src/components/Bokeh/BokehPanel.tsx#L289-L291)
-- [client/src/components/Knowledge/WikiEditorModal.tsx](file://client/src/components/Knowledge/WikiEditorModal.tsx#L464-L476)
+- [client/src/components/Bokeh/BokehOrb.tsx:23-27](file://client/src/components/Bokeh/BokehOrb.tsx#L23-L27)
+- [client/src/components/Bokeh/BokehEditorPanel.tsx:257-269](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L257-L269)
+- [client/src/components/Bokeh/BokehPanel.tsx:289-291](file://client/src/components/Bokeh/BokehPanel.tsx#L289-L291)
+- [client/src/components/Knowledge/WikiEditorModal.tsx:464-476](file://client/src/components/Knowledge/WikiEditorModal.tsx#L464-L476)
 
 ## 依赖分析
 
@@ -2940,7 +2951,7 @@ BokehEditor --> Axios
 ```
 
 **图表来源**
-- [client/package.json](file://client/package.json#L12-L29)
+- [client/package.json:12-29](file://client/package.json#L12-L29)
 
 ### 后端依赖关系
 
@@ -2990,7 +3001,7 @@ ContextMgr --> WikiSvc
 ```
 
 **图表来源**
-- [server/package.json](file://server/package.json#L15-L29)
+- [server/package.json:15-29](file://server/package.json#L15-L29)
 
 ### 移动端依赖关系
 
@@ -3021,11 +3032,11 @@ Foundation --> UserDefaults
 ```
 
 **图表来源**
-- [ios/LonghornApp/LonghornApp.swift](file://ios/LonghornApp/LonghornApp.swift#L9-L25)
+- [ios/LonghornApp/LonghornApp.swift:9-25](file://ios/LonghornApp/LonghornApp.swift#L9-L25)
 
 **章节来源**
-- [client/package.json](file://client/package.json#L1-L46)
-- [server/package.json](file://server/package.json#L1-L31)
+- [client/package.json:1-46](file://client/package.json#L1-L46)
+- [server/package.json:1-31](file://server/package.json#L1-L31)
 
 ## 性能考虑
 
@@ -3209,7 +3220,7 @@ FixVars --> End[问题解决]
 - 确认动画帧率设置合理
 
 **章节来源**
-- [docs/SYSTEM_CONTEXT.md](file://docs/SYSTEM_CONTEXT.md#L75-L89)
+- [docs/SYSTEM_CONTEXT.md:75-89](file://docs/SYSTEM_CONTEXT.md#L75-L89)
 
 ## 结论
 
@@ -3230,7 +3241,7 @@ Bokeh智能助手项目展现了现代全栈应用的最佳实践，通过合理
 11. **章节聚合体验**：支持章节级别的内容聚合展示
 12. **并发搜索性能**：同时执行关键词搜索和AI搜索，显著提升响应速度
 13. **智能关键词提取**：从查询中提取最有价值的技术关键词
-14. **视觉统一风格**：青色到淡紫色渐变的统一视觉设计
+14. **视觉统一风格**：青色到淡紫色渐变的统一UI设计
 15. **可扩展性强**：模块化设计便于功能扩展和维护
 
 ### 新增功能亮点
@@ -3329,9 +3340,9 @@ npm run lint
 - **POST /api/v1/knowledge/search/concurrent**：并发搜索（新增）
 
 **章节来源**
-- [server/index.js](file://server/index.js#L676-L687)
-- [server/service/routes/settings.js](file://server/service/routes/settings.js#L20-L91)
-- [server/service/routes/bokeh.js](file://server/service/routes/bokeh.js#L14-L354)
-- [client/src/components/KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L556-L593)
-- [client/src/components/Bokeh/BokehEditorPanel.tsx](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L104-L142)
-- [client/src/components/Admin/AdminSettings.tsx](file://client/src/components/Admin/AdminSettings.tsx#L1565-L1580)
+- [server/index.js:676-687](file://server/index.js#L676-L687)
+- [server/service/routes/settings.js:20-91](file://server/service/routes/settings.js#L20-L91)
+- [server/service/routes/bokeh.js:14-354](file://server/service/routes/bokeh.js#L14-L354)
+- [client/src/components/KinefinityWiki.tsx:556-593](file://client/src/components/KinefinityWiki.tsx#L556-L593)
+- [client/src/components/Bokeh/BokehEditorPanel.tsx:104-142](file://client/src/components/Bokeh/BokehEditorPanel.tsx#L104-L142)
+- [client/src/components/Admin/AdminSettings.tsx:1565-1580](file://client/src/components/Admin/AdminSettings.tsx#L1565-L1580)

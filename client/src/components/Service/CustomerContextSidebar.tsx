@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
-import ContactCleaningModal from './ContactCleaningModal';
+// import ContactCleaningModal from './ContactCleaningModal'; // 已整合到 UnifiedCustomerModal
 import UnifiedCustomerModal from './UnifiedCustomerModal';
 import ConfirmModal from './ConfirmModal';
 import LinkCorporateModal from './LinkCorporateModal';
@@ -56,6 +56,8 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
     const [customerExpanded, setCustomerExpanded] = useState(true);
     const [deviceExpanded, setDeviceExpanded] = useState(true);
     const [unknownIdentityExpanded, setUnknownIdentityExpanded] = useState(true);
+    // 存储账户联系人列表（用于编辑模态框）
+    const [accountContacts, setAccountContacts] = useState<any[]>([]);
 
     useEffect(() => {
         fetchContext();
@@ -394,13 +396,10 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                         <button
                                             onClick={() => setShowConvertModal(true)}
                                             style={{
-                                                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
-                                                background: 'var(--accent-blue)', border: '1px solid var(--accent-blue)',
-                                                borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                                                boxShadow: '0 2px 4px rgba(0, 122, 255, 0.2)', transition: 'all 0.2s'
+                                                display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px',
+                                                background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)',
+                                                borderRadius: 6, color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500
                                             }}
-                                            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-                                            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                                         >
                                             <UserPlus size={14} /> 添加为新客户
                                         </button>
@@ -446,11 +445,27 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
                                 </div>
                             )}
                             <button
-                                onClick={() => setShowCleanModal(true)}
+                                onClick={async () => {
+                                    // 先加载账户联系人
+                                    if (data?.account?.id) {
+                                        try {
+                                            const response = await axios.get(`/api/v1/accounts/${data.account.id}/contacts`, {
+                                                headers: { Authorization: `Bearer ${token}` }
+                                            });
+                                            if (response.data?.success) {
+                                                setAccountContacts(response.data.data || []);
+                                            }
+                                        } catch (err) {
+                                            console.error('Failed to load contacts:', err);
+                                            setAccountContacts([]);
+                                        }
+                                    }
+                                    setShowCleanModal(true);
+                                }}
                                 style={{
                                     marginTop: 10, width: '100%', padding: '6px 0',
-                                    background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)',
-                                    borderRadius: 6, color: '#FFD200', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600
+                                    background: 'var(--accent-gold)', border: '1px solid var(--accent-gold)',
+                                    borderRadius: 6, color: '#000', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600
                                 }}
                             >
                                 + 入库联系人并清洗
@@ -888,17 +903,32 @@ const CustomerContextSidebar: React.FC<CustomerContextSidebarProps> = ({
             </div>
 
             {/* Modals */}
+            {/* 联系人入库整合到 UnifiedCustomerModal - 编辑模式 */}
             {showCleanModal && ticketId && data?.account && reporterSnapshot && (
-                <ContactCleaningModal
-                    ticketId={ticketId}
-                    accountId={data.account.id}
-                    accountName={data.account.name}
-                    reporterSnapshot={reporterSnapshot}
+                <UnifiedCustomerModal
+                    isOpen={showCleanModal}
                     onClose={() => setShowCleanModal(false)}
                     onSuccess={() => {
                         setShowCleanModal(false);
                         if (onCleanComplete) onCleanComplete();
                     }}
+                    ticketId={ticketId}
+                    isEditing={true}
+                    editData={{
+                        ...data.account,
+                        // 使用从API加载的联系人列表，并将访客信息作为新联系人添加到末尾
+                        contacts: [
+                            ...accountContacts,
+                            {
+                                name: reporterSnapshot.name || '',
+                                email: reporterSnapshot.email || '',
+                                phone: reporterSnapshot.phone || '',
+                                job_title: '',
+                                is_primary: accountContacts.length === 0 // 如果没有联系人，设为 primary
+                            }
+                        ]
+                    }}
+                    defaultLifecycleStage="ACTIVE"
                 />
             )}
 

@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { 
-    ArrowLeft, Edit2, Trash2, Shield, Calendar, Package, 
-    Link as LinkIcon, Activity, CheckCircle, AlertTriangle, 
-    MoreVertical, Power, Clock, Settings, User, Hash, 
+    ArrowLeft, Edit2, Trash2, Shield, Calendar, 
+    Activity, CheckCircle, AlertTriangle, 
+    MoreVertical, Power, Clock, Settings, User, 
     Cpu, Globe, Calculator, X, Info, HelpCircle, AlertCircle
 } from 'lucide-react';
 import { useAuthStore } from '../store/useAuthStore';
@@ -65,7 +65,7 @@ interface WarrantyCalc {
 }
 
 const ProductDetailPage: React.FC = () => {
-    const { serialNumber } = useParams<{ serialNumber: string }>();
+    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { token } = useAuthStore();
     
@@ -80,19 +80,22 @@ const ProductDetailPage: React.FC = () => {
     const [isWarrantyRegistrationOpen, setIsWarrantyRegistrationOpen] = useState(false);
 
     useEffect(() => {
-        if (serialNumber) {
+        if (id) {
             fetchProductDetail();
-            fetchWarrantyCalc();
         }
-    }, [serialNumber]);
+    }, [id]);
 
     const fetchProductDetail = async () => {
         try {
-            const res = await axios.get(`/api/v1/products/sn/${serialNumber}`, {
+            const res = await axios.get(`/api/v1/admin/products/${id}/detail`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.success) {
                 setProduct(res.data.data);
+                // Fetch warranty calc after getting product details (need serial_number)
+                if (res.data.data.serial_number) {
+                    fetchWarrantyCalc(res.data.data.serial_number);
+                }
             }
         } catch (err: any) {
             setError(err.response?.data?.error?.message || '获取产品详情失败');
@@ -101,9 +104,9 @@ const ProductDetailPage: React.FC = () => {
         }
     };
 
-    const fetchWarrantyCalc = async () => {
+    const fetchWarrantyCalc = async (_serialNumber: string) => {
         try {
-            const res = await axios.get(`/api/v1/products/sn/${serialNumber}/warranty-calc`, {
+            const res = await axios.get(`/api/v1/warranty/product/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.success) {
@@ -161,15 +164,23 @@ const ProductDetailPage: React.FC = () => {
         );
     };
 
-    const WarrantyBadge = ({ status }: { status: string }) => {
+    const WarrantyBadge = ({ status, endDate }: { status: string, endDate?: string }) => {
+        // 根据endDate判断是否为待录入状态，与ProductManagement列表保持一致
+        const isPendingEntry = !endDate || endDate === '0000-00-00';
+        
         const config: Record<string, { label: string, color: string, bg: string, icon: any }> = {
-            'ACTIVE': { label: '保修中', color: '#10B981', bg: 'rgba(16,185,129,0.1)', icon: CheckCircle },
-            'EXPIRED': { label: '已过保', color: '#EF4444', bg: 'rgba(239,68,68,0.1)', icon: AlertTriangle },
-            'PENDING': { label: '待生效', color: '#FFD200', bg: 'rgba(255,210,0,0.1)', icon: Clock }
+            'ACTIVE': { label: '保内', color: '#10B981', bg: 'rgba(16,185,129,0.12)', icon: CheckCircle },
+            'EXPIRED': { label: '过保', color: '#EF4444', bg: 'rgba(239,68,68,0.12)', icon: AlertTriangle },
+            'PENDING': { label: '待录入', color: 'var(--text-tertiary)', bg: 'rgba(107, 114, 128, 0.1)', icon: Clock }
         };
-        const s = config[status] || { label: status, color: '#888', bg: 'rgba(255,255,255,0.05)', icon: HelpCircle };
+        
+        // 如果没有endDate，显示待录入状态
+        const s = isPendingEntry 
+            ? { label: '待录入', color: 'var(--text-tertiary)', bg: 'rgba(107, 114, 128, 0.1)', icon: Clock }
+            : (config[status] || { label: status, color: '#888', bg: 'rgba(255,255,255,0.05)', icon: HelpCircle });
+            
         return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, background: s.bg, color: s.color, fontSize: 12, fontWeight: 700 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, background: s.bg, color: s.color, fontSize: 12, fontWeight: 700, border: `1px solid ${s.bg.replace('0.1', '0.2')}` }}>
                 <s.icon size={14} />
                 {s.label}
             </div>
@@ -212,29 +223,49 @@ const ProductDetailPage: React.FC = () => {
 
     return (
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px 60px' }}>
-            {/* Top Navigation */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
-                <button 
-                    onClick={() => navigate(-1)} 
-                    style={{ 
-                        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 8,
-                        background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)',
-                        color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 14, fontWeight: 500
-                    }}
-                >
-                    <ArrowLeft size={16} /> 返回列表
-                </button>
-                <div style={{ position: 'relative' }}>
-                    <button 
-                        onClick={() => setShowMoreMenu(!showMoreMenu)}
-                        style={{ 
-                            width: 36, height: 36, borderRadius: 8, background: 'var(--glass-bg-light)',
-                            border: '1px solid var(--glass-border)', cursor: 'pointer', color: 'var(--text-secondary)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}
-                    >
-                        <MoreVertical size={20} />
+            {/* Header Sticky Bar - 与ProductModelDetailPage保持一致 */}
+            <div style={{
+                padding: '16px 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 32
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <button onClick={() => navigate(-1)} style={{
+                        width: 36, height: 36, borderRadius: '50%', background: 'var(--glass-bg-hover)',
+                        border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', cursor: 'pointer'
+                    }}>
+                        <ArrowLeft size={18} />
                     </button>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{product.model_name}</h2>
+                            <StatusBadge status={product.status} />
+                        </div>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            {product.serial_number} | SKU: {product.product_sku || '-'} | {product.product_line}
+                        </p>
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <WarrantyBadge status={product.warranty_status} endDate={product.warranty_end_date} />
+                    <div style={{ position: 'relative' }}>
+                        <button 
+                            onClick={() => setShowMoreMenu(!showMoreMenu)}
+                            style={{ 
+                                width: 40, height: 40, borderRadius: '50%', background: 'var(--glass-bg-hover)',
+                                border: '1.5px solid var(--glass-border)', cursor: 'pointer', color: 'var(--text-secondary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.15s'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-secondary)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+                        >
+                            <MoreVertical size={20} />
+                        </button>
                     {showMoreMenu && (
                         <>
                             <div 
@@ -307,35 +338,7 @@ const ProductDetailPage: React.FC = () => {
                             </div>
                         </>
                     )}
-                </div>
-            </div>
-
-            {/* Header Content */}
-            <div style={{ marginBottom: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-                    <div style={{ 
-                        width: 80, height: 80, borderRadius: 20, background: 'linear-gradient(135deg, #FFD200, #FFA500)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000',
-                        boxShadow: '0 8px 24px rgba(255,210,0,0.2)'
-                    }}>
-                        <Package size={40} strokeWidth={1.5} />
                     </div>
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                            <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>
-                                {product.model_name}
-                            </h1>
-                            <StatusBadge status={product.status} />
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 20, color: 'var(--text-secondary)', fontSize: 15 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Hash size={16} /> {product.serial_number}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><LinkIcon size={16} /> SKU: {product.product_sku || '-'}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Globe size={16} /> {product.product_line}</div>
-                        </div>
-                    </div>
-                </div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                    <WarrantyBadge status={product.warranty_status} />
                 </div>
             </div>
 
@@ -625,8 +628,7 @@ const ProductDetailPage: React.FC = () => {
                     productName={product.model_name || ''}
                     onRegistered={() => {
                         setIsWarrantyRegistrationOpen(false);
-                        fetchProductDetail(); // Refresh product info
-                        fetchWarrantyCalc(); // Refresh warranty calc status
+                        fetchProductDetail(); // Refresh product info (will also refresh warranty calc)
                     }}
                 />
             )}

@@ -82,6 +82,15 @@ module.exports = (db, authenticate, backupService) => {
                 settings.svc_sla_enabled = settings.svc_sla_enabled !== 0;
                 settings.svc_auto_close_days = parseInt(settings.svc_auto_close_days) || 7;
                 settings.svc_sla_hours = parseInt(settings.svc_sla_hours) || 24;
+
+                // Normalize Product Dropdown Settings
+                settings.show_family_a = settings.show_family_a !== 0;
+                settings.show_family_b = settings.show_family_b !== 0;
+                settings.show_family_c = settings.show_family_c !== 0;
+                settings.show_family_d = settings.show_family_d !== 0;
+                settings.show_family_e = settings.show_family_e !== 0;
+                settings.enable_product_type_filter = settings.enable_product_type_filter !== 0;
+                settings.allowed_product_types = settings.allowed_product_types || '电影机,摄像机,电子寻像器,寻像器,套装';
             }
 
             providers.forEach(p => {
@@ -156,6 +165,14 @@ module.exports = (db, authenticate, backupService) => {
                         svc_auto_close_days = @svc_auto_close_days,
                         svc_sla_hours = @svc_sla_hours,
                         
+                        show_family_a = @show_family_a,
+                        show_family_b = @show_family_b,
+                        show_family_c = @show_family_c,
+                        show_family_d = @show_family_d,
+                        show_family_e = @show_family_e,
+                        enable_product_type_filter = @enable_product_type_filter,
+                        allowed_product_types = @allowed_product_types,
+                        
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = @id
                 `).run({
@@ -184,7 +201,16 @@ module.exports = (db, authenticate, backupService) => {
                     rma_sla_hours: parseInt(settings.rma_sla_hours) || 24,
                     svc_sla_enabled: settings.svc_sla_enabled !== false ? 1 : 0,
                     svc_auto_close_days: parseInt(settings.svc_auto_close_days) || 7,
-                    svc_sla_hours: parseInt(settings.svc_sla_hours) || 24
+                    svc_sla_hours: parseInt(settings.svc_sla_hours) || 24,
+                    
+                    // Product Dropdown Settings
+                    show_family_a: settings.show_family_a !== false ? 1 : 0,
+                    show_family_b: settings.show_family_b !== false ? 1 : 0,
+                    show_family_c: settings.show_family_c !== false ? 1 : 0,
+                    show_family_d: settings.show_family_d !== false ? 1 : 0,
+                    show_family_e: settings.show_family_e !== false ? 1 : 0,
+                    enable_product_type_filter: settings.enable_product_type_filter !== false ? 1 : 0,
+                    allowed_product_types: settings.allowed_product_types || '电影机,摄像机,电子寻像器,寻像器,套装'
                 });
 
                 // Reload Backup Service

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Truck, Wrench, CreditCard, FileCheck, Loader2, Camera, PackageOpen, Paperclip, AlertCircle, ShieldAlert, ShieldCheck, Users, Package, Plane, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
+import { CustomDatePicker } from '../UI/CustomDatePicker';
 
 // 发货方式类型
 type ShippingMethod = 'express' | 'forwarder' | 'pickup' | 'combined';
@@ -296,15 +297,11 @@ export const ActionBufferModal: React.FC<ActionBufferModalProps> = ({
                         />
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        <div>
-                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6 }}>收款日期</label>
-                            <input
-                                type="date"
-                                value={formData.payment_date || new Date().toISOString().split('T')[0]}
-                                onChange={e => setFormData({ ...formData, payment_date: e.target.value })}
-                                style={inputStyle}
-                            />
-                        </div>
+                        <CustomDatePicker
+                            label="收款日期"
+                            value={formData.payment_date || new Date().toISOString().split('T')[0]}
+                            onChange={(val) => setFormData({ ...formData, payment_date: val })}
+                        />
                         <div>
                             <label style={{ display: 'block', fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6 }}>收款渠道 (必选)</label>
                             <select

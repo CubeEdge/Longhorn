@@ -883,6 +883,8 @@ module.exports = function (db, authenticate) {
                     warranty_status: report.warranty_status,
                     repair_warranty_days: report.repair_warranty_days,
                     version: report.version,
+                    prepared_by: report.prepared_by ? { id: report.prepared_by, display_name: report.prepared_by_name } : null,
+                    translations: report.translations ? JSON.parse(report.translations) : null,
                     created_by: report.created_by ? { id: report.created_by, display_name: report.created_by_name } : null,
                     created_at: report.created_at,
                     updated_at: report.updated_at,
@@ -924,7 +926,9 @@ module.exports = function (db, authenticate) {
                 total_cost = 0,
                 currency = 'CNY',
                 warranty_status,
-                repair_warranty_days = 90
+                repair_warranty_days = 90,
+                prepared_by,
+                translations
             } = req.body;
 
             if (!ticket_id || !content) {
@@ -940,11 +944,13 @@ module.exports = function (db, authenticate) {
                 INSERT INTO repair_reports (
                     report_number, ticket_id, status, content,
                     service_type, total_cost, currency, warranty_status, repair_warranty_days,
+                    prepared_by, prepared_by_name, translations,
                     created_by, created_at, updated_at
-                ) VALUES (?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             `).run(
                 reportNumber, ticket_id, JSON.stringify(content),
                 service_type, total_cost, currency, warranty_status, repair_warranty_days,
+                prepared_by?.id || null, prepared_by?.display_name || null, translations ? JSON.stringify(translations) : null,
                 req.user.id
             );
 
@@ -1003,7 +1009,9 @@ module.exports = function (db, authenticate) {
                 total_cost,
                 currency,
                 warranty_status,
-                repair_warranty_days
+                repair_warranty_days,
+                prepared_by,
+                translations
             } = req.body;
 
             const updates = ['updated_at = CURRENT_TIMESTAMP', 'updated_by = ?'];
@@ -1032,6 +1040,16 @@ module.exports = function (db, authenticate) {
             if (repair_warranty_days !== undefined) {
                 updates.push('repair_warranty_days = ?');
                 params.push(repair_warranty_days);
+            }
+            if (prepared_by !== undefined) {
+                updates.push('prepared_by = ?');
+                updates.push('prepared_by_name = ?');
+                params.push(prepared_by?.id || null);
+                params.push(prepared_by?.display_name || null);
+            }
+            if (translations !== undefined) {
+                updates.push('translations = ?');
+                params.push(JSON.stringify(translations));
             }
 
             params.push(req.params.id);
@@ -1495,6 +1513,171 @@ module.exports = function (db, authenticate) {
             });
         } catch (err) {
             console.error('[RMA Documents] Audit log error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    // ============================================
+    // Translation APIs for Repair Reports
+    // ============================================
+
+    /**
+     * POST /api/v1/rma-documents/repair-reports/:id/translate
+     * AI translate report content to target language
+     */
+    router.post('/repair-reports/:id/translate', authenticate, async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { target_lang, fields } = req.body;  // fields: array of field names to translate
+
+            const report = db.prepare('SELECT * FROM repair_reports WHERE id = ? AND is_deleted = 0').get(id);
+            if (!report) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '维修报告不存在' }
+                });
+            }
+
+            // Parse content
+            const content = JSON.parse(report.content || '{}');
+            const translations = JSON.parse(report.translations || '{}');
+
+            // Fields that can be translated
+            const translatableFields = [
+                'issue_description',
+                'fault_symptoms', 
+                'diagnosis',
+                'repair_process',
+                'repair_result',
+                'notes',
+                'qa_result'
+            ];
+
+            const fieldsToTranslate = fields || translatableFields;
+            const result = {};
+
+            for (const field of fieldsToTranslate) {
+                const sourceText = content[field];
+                if (!sourceText || typeof sourceText !== 'string') continue;
+
+                // Check cache first
+                const cached = db.prepare(
+                    'SELECT translated_text FROM translation_cache WHERE source_text = ? AND source_lang = ? AND target_lang = ?'
+                ).get(sourceText, 'zh', target_lang);
+
+                if (cached) {
+                    // Update use count
+                    db.prepare('UPDATE translation_cache SET use_count = use_count + 1 WHERE source_text = ? AND source_lang = ? AND target_lang = ?')
+                        .run(sourceText, 'zh', target_lang);
+                    result[field] = cached.translated_text;
+                } else {
+                    // Will need AI translation - return placeholder for now
+                    result[field] = null;
+                }
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    target_lang,
+                    translations: result,
+                    needs_ai_translation: Object.values(result).some(v => v === null)
+                }
+            });
+        } catch (err) {
+            console.error('[RMA Documents] Translate error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * POST /api/v1/rma-documents/repair-reports/:id/translations
+     * Save translations (AI or manual)
+     */
+    router.post('/repair-reports/:id/translations', authenticate, (req, res) => {
+        try {
+            const { id } = req.params;
+            const { lang, translations: newTranslations, is_manual_edit } = req.body;
+
+            const report = db.prepare('SELECT * FROM repair_reports WHERE id = ? AND is_deleted = 0').get(id);
+            if (!report) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '维修报告不存在' }
+                });
+            }
+
+            // Get existing translations
+            const existingTranslations = JSON.parse(report.translations || '{}');
+
+            // Merge new translations
+            existingTranslations[lang] = {
+                ...existingTranslations[lang],
+                ...newTranslations,
+                _meta: {
+                    updated_at: new Date().toISOString(),
+                    updated_by: req.user.display_name || req.user.username,
+                    is_manual_edit: !!is_manual_edit
+                }
+            };
+
+            // Save to database
+            db.prepare('UPDATE repair_reports SET translations = ? WHERE id = ?')
+                .run(JSON.stringify(existingTranslations), id);
+
+            // Log audit for manual edits
+            if (is_manual_edit) {
+                for (const [field, value] of Object.entries(newTranslations)) {
+                    db.prepare(`
+                        INSERT INTO translation_audit_log (report_id, field_name, target_lang, action, manual_correction, user_id, user_name)
+                        VALUES (?, ?, ?, 'manual_edited', ?, ?, ?)
+                    `).run(id, field, lang, value, req.user.id, req.user.display_name || req.user.username);
+                }
+            }
+
+            res.json({
+                success: true,
+                data: { translations: existingTranslations }
+            });
+        } catch (err) {
+            console.error('[RMA Documents] Save translations error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    /**
+     * GET /api/v1/rma-documents/repair-reports/:id/translations
+     * Get all translations for a report
+     */
+    router.get('/repair-reports/:id/translations', authenticate, (req, res) => {
+        try {
+            const { id } = req.params;
+
+            const report = db.prepare('SELECT translations FROM repair_reports WHERE id = ? AND is_deleted = 0').get(id);
+            if (!report) {
+                return res.status(404).json({
+                    success: false,
+                    error: { code: 'NOT_FOUND', message: '维修报告不存在' }
+                });
+            }
+
+            const translations = JSON.parse(report.translations || '{}');
+
+            res.json({
+                success: true,
+                data: { translations }
+            });
+        } catch (err) {
+            console.error('[RMA Documents] Get translations error:', err);
             res.status(500).json({
                 success: false,
                 error: { code: 'SERVER_ERROR', message: err.message }

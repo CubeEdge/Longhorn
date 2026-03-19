@@ -11,6 +11,26 @@ import {
 // Top bar height constant for drawer positioning
 const TOP_BAR_HEIGHT = 64;
 
+// Column resize handle styles
+const colResizeHandleStyle = `
+  .col-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: col-resize;
+    background: transparent;
+    transition: background 0.2s;
+  }
+  .col-resize-handle:hover {
+    background: var(--kine-yellow);
+  }
+  .col-resize-handle:active {
+    background: var(--kine-yellow);
+  }
+`;
+
 // Types - Product Model (Product Line definition)
 interface ProductModel {
     id: number;
@@ -19,6 +39,7 @@ interface ProductModel {
     brand?: string;
     model_code?: string;
     material_id?: string;
+    sn_prefix?: string;
     product_family: 'A' | 'B' | 'C' | 'D' | 'E';
     product_type: string;
     description: string;
@@ -48,25 +69,53 @@ const PRODUCT_FAMILY_MAP = {
     'A': { code: 'A', name: 'Current Cine Cameras', label: '在售电影机', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
     'B': { code: 'B', name: 'Broadcast Camera', label: '广播摄像机', color: 'bg-orange-500/20 text-orange-400 border border-orange-500/30' },
     'C': { code: 'C', name: 'Eagle e-Viewfinder', label: '电子寻像器', color: 'bg-green-500/20 text-green-400 border border-green-500/30' },
-    'D': { code: 'D', name: 'Archived Cine Cameras', label: '历史机型', color: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' },
+    'D': { code: 'D', name: 'Archived Cine Cameras', label: '历史产品', color: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' },
     'E': { code: 'E', name: 'Universal Accessories', label: '通用配件', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/30' }
 };
 
+// 英文值 -> 显示标签
 const PRODUCT_TYPE_OPTIONS = [
-    { value: 'CAMERA', label: 'product.type.CAMERA' },
-    { value: 'VIEWFINDER', label: 'product.type.VIEWFINDER' },
-    { value: 'LENS', label: 'product.type.LENS' },
-    { value: 'BATTERY', label: 'product.type.BATTERY' },
-    { value: 'CHARGER', label: 'product.type.CHARGER' },
-    { value: 'CABLE', label: 'product.type.CABLE' },
-    { value: 'MOUNT', label: 'product.type.MOUNT' },
-    { value: 'MONITOR', label: 'product.type.MONITOR' },
-    { value: 'STORAGE', label: 'product.type.STORAGE' },
-    { value: 'ACCESSORY', label: 'product.type.ACCESSORY' },
-    { value: 'OTHER', label: 'product.type.OTHER' }
+    { value: 'RIG', label: 'Rig' },
+    { value: 'BATTERY', label: '电池' },
+    { value: 'ACCESSORY', label: '周边' },
+    { value: 'RIG_MONITOR', label: 'Rig;监视器' },
+    { value: 'POWER', label: '电源' },
+    { value: 'CABLE_POWER', label: '线缆;电源' },
+    { value: 'CABLE_STORAGE', label: '线缆;存储卡' },
+    { value: 'MOVCAM', label: 'Movcam' },
+    { value: 'MONITOR', label: '监视器' },
+    { value: 'CABLE', label: '线缆' },
+    { value: 'VIEWFINDER', label: '电子寻像器' },
+    { value: 'STORAGE', label: '存储卡' },
+    { value: 'CAMERA', label: '摄影机' },
+    { value: 'LENS', label: '镜头' },
+    { value: 'CHARGER', label: '充电器' },
+    { value: 'MOUNT', label: '卡口/转接环' },
+    { value: 'OTHER', label: '其他' }
 ];
 
-type ProductFamily = 'ALL' | 'A' | 'B' | 'C' | 'D';
+type ProductFamily = 'ALL' | 'A' | 'B' | 'C' | 'D' | 'E';
+
+// Column widths storage
+const COL_WIDTHS_KEY = 'longhorn_pm_col_widths';
+type ColKey = 'model_code' | 'name' | 'sn_prefix' | 'family' | 'sku_instance' | 'action';
+const DEFAULT_COL_WIDTHS: Record<ColKey, number> = { 
+    model_code: 140, 
+    name: 200, 
+    sn_prefix: 120, 
+    family: 140, 
+    sku_instance: 100, 
+    action: 80 
+};
+
+function loadColWidths(): Record<ColKey, number> {
+    try {
+        const saved = localStorage.getItem(COL_WIDTHS_KEY);
+        return saved ? { ...DEFAULT_COL_WIDTHS, ...JSON.parse(saved) } : { ...DEFAULT_COL_WIDTHS };
+    } catch {
+        return { ...DEFAULT_COL_WIDTHS };
+    }
+}
 
 const ProductModelsManagement: React.FC = () => {
     const { t: _t } = useLanguage();
@@ -95,6 +144,14 @@ const ProductModelsManagement: React.FC = () => {
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Column widths & resize
+    const [colWidths, setColWidths] = useState<Record<ColKey, number>>(loadColWidths);
+    const resizingRef = useRef<{ col: ColKey; startX: number; startWidth: number } | null>(null);
+
+    // Column sort state
+    type SortKey = 'model_code' | 'name' | 'sn_prefix' | 'family' | 'sku_count' | 'instance_count';
+    const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; dir: 'asc' | 'desc' }>({ key: null, dir: 'asc' });
 
     // SKU list for right panel
     const [skus, setSkus] = useState<ProductSku[]>([]);
@@ -151,6 +208,79 @@ const ProductModelsManagement: React.FC = () => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Column resize handlers
+    const startColResize = (e: React.MouseEvent, col: ColKey) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resizingRef.current = { col, startX: e.clientX, startWidth: colWidths[col] };
+        const onMouseMove = (me: MouseEvent) => {
+            if (!resizingRef.current) return;
+            const delta = me.clientX - resizingRef.current.startX;
+            const newWidth = Math.max(50, resizingRef.current.startWidth + delta);
+            setColWidths(prev => {
+                const next = { ...prev, [resizingRef.current!.col]: newWidth };
+                localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(next));
+                return next;
+            });
+        };
+        const onMouseUp = () => {
+            resizingRef.current = null;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+        };
+        document.body.style.cursor = 'col-resize';
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
+
+    // Sort handler
+    const handleSort = (key: SortKey) => {
+        setSortConfig(prev => {
+            if (prev.key === key) {
+                if (prev.dir === 'asc') return { key, dir: 'desc' as const };
+                return { key: null, dir: 'asc' as const };
+            }
+            return { key, dir: 'asc' as const };
+        });
+    };
+
+    // Filter and sort models
+    const filteredAndSortedModels = productModels
+        .filter(model => {
+            if (productFamily !== 'ALL' && model.product_family !== productFamily) return false;
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                return (
+                    model.name_zh?.toLowerCase().includes(query) ||
+                    model.name_en?.toLowerCase().includes(query) ||
+                    model.model_code?.toLowerCase().includes(query) ||
+                    model.sn_prefix?.toLowerCase().includes(query)
+                );
+            }
+            return true;
+        })
+        .sort((a, b) => {
+            if (!sortConfig.key) return 0;
+            const dir = sortConfig.dir === 'asc' ? 1 : -1;
+            switch (sortConfig.key) {
+                case 'model_code':
+                    return (a.model_code || '').localeCompare(b.model_code || '') * dir;
+                case 'name':
+                    return (a.name_zh || '').localeCompare(b.name_zh || '') * dir;
+                case 'sn_prefix':
+                    return (a.sn_prefix || '').localeCompare(b.sn_prefix || '') * dir;
+                case 'family':
+                    return (a.product_family || '').localeCompare(b.product_family || '') * dir;
+                case 'sku_count':
+                    return ((a.sku_count || 0) - (b.sku_count || 0)) * dir;
+                case 'instance_count':
+                    return ((a.instance_count || 0) - (b.instance_count || 0)) * dir;
+                default:
+                    return 0;
+            }
+        });
 
     const handleOpenDrawer = (model?: ProductModel) => {
         if (model) {
@@ -286,13 +416,15 @@ const ProductModelsManagement: React.FC = () => {
     const familyTabs: { key: ProductFamily; label: string }[] = [
         { key: 'ALL', label: '全部' },
         { key: 'A', label: '在售电影机' },
-        { key: 'B', label: '历史机型' },
+        { key: 'B', label: '广播摄像机' },
         { key: 'C', label: '电子寻像器' },
-        { key: 'D', label: '通用配件' }
+        { key: 'D', label: '历史产品' },
+        { key: 'E', label: '通用配件' }
     ];
 
     return (
         <div className="fade-in" style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <style>{colResizeHandleStyle}</style>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -467,27 +599,62 @@ const ProductModelsManagement: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>{_t('product.model_code')}</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>{_t('product.model_name_zh')}</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>型号特征</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>族群/类型</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>SKU/实例</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)', textAlign: 'center' }}>状态</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)', textAlign: 'center' }}>操作</th>
+                            <th 
+                                onClick={() => handleSort('model_code')}
+                                style={{ padding: '16px', color: sortConfig.key === 'model_code' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.model_code, position: 'relative' }}
+                            >
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    {_t('product.model_code')}
+                                    {sortConfig.key === 'model_code' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'model_code')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
+                            </th>
+                            <th 
+                                onClick={() => handleSort('name')}
+                                style={{ padding: '16px', color: sortConfig.key === 'name' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.name, position: 'relative' }}
+                            >
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    {_t('product.model_name_zh')}
+                                    {sortConfig.key === 'name' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'name')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
+                            </th>
+                            <th 
+                                onClick={() => handleSort('sn_prefix')}
+                                style={{ padding: '16px', color: sortConfig.key === 'sn_prefix' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.sn_prefix, position: 'relative' }}
+                            >
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    序列号前缀
+                                    {sortConfig.key === 'sn_prefix' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'sn_prefix')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
+                            </th>
+                            <th 
+                                onClick={() => handleSort('family')}
+                                style={{ padding: '16px', color: sortConfig.key === 'family' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.family, position: 'relative' }}
+                            >
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    族群/类型
+                                    {sortConfig.key === 'family' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'family')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
+                            </th>
+                            <th style={{ padding: '16px', color: 'var(--text-secondary)', width: colWidths.sku_instance }}>SKU/实例</th>
+                            <th style={{ padding: '16px', color: 'var(--text-secondary)', textAlign: 'center', width: colWidths.action }}>操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center' }}>Loading...</td></tr>
-                        ) : productModels.length === 0 ? (
-                            <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>
+                            <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center' }}>Loading...</td></tr>
+                        ) : filteredAndSortedModels.length === 0 ? (
+                            <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                                     <Layers size={48} opacity={0.3} />
                                     <span>暂无产品型号数据</span>
                                 </div>
                             </td></tr>
                         ) : (
-                            productModels.map((model) => (
+                            filteredAndSortedModels.map((model) => (
                                 <tr
                                     key={model.id}
                                     className="row-hover"
@@ -509,40 +676,29 @@ const ProductModelsManagement: React.FC = () => {
                                                     <Layers size={18} opacity={0.3} />
                                                 )}
                                             </div>
-                                            <div style={{ fontWeight: 700, fontSize: '1.2rem', color: 'var(--accent-blue)', fontVariantNumeric: 'tabular-nums' }}>
+                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>
                                                 {model.model_code}
                                             </div>
                                         </div>
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <div style={{ fontWeight: 600, fontSize: '1rem' }}>{model.name_zh}</div>
-                                        <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{model.name_en || '-'}</div>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>{model.name_zh}</div>
+                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{model.name_en || '-'}</div>
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{model.brand}</div>
-                                        <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{model.material_id ? `${_t('product.material_id')}: ${model.material_id}` : '-'}</div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>{model.sn_prefix || '-'}</div>
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <div className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase ${PRODUCT_FAMILY_MAP[model.product_family]?.color || 'bg-gray-500/10 text-gray-400'}`} style={{ marginBottom: 4 }}>
-                                            {model.product_family}{_t('product.series')}
-                                        </div>
-                                        <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>
-                                            {_t(PRODUCT_TYPE_OPTIONS.find(t => t.value === model.product_type)?.label || model.product_type)}
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                                            {PRODUCT_FAMILY_MAP[model.product_family]?.label || model.product_family}
+                                            {model.brand && model.brand !== 'Kinefinity' && ` · ${model.brand}`}
                                         </div>
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{model.sku_count || 0} {_t('product.sku_count_label')}</div>
-                                        <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{model.instance_count || 0} {_t('product.instances')}</div>
-                                    </td>
-                                    <td style={{ padding: 16, textAlign: 'center' }}>
-                                        <span style={{
-                                            fontSize: '0.75rem', padding: '3px 8px', borderRadius: 6,
-                                            background: model.is_active ? 'rgba(16,185,129,0.1)' : 'rgba(107,114,128,0.1)',
-                                            color: model.is_active ? '#10B981' : '#9CA3AF',
-                                            border: `1px solid ${model.is_active ? 'rgba(16,185,129,0.2)' : 'rgba(107,114,128,0.2)'}`
-                                        }}>
-                                            {model.is_active ? _t('product.active') : _t('product.inactive')}
-                                        </span>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{model.sku_count || 0} SKU</div>
+                                        {model.sn_prefix && (
+                                            <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{model.instance_count || 0} 实例</div>
+                                        )}
                                     </td>
                                     <td style={{ padding: 16, textAlign: 'center' }}>
                                         {canManage && (
@@ -717,7 +873,7 @@ const ProductModelsManagement: React.FC = () => {
                                                 style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
                                             >
                                                 {PRODUCT_TYPE_OPTIONS.map((type) => (
-                                                    <option key={type.value} value={type.value}>{_t(type.label)}</option>
+                                                    <option key={type.value} value={type.value}>{type.label}</option>
                                                 ))}
                                             </select>
                                         </div>
@@ -784,7 +940,7 @@ const ProductModelsManagement: React.FC = () => {
                                                         </div>
                                                         <div style={{ flex: 1, minWidth: 0 }}>
                                                             <div style={{ fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sku.display_name}</div>
-                                                            <div style={{ fontSize: '0.7rem', opacity: 0.6, fontFamily: 'monospace' }}>{sku.sku_code}</div>
+                                                            <div style={{ fontSize: '0.7rem', opacity: 0.6, fontVariantNumeric: 'tabular-nums' }}>{sku.sku_code}</div>
                                                         </div>
                                                         {!sku.is_active && (
                                                             <span style={{ fontSize: '0.65rem', color: '#9CA3AF', background: 'rgba(107,114,128,0.1)', padding: '2px 5px', borderRadius: 4 }}>下架</span>

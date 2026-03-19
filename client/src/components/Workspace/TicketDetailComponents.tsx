@@ -9,11 +9,66 @@ import {
   Clock, User, MessageSquare,
   ArrowRight, Plus as PlusIcon, AlertTriangle,
   AtSign, Paperclip, ChevronDown, ChevronRight, UserCheck,
-  Edit3, Trash2, X, Wrench, RefreshCw, Package, Truck, CheckCircle
+  Edit3, Trash2, X, Wrench, RefreshCw, Package, Truck, CheckCircle,
+  Globe
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../../store/useAuthStore';
 import axios from 'axios';
+
+// 国家代码到名称的映射
+const countryCodeMap: Record<string, string> = {
+  'CN': '中国',
+  'US': '美国',
+  'UK': '英国',
+  'GB': '英国',
+  'DE': '德国',
+  'FR': '法国',
+  'JP': '日本',
+  'KR': '韩国',
+  'AU': '澳大利亚',
+  'CA': '加拿大',
+  'SG': '新加坡',
+  'MY': '马来西亚',
+  'TH': '泰国',
+  'VN': '越南',
+  'IN': '印度',
+  'RU': '俄罗斯',
+  'BR': '巴西',
+  'MX': '墨西哥',
+  'ES': '西班牙',
+  'IT': '意大利',
+  'NL': '荷兰',
+  'SE': '瑞典',
+  'CH': '瑞士',
+  'AT': '奥地利',
+  'BE': '比利时',
+  'DK': '丹麦',
+  'FI': '芬兰',
+  'NO': '挪威',
+  'PL': '波兰',
+  'PT': '葡萄牙',
+  'CZ': '捷克',
+  'HU': '匈牙利',
+  'GR': '希腊',
+  'IE': '爱尔兰',
+  'NZ': '新西兰',
+  'ZA': '南非',
+  'AE': '阿联酋',
+  'SA': '沙特阿拉伯',
+  'IL': '以色列',
+  'TR': '土耳其',
+  'ID': '印度尼西亚',
+  'PH': '菲律宾',
+  'TW': '台湾',
+  'HK': '香港',
+  'MO': '澳门',
+};
+
+const getCountryName = (code?: string): string | null => {
+  if (!code) return null;
+  return countryCodeMap[code.toUpperCase()] || code;
+};
 
 // ==============================
 // Types
@@ -485,16 +540,41 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
         } as Activity);
       }
     } else if (type === 'inquiry') {
-      const inquiryFlow = ['submitted', 'handling', 'awaiting_customer', 'resolved', 'closed'];
+      const inquiryFlow = ['submitted', 'handling', 'awaiting_customer', 'resolved', 'closed', 'converted'];
       const currentIndex = inquiryFlow.indexOf(ticket.current_node);
-
-      // 对于咨询工单，问题确认为“已解决”即为结案节点
+    
+      // 1. 检测工单升级事件（升级为RMA/SVC）
+      const upgradeActivity = activities.find(a => 
+        a.activity_type === 'ticket_linked' && 
+        (a.metadata as any)?.linked_ticket_id &&
+        (a.content || '').includes('已升级为')
+      );
+          
+      if (upgradeActivity) {
+        const meta = upgradeActivity.metadata as any;
+        keyNodes.push({
+          id: -1100,
+          activity_type: 'key_node_upgrade',
+          content: `已升级为${meta?.linked_ticket_number?.startsWith('R') ? 'RMA' : '维修'}工单`,
+          created_at: upgradeActivity.created_at,
+          actor: upgradeActivity.actor,
+          visibility: 'internal',
+          metadata: {
+            node_type: 'upgrade',
+            linked_ticket_id: meta?.linked_ticket_id,
+            linked_ticket_number: meta?.linked_ticket_number,
+            upgrade_reason: meta?.upgrade_reason || ''
+          }
+        } as Activity);
+      }
+    
+      // 2. 对于咨询工单，问题确认为"已解决"即为结案节点
       if (currentIndex >= inquiryFlow.indexOf('resolved')) {
         const resolveActivity = findLatestActivity(a => 
           (a.activity_type === 'status_change' && (a.metadata as any)?.to_node === 'resolved') ||
           (a.activity_type === 'comment' && (a.content || '').includes('【确认解决】'))
         );
-        
+            
         keyNodes.push({
           id: -1101,
           activity_type: 'key_node_ms_closing', 
@@ -676,6 +756,68 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
       (activity.activity_type === 'comment' && (
         isCustomerFeedback || isOfficialReply || isResolveNode
       ));
+
+    // 处理升级节点（特殊的关键节点，可点击跳转）
+    if (activity.activity_type === 'key_node_upgrade') {
+      const meta = activity.metadata as any;
+      const linkedTicketNumber = meta?.linked_ticket_number;
+      const linkedTicketId = meta?.linked_ticket_id;
+      
+      return (
+        <div
+          key={activity.id}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            padding: '4px 12px',
+            borderRadius: '6px',
+            transition: 'background 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          {/* Meta: Time & Kine Yellow ring */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '20px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono, monospace)', minWidth: '80px', whiteSpace: 'nowrap' }}>
+              {formattedDate}
+            </span>
+            <div style={{ 
+              width: 18, height: 18,
+              borderRadius: '50%',
+              border: '2px solid #FFD700',
+              opacity: 0.9
+            }} />
+          </div>
+
+          {/* Main Body */}
+          <div style={{ flex: 1, minWidth: 0, fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-main)', flexShrink: 0, fontSize: 13 }}>{actorName}</span>
+            <span style={{ color: '#F59E0B', fontWeight: 600 }}>将工单升级为</span>
+            {linkedTicketId ? (
+              <a 
+                href={`/service/tickets/${linkedTicketId}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.location.href = `/service/tickets/${linkedTicketId}`;
+                }}
+                style={{ 
+                  color: '#3B82F6', 
+                  fontWeight: 600,
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  borderBottom: '1px solid #3B82F6'
+                }}
+              >
+                {linkedTicketNumber}
+              </a>
+            ) : (
+              <span style={{ color: '#3B82F6', fontWeight: 600 }}>{linkedTicketNumber}</span>
+            )}
+          </div>
+        </div>
+      );
+    }
 
     // 关键节点渲染 - 改为和普通活动类似的格式，点击打开侧滑详情
     if (isKeyNode && keyNodeType) {
@@ -1945,12 +2087,20 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
             const serialNumber = ticket?.serial_number || meta?.serial_number || '-';
             const problemDescription = ticket?.problem_description || meta?.problem_description;
             
+            // 获取 reporter_snapshot（用于未关联客户时显示）
+            const reporterSnapshot = meta?.reporter_snapshot;
+            const hasLinkedCustomer = customerName && customerName !== '-';
+            
             // 保修状态
             const isWarranty = ticket?.is_warranty === 1 || meta?.is_warranty === 1;
+            
+            // 国家信息（从account或shipping_address获取）
+            const countryCode = ticket?.account?.country || ticket?.shipping_address?.country;
+            const countryName = getCountryName(countryCode);
 
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {/* Header with Correction Button */}
+                {/* 更正按钮（去掉"创建了工单"文字，避免与活动时间轴重复） */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
                   {canCorrectCreation() && onCorrectionRequest && (
                     <button
@@ -1979,7 +2129,12 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                       <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>客户与联系人</label>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>
-                          {customerName} · {contactName}
+                          {hasLinkedCustomer 
+                            ? `${customerName} · ${contactName}`
+                            : reporterSnapshot?.name 
+                              ? `${reporterSnapshot.name} · ${reporterSnapshot.email || reporterSnapshot.phone || '未知联系方式'} (未关联客户)`
+                              : `${customerName} · ${contactName}`
+                          }
                         </div>
                         {ticket?.account_service_tier && (
                           <span style={{
@@ -1997,6 +2152,16 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>经销商</label>
                         <div style={{ fontSize: 13, color: 'var(--text-main)' }}>{dealerName}{ticket?.dealer_code ? ` (${ticket.dealer_code})` : ''}</div>
+                      </div>
+                    )}
+                    {/* 国家信息 */}
+                    {countryName && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>国家/地区</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Globe size={14} color="var(--text-tertiary)" />
+                          <span style={{ fontSize: 13, color: 'var(--text-main)' }}>{countryName}</span>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2081,7 +2246,9 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   }}>
                     {activity.attachments!.map((att, idx) => {
                       const isImage = att.file_type?.startsWith('image/');
-                      const isVideo = att.file_type?.startsWith('video/');
+                      // 视频检测：通过 MIME 类型或文件扩展名
+                      const isVideo = att.file_type?.startsWith('video/') || 
+                        /\.(mp4|mov|avi|mkv|flv|wmv|m4v|3gp|webm|mpe?g|ts|mts|m2ts)$/i.test(att.file_name || '');
                       const isHeic = att.file_name?.toLowerCase().endsWith('.heic') || att.file_name?.toLowerCase().endsWith('.heif');
                       // For HEIC images, use thumbnail API preview mode (converts to WebP for Chrome compatibility)
                       const mediaUrl = (isImage && isHeic) 
@@ -2146,18 +2313,60 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                               />
                             </div>
                           ) : isVideo ? (
-                            <div style={{ width: '100%', height: '100%', position: 'relative', background: '#222' }}>
+                            <div style={{ width: '100%', height: '100%', position: 'relative', background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)' }}>
                               {att.thumbnail_url ? (
-                                <img src={thumbUrl} alt={att.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
+                                <img src={thumbUrl} alt={att.file_name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />
                               ) : (
-                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444' }}>
-                                  <Clock size={24} style={{ animation: 'spin 2s linear infinite' }} />
-                                </div>
+                                <>
+                                  {/* 视频波形背景 */}
+                                  <div style={{ 
+                                    position: 'absolute', inset: 0, 
+                                    background: 'radial-gradient(ellipse at center, rgba(255,215,0,0.1) 0%, transparent 70%)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                  }}>
+                                    {/* 模拟视频帧缩略图 */}
+                                    <video
+                                      src={mediaUrl}
+                                      style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.4 }}
+                                      preload="metadata"
+                                    />
+                                  </div>
+                                </>
                               )}
+                              {/* 播放按钮 */}
                               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: '50%', padding: 12, color: 'var(--text-main)', boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
-                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                <div style={{ 
+                                  background: 'rgba(255,215,0,0.9)', 
+                                  borderRadius: '50%', 
+                                  padding: 14, 
+                                  color: '#000',
+                                  boxShadow: '0 4px 20px rgba(255,215,0,0.4)',
+                                  transition: 'transform 0.2s, box-shadow 0.2s',
+                                  cursor: 'pointer'
+                                }}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.transform = 'scale(1.1)';
+                                  e.currentTarget.style.boxShadow = '0 6px 30px rgba(255,215,0,0.6)';
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(255,215,0,0.4)';
+                                }}
+                                >
+                                  <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                                 </div>
+                              </div>
+                              {/* 视频时长/格式标签 */}
+                              <div style={{ 
+                                position: 'absolute', bottom: 8, right: 8, 
+                                background: 'rgba(0,0,0,0.7)', 
+                                padding: '2px 8px', 
+                                borderRadius: 4, 
+                                fontSize: 10, 
+                                color: '#fff',
+                                fontWeight: 600
+                              }}>
+                                VIDEO
                               </div>
                             </div>
                           ) : (
@@ -2292,7 +2501,7 @@ export const ActivityDetailDrawer: React.FC<ActivityDetailDrawerProps> = ({
                   onClick={isKeyNodeActivity ? handleKeyNodeCorrection : handleCorrection}
                   disabled={correcting || !correctionReason.trim()}
                   style={{
-                    flex: 1.5, padding: '10px', background: correcting || !correctionReason.trim() ? 'var(--glass-bg-hover)' : 'var(--accent-blue)',
+                    flex: 1.5, padding: '10px', background: correcting || !correctionReason.trim() ? 'var(--glass-bg-hover)' : '#FFD700',
                     border: 'none', color: correcting || !correctionReason.trim() ? 'var(--text-secondary)' : '#000', borderRadius: 8, fontWeight: 600, cursor: correcting || !correctionReason.trim() ? 'not-allowed' : 'pointer', fontSize: 14,
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
                   }}

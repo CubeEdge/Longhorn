@@ -245,23 +245,24 @@ const App: React.FC = () => {
           <Route path="/service/customers/:id" element={<CustomerDetailPage />} />
 
           {/* 3. 资产和物料 (第三入口) */}
+          {/* 产品台账权限：仅 MS, OP, GE 和 Exec 可见 */}
           <Route path="/service/products" element={
-            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductManagement /> : <Navigate to="/" />
+            (user?.role === 'Exec' || ['MS', 'OP', 'GE'].includes(user?.department_code || '')) ? <ProductManagement /> : <Navigate to="/service/overview" />
           } />
           <Route path="/service/products/:id" element={
-            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductDetailPage /> : <Navigate to="/" />
+            (user?.role === 'Exec' || ['MS', 'OP', 'GE'].includes(user?.department_code || '')) ? <ProductDetailPage /> : <Navigate to="/service/overview" />
           } />
           <Route path="/service/product-models" element={
-            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductModelsManagement /> : <Navigate to="/" />
+            (user?.role === 'Exec' || ['MS', 'OP', 'GE'].includes(user?.department_code || '')) ? <ProductModelsManagement /> : <Navigate to="/service/overview" />
           } />
           <Route path="/service/product-models/:id" element={
-            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductModelDetailPage /> : <Navigate to="/" />
+            (user?.role === 'Exec' || ['MS', 'OP', 'GE'].includes(user?.department_code || '')) ? <ProductModelDetailPage /> : <Navigate to="/service/overview" />
           } />
           <Route path="/service/product-skus" element={
-            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductSkusManagement /> : <Navigate to="/" />
+            (user?.role === 'Exec' || ['MS', 'OP', 'GE'].includes(user?.department_code || '')) ? <ProductSkusManagement /> : <Navigate to="/service/overview" />
           } />
           <Route path="/service/product-skus/:id" element={
-            (['Admin', 'Lead', 'Exec'].includes(user?.role || '') || user?.department_code === 'MS') ? <ProductSkuDetailPage /> : <Navigate to="/" />
+            (user?.role === 'Exec' || ['MS', 'OP', 'GE'].includes(user?.department_code || '')) ? <ProductSkuDetailPage /> : <Navigate to="/service/overview" />
           } />
           <Route path="/service/assets" element={<Navigate to="/service/products" replace />} />
 
@@ -538,6 +539,10 @@ const Sidebar: React.FC<{
     (actingRole === 'Lead' && actingDeptCode === 'MS') ||
     (actingRole === 'Member' && (actingDeptCode === 'MS' || actingDeptCode === 'GE'));
 
+  // 产品台账访问权限：仅 MS, OP, GE 部门和 Exec 可见
+  const hasProductLedgerAccess = actingRole === 'Exec' ||
+    actingDeptCode === 'MS' || actingDeptCode === 'OP' || actingDeptCode === 'GE';
+
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''} `} style={{ width: sidebarWidth, flexShrink: 0, position: 'relative' }}>
       <div className="sidebar-brand">
@@ -681,29 +686,33 @@ const Sidebar: React.FC<{
               </>
             )}
 
-            {/* 产品和配件分组 - collapsible, 所有内部人员可见 */}
-            <div className="sidebar-section-title" onClick={() => toggleSection('products_parts')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>{t('sidebar.section_products_parts')}</span>
-              {expandedSections.products_parts !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-            </div>
-            {expandedSections.products_parts !== false && (
+            {/* 产品和配件分组 - 仅 MS, OP, GE 和 Exec 可见 */}
+            {hasProductLedgerAccess && (
               <>
-                <Link to={getRoute('/service/product-models')} className={`sidebar-item ${location.pathname.startsWith('/service/product-models') ? 'active' : ''}`} onClick={onClose}>
-                  <Layers size={18} />
-                  <span>{t('sidebar.product_catalog')}</span>
-                </Link>
-                <Link to={getRoute('/service/product-skus')} className={`sidebar-item ${location.pathname.startsWith('/service/product-skus') ? 'active' : ''}`} onClick={onClose}>
-                  <Package size={18} />
-                  <span>{t('sidebar.product_skus')}</span>
-                </Link>
-                <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''}`} onClick={onClose}>
-                  <Box size={18} />
-                  <span>{t('sidebar.archives_assets')}</span>
-                </Link>
-                <Link to={getRoute('/service/parts')} className={`sidebar-item ${location.pathname.startsWith('/service/parts') ? 'active' : ''}`} onClick={onClose}>
-                  <Package size={18} />
-                  <span>{t('sidebar.parts')}</span>
-                </Link>
+                <div className="sidebar-section-title" onClick={() => toggleSection('products_parts')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>{t('sidebar.section_products_parts')}</span>
+                  {expandedSections.products_parts !== false ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </div>
+                {expandedSections.products_parts !== false && (
+                  <>
+                    <Link to={getRoute('/service/product-models')} className={`sidebar-item ${location.pathname.startsWith('/service/product-models') ? 'active' : ''}`} onClick={onClose}>
+                      <Layers size={18} />
+                      <span>{t('sidebar.product_catalog')}</span>
+                    </Link>
+                    <Link to={getRoute('/service/product-skus')} className={`sidebar-item ${location.pathname.startsWith('/service/product-skus') ? 'active' : ''}`} onClick={onClose}>
+                      <Package size={18} />
+                      <span>{t('sidebar.product_skus')}</span>
+                    </Link>
+                    <Link to={getRoute('/service/products')} className={`sidebar-item ${location.pathname.startsWith('/service/products') ? 'active' : ''}`} onClick={onClose}>
+                      <Box size={18} />
+                      <span>{t('sidebar.archives_assets')}</span>
+                    </Link>
+                    <Link to={getRoute('/service/parts')} className={`sidebar-item ${location.pathname.startsWith('/service/parts') ? 'active' : ''}`} onClick={onClose}>
+                      <Package size={18} />
+                      <span>{t('sidebar.parts')}</span>
+                    </Link>
+                  </>
+                )}
               </>
             )}
 

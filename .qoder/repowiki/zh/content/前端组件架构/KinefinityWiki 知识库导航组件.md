@@ -40,10 +40,10 @@
 
 ## 更新摘要
 **变更内容**
+- **悬停状态细化**：KinefinityWiki 组件获得了更精细的悬停状态控制，包括独立的鼠标进入和离开事件处理
+- **图标颜色优化**：使用 var(--text-secondary) CSS 变量替代硬编码颜色，提升对比度和主题一致性
+- **设计系统应用**：全面应用新的设计系统，包括改进的交互反馈和视觉层次
 - **移除反馈功能**：从知识库系统中完全移除了文章反馈功能，简化了组件功能
-- **简化组件结构**：移除了与反馈相关的UI组件和状态管理
-- **优化性能**：减少了不必要的DOM元素和状态更新
-- **保持核心功能**：保留了知识库导航、搜索、编辑等核心功能
 
 ## 目录
 1. [简介](#简介)
@@ -64,7 +64,7 @@
 
 KinefinityWiki 是 Kinefinity 长horn 项目中的知识库导航组件，经过重大样式更新后，全面采用了新的CSS变量主题系统，实现了完整的macOS风格玻璃拟态设计和品牌色彩统一。该组件为用户提供了一个现代化、沉浸式的知识库浏览体验，融合了深色/浅色主题切换、响应式设计和智能化的导航系统。
 
-**更新** 本次样式更新引入了全新的CSS变量主题系统，包括完整的深色/浅色主题支持、macOS玻璃拟态设计、品牌色彩统一和响应式主题适配，显著提升了视觉体验和用户体验。
+**更新** 本次样式更新引入了全新的CSS变量主题系统，包括完整的深色/浅色主题支持、macOS玻璃拟态设计、品牌色彩统一和响应式主题适配，显著提升了视觉体验和用户体验。最新的更新进一步优化了悬停状态控制和图标颜色系统，应用了新的设计系统以获得更好的对比度和一致性。
 
 ## 项目结构
 
@@ -84,17 +84,19 @@ L[品牌色彩系统] --> M[Kine Yellow主题]
 L --> N[文本色彩系统]
 O[响应式设计] --> P[系统主题适配]
 O --> Q[用户偏好设置]
+R[悬停状态系统] --> S[精细化交互]
+R --> T[var(--text-secondary)颜色]
 ```
 
 **图表来源**
-- [KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L1-L50)
-- [index.css](file://client/src/index.css#L1-L50)
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L1-L50)
+- [KinefinityWiki.tsx:1-50](file://client/src/components/KinefinityWiki.tsx#L1-L50)
+- [index.css:1-50](file://client/src/index.css#L1-L50)
+- [useThemeStore.ts:1-50](file://client/src/store/useThemeStore.ts#L1-L50)
 
 **章节来源**
-- [KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L1-L50)
-- [index.css](file://client/src/index.css#L1-L50)
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L1-L50)
+- [KinefinityWiki.tsx:1-50](file://client/src/components/KinefinityWiki.tsx#L1-L50)
+- [index.css:1-50](file://client/src/index.css#L1-L50)
+- [useThemeStore.ts:1-50](file://client/src/store/useThemeStore.ts#L1-L50)
 
 ## 核心组件
 
@@ -134,9 +136,9 @@ KinefinityWiki 组件具备以下核心主题功能：
    - **新增** 样式缓存机制，提升渲染性能
 
 **章节来源**
-- [index.css](file://client/src/index.css#L4-L101)
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L1-L85)
-- [KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L1432-L1591)
+- [index.css:4-101](file://client/src/index.css#L4-L101)
+- [useThemeStore.ts:1-85](file://client/src/store/useThemeStore.ts#L1-L85)
+- [KinefinityWiki.tsx:1432-1591](file://client/src/components/KinefinityWiki.tsx#L1432-L1591)
 
 ## 架构概览
 
@@ -156,8 +158,8 @@ DOM-->>U : 显示主题效果
 ```
 
 **图表来源**
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L20-L36)
-- [index.css](file://client/src/index.css#L4-L25)
+- [useThemeStore.ts:20-36](file://client/src/store/useThemeStore.ts#L20-L36)
+- [index.css:4-25](file://client/src/index.css#L4-L25)
 
 ## 详细组件分析
 
@@ -189,8 +191,8 @@ L --> T[样式自动更新]
 ```
 
 **图表来源**
-- [index.css](file://client/src/index.css#L4-L101)
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L20-L36)
+- [index.css:4-101](file://client/src/index.css#L4-L101)
+- [useThemeStore.ts:20-36](file://client/src/store/useThemeStore.ts#L20-L36)
 
 ### 深色主题CSS变量
 
@@ -219,7 +221,7 @@ class 深色主题CSS变量 {
 ```
 
 **图表来源**
-- [index.css](file://client/src/index.css#L5-L35)
+- [index.css:5-35](file://client/src/index.css#L5-L35)
 
 ### 浅色主题CSS变量
 
@@ -247,7 +249,7 @@ class 浅色主题CSS变量 {
 ```
 
 **图表来源**
-- [index.css](file://client/src/index.css#L58-L100)
+- [index.css:58-100](file://client/src/index.css#L58-L100)
 
 ### 主题状态管理
 
@@ -279,11 +281,11 @@ Q --> R
 ```
 
 **图表来源**
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L27-L85)
+- [useThemeStore.ts:27-85](file://client/src/store/useThemeStore.ts#L27-L85)
 
 **章节来源**
-- [index.css](file://client/src/index.css#L4-L101)
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L1-L85)
+- [index.css:4-101](file://client/src/index.css#L4-L101)
+- [useThemeStore.ts:1-85](file://client/src/store/useThemeStore.ts#L1-L85)
 
 ## macOS玻璃拟态设计
 
@@ -308,8 +310,8 @@ K --> N[--glass-shadow-accent: 0 8px 32px rgba(255, 210, 0, 0.15)]
 ```
 
 **图表来源**
-- [index.css](file://client/src/index.css#L26-L35)
-- [index.css](file://client/src/index.css#L86-L96)
+- [index.css:26-35](file://client/src/index.css#L26-L35)
+- [index.css:86-96](file://client/src/index.css#L86-L96)
 
 ### 玻璃卡片组件
 
@@ -345,7 +347,7 @@ class 玻璃卡片交互 {
 ```
 
 **图表来源**
-- [index.css](file://client/src/index.css#L1432-L1591)
+- [index.css:1432-1591](file://client/src/index.css#L1432-L1591)
 
 ### 玻璃拟态动画系统
 
@@ -368,13 +370,13 @@ D --> M[focus状态]
 ```
 
 **图表来源**
-- [index.css](file://client/src/index.css#L44-L47)
-- [index.css](file://client/src/index.css#L1443-L1495)
+- [index.css:44-47](file://client/src/index.css#L44-L47)
+- [index.css:1443-1495](file://client/src/index.css#L1443-L1495)
 
 **章节来源**
-- [index.css](file://client/src/index.css#L26-L35)
-- [index.css](file://client/src/index.css#L86-L96)
-- [index.css](file://client/src/index.css#L1432-L1591)
+- [index.css:26-35](file://client/src/index.css#L26-L35)
+- [index.css:86-96](file://client/src/index.css#L86-L96)
+- [index.css:1432-1591](file://client/src/index.css#L1432-L1591)
 
 ## 品牌色彩统一
 
@@ -403,9 +405,9 @@ O --> R[金色系: #FFD200]
 ```
 
 **图表来源**
-- [index.css](file://client/src/index.css#L11-L24)
-- [index.css](file://client/src/index.css#L74-L84)
-- [index.css](file://client/src/index.css#L18-L24)
+- [index.css:11-24](file://client/src/index.css#L11-L24)
+- [index.css:74-84](file://client/src/index.css#L74-L84)
+- [index.css:18-24](file://client/src/index.css#L18-L24)
 
 ### 品牌色彩应用规范
 
@@ -423,9 +425,9 @@ O --> R[金色系: #FFD200]
 | 浅色主题 | #E5E7EB | 用于浅色背景 | --bg-main(light) |
 
 **章节来源**
-- [index.css](file://client/src/index.css#L11-L24)
-- [index.css](file://client/src/index.css#L74-L84)
-- [index.css](file://client/src/index.css#L18-L24)
+- [index.css:11-24](file://client/src/index.css#L11-L24)
+- [index.css:74-84](file://client/src/index.css#L74-L84)
+- [index.css:18-24](file://client/src/index.css#L18-L24)
 
 ## 响应式主题适配
 
@@ -450,8 +452,8 @@ J --> K[重新渲染界面]
 ```
 
 **图表来源**
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L13-L25)
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L46-L66)
+- [useThemeStore.ts:13-25](file://client/src/store/useThemeStore.ts#L13-L25)
+- [useThemeStore.ts:46-66](file://client/src/store/useThemeStore.ts#L46-L66)
 
 ### 主题切换机制
 
@@ -472,8 +474,8 @@ DOM-->>U : 显示主题切换效果
 ```
 
 **图表来源**
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L33-L36)
-- [index.css](file://client/src/index.css#L20-L25)
+- [useThemeStore.ts:33-36](file://client/src/store/useThemeStore.ts#L33-L36)
+- [index.css:20-25](file://client/src/index.css#L20-L25)
 
 ### 用户偏好管理
 
@@ -499,11 +501,11 @@ K --> L[初始化主题]
 ```
 
 **图表来源**
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L69-L83)
+- [useThemeStore.ts:69-83](file://client/src/store/useThemeStore.ts#L69-L83)
 
 **章节来源**
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L1-L85)
-- [index.css](file://client/src/index.css#L20-L25)
+- [useThemeStore.ts:1-85](file://client/src/store/useThemeStore.ts#L1-L85)
+- [index.css:20-25](file://client/src/index.css#L20-L25)
 
 ## 组件样式系统
 
@@ -541,7 +543,7 @@ class 玻璃拟态交互 {
 ```
 
 **图表来源**
-- [index.css](file://client/src/index.css#L1432-L1591)
+- [index.css:1432-1591](file://client/src/index.css#L1432-L1591)
 
 ### 组件样式应用
 
@@ -566,12 +568,12 @@ M --> P[CSS变量渲染]
 ```
 
 **图表来源**
-- [KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L1719-L1734)
-- [KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L1746-L1751)
+- [KinefinityWiki.tsx:1719-1734](file://client/src/components/KinefinityWiki.tsx#L1719-L1734)
+- [KinefinityWiki.tsx:1746-1751](file://client/src/components/KinefinityWiki.tsx#L1746-L1751)
 
 **章节来源**
-- [index.css](file://client/src/index.css#L1432-L1591)
-- [KinefinityWiki.tsx](file://client/src/components/KinefinityWiki.tsx#L1719-L1734)
+- [index.css:1432-1591](file://client/src/index.css#L1432-L1591)
+- [KinefinityWiki.tsx:1719-1734](file://client/src/components/KinefinityWiki.tsx#L1719-L1734)
 
 ## 性能优化
 
@@ -603,8 +605,8 @@ M --> P[CSS变量渲染]
 4. **样式计算缓存**：避免重复的样式计算和应用
 
 **章节来源**
-- [index.css](file://client/src/index.css#L4-L101)
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L1-L85)
+- [index.css:4-101](file://client/src/index.css#L4-L101)
+- [useThemeStore.ts:1-85](file://client/src/store/useThemeStore.ts#L1-L85)
 
 ## 故障排除指南
 
@@ -618,6 +620,7 @@ M --> P[CSS变量渲染]
 | 动画效果卡顿 | 主题切换或组件动画卡顿 | 动画性能问题 | 优化动画属性，使用硬件加速 |
 | 响应式适配问题 | 移动端主题显示异常 | 媒体查询或断点设置问题 | 检查CSS媒体查询，确认断点设置 |
 | 样式闪烁问题 | 页面加载时样式闪烁 | CSS变量渲染顺序问题 | 使用CSS-in-JS或内联样式确保渲染顺序 |
+| 悬停状态异常 | 悬停效果不一致或失效 | 事件处理冲突或CSS优先级问题 | 检查事件绑定和CSS变量应用 |
 
 ### 调试工具
 
@@ -639,8 +642,8 @@ M --> P[CSS变量渲染]
    - 响应式测试：检查移动端和桌面端显示效果
 
 **章节来源**
-- [index.css](file://client/src/index.css#L1-L1898)
-- [useThemeStore.ts](file://client/src/store/useThemeStore.ts#L1-L85)
+- [index.css:1-1898](file://client/src/index.css#L1-L1898)
+- [useThemeStore.ts:1-85](file://client/src/store/useThemeStore.ts#L1-L85)
 
 ## 结论
 
@@ -660,3 +663,5 @@ KinefinityWiki 知识库导航组件经过重大样式更新后，成功实现�
 **更新** 最新的样式更新包括全新的CSS变量主题系统、macOS玻璃拟态设计、品牌色彩统一和响应式主题适配等功能，进一步提升了用户的知识库访问体验和视觉享受。重大架构变更使得主题系统更加灵活和强大，为整个知识库系统带来了显著的视觉提升和功能增强。
 
 **更新** 根据应用变更要求，知识库系统中已移除反馈功能，简化了组件功能。这一变更不影响核心的导航、搜索和编辑功能，同时减少了不必要的UI元素和状态管理，提升了整体性能和用户体验。组件仍然保持了完整的主题系统和现代化的设计风格，为用户提供了一致且高效的使用体验。
+
+**更新** 最新的悬停状态细化和图标颜色优化进一步提升了用户体验。通过使用 var(--text-secondary) CSS 变量替代硬编码颜色，组件实现了更好的对比度和主题一致性。精细化的悬停状态控制确保了用户交互的流畅性和直观性，为知识库导航提供了更加专业的视觉体验。

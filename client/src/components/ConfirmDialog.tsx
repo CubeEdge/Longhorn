@@ -108,14 +108,17 @@ export const ConfirmDialog: React.FC = () => {
                 <div style={{
                     padding: '20px 28px 24px'
                 }}>
-                    <p style={{
-                        margin: 0,
+                    <div style={{
                         color: 'var(--text-secondary)',
                         lineHeight: 1.6,
                         fontSize: '15px'
                     }}>
-                        {message}
-                    </p>
+                        {message?.split('\n').map((line, index) => (
+                            <p key={index} style={{ margin: index === 0 ? 0 : '8px 0 0 0' }}>
+                                {line}
+                            </p>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Buttons */}

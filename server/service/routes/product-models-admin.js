@@ -66,14 +66,25 @@ module.exports = function (db, authenticate) {
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
             // Get product models with instance count
+            // 排序规则：1. 电影机/摄像机/电子寻像器优先 2. 有SN前缀的次之 3. 创建时间倒序
             const models = db.prepare(`
                 SELECT 
                     pm.*,
                     (SELECT COUNT(*) FROM products p WHERE p.model_name = pm.name_zh) as instance_count,
-                    (SELECT COUNT(*) FROM product_skus ps WHERE ps.model_id = pm.id) as sku_count
+                    (SELECT COUNT(*) FROM product_skus ps WHERE ps.model_id = pm.id) as sku_count,
+                    CASE 
+                        WHEN pm.product_type LIKE '%电影机%' OR pm.product_type LIKE '%摄像机%' THEN 1
+                        WHEN pm.product_type LIKE '%电子寻像器%' OR pm.product_type LIKE '%寻像器%' THEN 2
+                        ELSE 3
+                    END as type_priority,
+                    CASE WHEN pm.sn_prefix IS NOT NULL AND pm.sn_prefix != '' THEN 1 ELSE 2 END as has_sn_prefix
                 FROM product_models pm
                 ${whereClause}
-                ORDER BY pm.is_active DESC, pm.created_at DESC
+                ORDER BY 
+                    pm.is_active DESC,
+                    type_priority ASC,
+                    has_sn_prefix ASC,
+                    pm.created_at DESC
             `).all(...params);
 
             res.json({

@@ -62,7 +62,7 @@ const ContactCleaningModal: React.FC<ContactCleaningModalProps> = ({
         <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000
         }}>
             <div style={{
                 background: '#1E1E1E', width: 400, borderRadius: 12,

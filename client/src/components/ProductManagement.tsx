@@ -3,10 +3,51 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLanguage } from '../i18n/useLanguage';
-import { Search, Plus, Package, ChevronUp, ChevronDown, MoreHorizontal, Edit2, AlertCircle, X, Trash2, Power, PowerOff } from 'lucide-react';
+import { Search, Plus, Package, MoreHorizontal, Edit2, AlertCircle, X, Trash2, Power, PowerOff } from 'lucide-react';
 import ProductModal from './Workspace/ProductModal';
 
 // macOS 26 Modal Style - Device Ledger uses centered modal instead of drawer
+
+// Column resize handle styles
+const colResizeHandleStyle = `
+  .col-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: col-resize;
+    background: transparent;
+    transition: background 0.2s;
+  }
+  .col-resize-handle:hover {
+    background: var(--kine-yellow);
+  }
+  .col-resize-handle:active {
+    background: var(--kine-yellow);
+  }
+`;
+
+// Column widths storage
+const COL_WIDTHS_KEY = 'longhorn_product_col_widths';
+type ColKey = 'serial' | 'model' | 'sku' | 'owner' | 'warranty' | 'action';
+const DEFAULT_COL_WIDTHS: Record<ColKey, number> = { 
+    serial: 160, 
+    model: 180, 
+    sku: 140, 
+    owner: 140, 
+    warranty: 120, 
+    action: 80 
+};
+
+function loadColWidths(): Record<ColKey, number> {
+    try {
+        const saved = localStorage.getItem(COL_WIDTHS_KEY);
+        return saved ? { ...DEFAULT_COL_WIDTHS, ...JSON.parse(saved) } : { ...DEFAULT_COL_WIDTHS };
+    } catch {
+        return { ...DEFAULT_COL_WIDTHS };
+    }
+}
 
 // Types - Installed Base (PRD Service PRD_P2.md lines 209-265)
 interface Product {
@@ -65,14 +106,6 @@ interface Product {
 
 // ProductModel and ProductSku interfaces removed as they were unused here
 
-const PRODUCT_FAMILY_MAP = {
-    'A': { code: 'A', name: 'Current Cine Cameras', label: '在售电影机', color: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
-    'B': { code: 'B', name: 'Broadcast Camera', label: '广播摄像机', color: 'bg-orange-500/20 text-orange-400 border border-orange-500/30' },
-    'C': { code: 'C', name: 'Eagle e-Viewfinder', label: '电子寻像器', color: 'bg-green-500/20 text-green-400 border border-green-500/30' },
-    'D': { code: 'D', name: 'Archived Cine Cameras', label: '历史机型', color: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' },
-    'E': { code: 'E', name: 'Universal Accessories', label: '通用配件', color: 'bg-purple-500/20 text-purple-400 border border-purple-500/30' }
-};
-
 type ProductFamily = 'ALL' | 'A' | 'B' | 'C' | 'D' | 'E';
 type ProductStatus = 'ALL' | 'ACTIVE' | 'IN_REPAIR' | 'STOLEN' | 'SCRAPPED';
 
@@ -114,6 +147,14 @@ const ProductManagement: React.FC = () => {
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
+    // Column widths & resize
+    const [colWidths, setColWidths] = useState<Record<ColKey, number>>(loadColWidths);
+    const resizingRef = useRef<{ col: ColKey; startX: number; startWidth: number } | null>(null);
+
+    // Column sort state (local, independent from URL params)
+    type LocalSortKey = 'serial_number' | 'model_name' | 'product_sku' | 'current_owner_name' | 'warranty_status';
+    const [sortConfig, setSortConfig] = useState<{ key: LocalSortKey | null; dir: 'asc' | 'desc' }>({ key: null, dir: 'asc' });
+
     const updateParams = (newParams: Record<string, string>) => {
         const current = Object.fromEntries(searchParams.entries());
         setSearchParams({ ...current, ...newParams });
@@ -129,11 +170,6 @@ const ProductManagement: React.FC = () => {
 
     const setPage = (p: number) => {
         updateParams({ page: p.toString() });
-    };
-
-    const handleSort = (field: string) => {
-        const newOrder = sortBy === field && sortOrder === 'asc' ? 'desc' : 'asc';
-        updateParams({ sort_by: field, sort_order: newOrder, page: '1' });
     };
 
     const setStatusFilter = (status: string) => {
@@ -190,6 +226,63 @@ const ProductManagement: React.FC = () => {
     }, []);
 
     // URL based logic removed as requested
+
+    // Column resize handlers
+    const startColResize = (e: React.MouseEvent, col: ColKey) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resizingRef.current = { col, startX: e.clientX, startWidth: colWidths[col] };
+        const onMouseMove = (me: MouseEvent) => {
+            if (!resizingRef.current) return;
+            const delta = me.clientX - resizingRef.current.startX;
+            const newWidth = Math.max(50, resizingRef.current.startWidth + delta);
+            setColWidths(prev => {
+                const next = { ...prev, [resizingRef.current!.col]: newWidth };
+                localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(next));
+                return next;
+            });
+        };
+        const onMouseUp = () => {
+            resizingRef.current = null;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+        };
+        document.body.style.cursor = 'col-resize';
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
+
+    // Sort handler
+    const handleSort = (key: LocalSortKey) => {
+        setSortConfig(prev => {
+            if (prev.key === key) {
+                if (prev.dir === 'asc') return { key, dir: 'desc' as const };
+                return { key: null, dir: 'asc' as const };
+            }
+            return { key, dir: 'asc' as const };
+        });
+    };
+
+    // Sort products locally
+    const sortedProducts = [...products].sort((a, b) => {
+        if (!sortConfig.key) return 0;
+        const dir = sortConfig.dir === 'asc' ? 1 : -1;
+        switch (sortConfig.key) {
+            case 'serial_number':
+                return (a.serial_number || '').localeCompare(b.serial_number || '') * dir;
+            case 'model_name':
+                return (a.model_name || '').localeCompare(b.model_name || '') * dir;
+            case 'product_sku':
+                return (a.product_sku || '').localeCompare(b.product_sku || '') * dir;
+            case 'current_owner_name':
+                return (a.current_owner_name || '').localeCompare(b.current_owner_name || '') * dir;
+            case 'warranty_status':
+                return (a.warranty_status || '').localeCompare(b.warranty_status || '') * dir;
+            default:
+                return 0;
+        }
+    });
 
     const handleOpenDrawer = (product?: Product) => {
         if (product) {
@@ -261,6 +354,7 @@ const ProductManagement: React.FC = () => {
 
     return (
         <div className="fade-in" style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <style>{colResizeHandleStyle}</style>
             {/* Header - macOS26 Style */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
@@ -527,39 +621,63 @@ const ProductManagement: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                            <th
-                                style={{ padding: 16, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
+                            <th 
+                                onClick={() => handleSort('serial_number')}
+                                style={{ padding: '16px', color: sortConfig.key === 'serial_number' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.serial, position: 'relative' }}
+                            >
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    序列号
+                                    {sortConfig.key === 'serial_number' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'serial')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
+                            </th>
+                            <th 
                                 onClick={() => handleSort('model_name')}
+                                style={{ padding: '16px', color: sortConfig.key === 'model_name' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.model, position: 'relative' }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                     型号
-                                    {sortBy === 'model_name' && (
-                                        sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                                    )}
-                                </div>
+                                    {sortConfig.key === 'model_name' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'model')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
                             </th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>序列号</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>族群</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>固件版本</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>保修状态</th>
-                            <th
-                                style={{ padding: 16, color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}
-                                onClick={() => handleSort('ticket_count')}
+                            <th 
+                                onClick={() => handleSort('product_sku')}
+                                style={{ padding: '16px', color: sortConfig.key === 'product_sku' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.sku, position: 'relative' }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    关联工单
-                                    {sortBy === 'ticket_count' && (
-                                        sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-                                    )}
-                                </div>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    SKU
+                                    {sortConfig.key === 'product_sku' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'sku')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
                             </th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)', textAlign: 'center' }}>操作</th>
+                            <th 
+                                onClick={() => handleSort('current_owner_name')}
+                                style={{ padding: '16px', color: sortConfig.key === 'current_owner_name' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.owner, position: 'relative' }}
+                            >
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    当前所有者
+                                    {sortConfig.key === 'current_owner_name' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'owner')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
+                            </th>
+                            <th 
+                                onClick={() => handleSort('warranty_status')}
+                                style={{ padding: '16px', color: sortConfig.key === 'warranty_status' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.warranty, position: 'relative' }}
+                            >
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    保修状态
+                                    {sortConfig.key === 'warranty_status' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'warranty')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
+                            </th>
+                            <th style={{ padding: '16px', color: 'var(--text-secondary)', textAlign: 'center', width: colWidths.action }}>操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
                             <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center' }}>Loading...</td></tr>
-                        ) : products.length === 0 ? (
+                        ) : sortedProducts.length === 0 ? (
                             <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
                                     <Package size={48} opacity={0.3} />
@@ -567,7 +685,7 @@ const ProductManagement: React.FC = () => {
                                 </div>
                             </td></tr>
                         ) : (
-                            products.map((product) => (
+                            sortedProducts.map((product) => (
                                 <tr
                                     key={product.id}
                                     className="row-hover"
@@ -580,24 +698,21 @@ const ProductManagement: React.FC = () => {
                                     }}
                                 >
                                     <td style={{ padding: 16 }}>
-                                        <div style={{ fontWeight: 600, fontSize: '1rem' }}>{product.model_name}</div>
-                                        {product.internal_name && product.internal_name !== product.model_name && (
-                                            <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>{product.internal_name}</div>
-                                        )}
-                                    </td>
-                                    <td style={{ padding: 16 }}>
-                                        <span style={{ fontSize: '0.9rem', fontFamily: 'monospace', opacity: 0.9 }}>
+                                        <span style={{ fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-main)' }}>
                                             {product.serial_number || '-'}
                                         </span>
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${PRODUCT_FAMILY_MAP[product.product_family]?.color || 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                                            }`}>
-                                            {PRODUCT_FAMILY_MAP[product.product_family]?.label || product.product_family}
-                                        </span>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>{product.model_name}</div>
+                                        {product.internal_name && product.internal_name !== product.model_name && (
+                                            <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{product.internal_name}</div>
+                                        )}
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <span style={{ fontSize: '0.9rem', opacity: 0.8 }}>{product.firmware_version || '-'}</span>
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{product.product_sku || '-'}</span>
+                                    </td>
+                                    <td style={{ padding: 16 }}>
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{product.current_owner_name || '-'}</span>
                                     </td>
                                     <td style={{ padding: 16 }}>
                                         {(() => {
@@ -637,16 +752,13 @@ const ProductManagement: React.FC = () => {
                                                         {label}
                                                     </span>
                                                     {endDate && (
-                                                        <span style={{ fontSize: '0.7rem', opacity: 0.5, fontFamily: 'monospace' }}>
+                                                        <span style={{ fontSize: '0.7rem', opacity: 0.5, fontVariantNumeric: 'tabular-nums' }}>
                                                             {endDate}
                                                         </span>
                                                     )}
                                                 </div>
                                             );
                                         })()}
-                                    </td>
-                                    <td style={{ padding: 16 }}>
-                                        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{product.ticket_count || 0}</span>
                                     </td>
                                     <td style={{ padding: 16, textAlign: 'center' }}>
                                         <div ref={rowDropdownOpen === product.id ? rowDropdownRef : null} style={{ position: 'relative', display: 'inline-block' }}>

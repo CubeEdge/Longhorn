@@ -16,6 +16,7 @@ interface ProductModel {
     brand: string;
     model_code: string;
     material_id: string;
+    sn_prefix?: string;
     product_family: string;
     product_type: string;
     description: string;
@@ -39,10 +40,37 @@ interface ProductSku {
 
 const PRODUCT_FAMILY_MAP: Record<string, { label: string; color: string }> = {
     'A': { label: '在售电影机', color: '#3B82F6' },
-    'B': { label: '历史机型', color: '#6B7280' },
+    'B': { label: '广播摄像机', color: '#F59E0B' },
     'C': { label: '电子寻像器', color: '#10B981' },
-    'D': { label: '通用配件', color: '#8B5CF6' }
+    'D': { label: '历史产品', color: '#6B7280' },
+    'E': { label: '通用配件', color: '#8B5CF6' }
 };
+
+// 产品类型映射：英文值 -> 显示标签
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+    'RIG': 'Rig',
+    'BATTERY': '电池',
+    'ACCESSORY': '周边',
+    'RIG_MONITOR': 'Rig;监视器',
+    'POWER': '电源',
+    'CABLE_POWER': '线缆;电源',
+    'CABLE_STORAGE': '线缆;存储卡',
+    'MOVCAM': 'Movcam',
+    'MONITOR': '监视器',
+    'CABLE': '线缆',
+    'VIEWFINDER': '电子寻像器',
+    'STORAGE': '存储卡',
+    'CAMERA': '摄影机',
+    'LENS': '镜头',
+    'CHARGER': '充电器',
+    'MOUNT': '卡口/转接环',
+    'OTHER': '其他'
+};
+
+// 获取产品类型的显示标签
+function getProductTypeLabel(productType: string): string {
+    return PRODUCT_TYPE_LABELS[productType] || productType || '其他';
+}
 
 const ProductModelDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -89,22 +117,7 @@ const ProductModelDetailPage: React.FC = () => {
         fetchModelDetail();
     }, [id, token]);
 
-    useEffect(() => {
-        if (model) {
-            setEditFormData({
-                name_zh: model.name_zh,
-                name_en: model.name_en,
-                brand: model.brand,
-                model_code: model.model_code,
-                material_id: model.material_id,
-                product_family: model.product_family,
-                product_type: model.product_type,
-                description: model.description,
-                hero_image: model.hero_image,
-                is_active: model.is_active
-            });
-        }
-    }, [model]);
+
 
     const toggleSection = (section: string) => {
         const next = new Set(expandedSections);
@@ -247,6 +260,7 @@ const ProductModelDetailPage: React.FC = () => {
                                         <button
                                             onClick={() => {
                                                 setIsMoreMenuOpen(false);
+                                                // 确保使用最新的 model 数据
                                                 setEditFormData({
                                                     name_zh: model.name_zh,
                                                     name_en: model.name_en,
@@ -376,22 +390,31 @@ const ProductModelDetailPage: React.FC = () => {
                                     border: '1px solid var(--glass-border)',
                                     textTransform: 'uppercase'
                                 }}>
-                                    {model.product_type}
+                                    {getProductTypeLabel(model.product_type)}
                                 </span>
                             </div>
 
                             <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: 8 }}>{model.name_zh}</h3>
                             <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: 24 }}>{model.name_en || '-'}</p>
 
+                            {model.sn_prefix && (
+                                <div style={{ marginBottom: 16 }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 4 }}>序列号前缀</div>
+                                    <div style={{ fontSize: '1rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-main)' }}>{model.sn_prefix}</div>
+                                </div>
+                            )}
+
                             <div style={{ display: 'flex', gap: 40 }}>
                                 <div>
                                     <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{model.sku_count || 0}</div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SKU数量</div>
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{model.instance_count || 0}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>在役设备</div>
-                                </div>
+                                {model.sn_prefix && (
+                                    <div>
+                                        <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{model.instance_count || 0}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>在役设备</div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -496,7 +519,7 @@ const ProductModelDetailPage: React.FC = () => {
                                                     <div style={{ fontWeight: 600, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                         {sku.display_name}
                                                     </div>
-                                                    <div style={{ fontSize: '0.75rem', opacity: 0.6, fontFamily: 'monospace' }}>
+                                                    <div style={{ fontSize: '0.75rem', opacity: 0.6, fontVariantNumeric: 'tabular-nums' }}>
                                                         {sku.sku_code}
                                                     </div>
                                                 </div>
@@ -664,20 +687,13 @@ const ProductModelDetailPage: React.FC = () => {
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>产品类型 *</label>
                                             <select
-                                                value={editFormData.product_type || 'CAMERA'}
+                                                value={editFormData.product_type || 'OTHER'}
                                                 onChange={(e) => setEditFormData({ ...editFormData, product_type: e.target.value })}
                                                 style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
                                             >
-                                                <option value="CAMERA">摄影机</option>
-                                                <option value="VIEWFINDER">寻像器</option>
-                                                <option value="BATTERY">电池</option>
-                                                <option value="CHARGER">充电器</option>
-                                                <option value="CABLE">线缆</option>
-                                                <option value="MOUNT">卡口</option>
-                                                <option value="MONITOR">监视器</option>
-                                                <option value="STORAGE">存储</option>
-                                                <option value="ACCESSORY">配件</option>
-                                                <option value="OTHER">其他</option>
+                                                {Object.entries(PRODUCT_TYPE_LABELS).map(([value, label]) => (
+                                                    <option key={value} value={value}>{label}</option>
+                                                ))}
                                             </select>
                                         </div>
                                     </div>
@@ -741,7 +757,7 @@ const ProductModelDetailPage: React.FC = () => {
                                                     </div>
                                                     <div style={{ flex: 1, minWidth: 0 }}>
                                                         <div style={{ fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sku.display_name}</div>
-                                                        <div style={{ fontSize: '0.7rem', opacity: 0.6, fontFamily: 'monospace' }}>{sku.sku_code}</div>
+                                                        <div style={{ fontSize: '0.7rem', opacity: 0.6, fontVariantNumeric: 'tabular-nums' }}>{sku.sku_code}</div>
                                                     </div>
                                                     {!sku.is_active && (
                                                         <span style={{ fontSize: '0.65rem', color: '#9CA3AF', background: 'rgba(107,114,128,0.1)', padding: '2px 5px', borderRadius: 4 }}>下架</span>

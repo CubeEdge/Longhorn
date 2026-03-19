@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Truck, Calendar, FileText, AlertTriangle, Save, ArrowRight, BadgeDollarSign, Edit3, ChevronRight, Package, Clock, Eye } from 'lucide-react';
+import { X, CheckCircle, Truck, FileText, AlertTriangle, Save, ArrowRight, BadgeDollarSign, Edit3, ChevronRight, Package, Clock, Eye } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
+import { CustomDatePicker } from '../UI/CustomDatePicker';
 
 interface ClosingHandoverModalProps {
     isOpen: boolean;
@@ -377,18 +378,11 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, animation: 'fadeIn 0.2s ease-out' }}>
                             {/* 发货日期和运费方式 */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>期望发货日期</label>
-                                    <div style={{ position: 'relative' }}>
-                                        <Calendar size={16} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-                                        <input
-                                            type="date"
-                                            value={formData.target_shipping_date}
-                                            onChange={e => setFormData(prev => ({ ...prev, target_shipping_date: e.target.value }))}
-                                            style={{ width: '100%', padding: '12px 16px 12px 44px', background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', borderRadius: 10, color: 'var(--text-main)', fontSize: 14, outline: 'none' }}
-                                        />
-                                    </div>
-                                </div>
+                                <CustomDatePicker
+                                    label="期望发货日期"
+                                    value={formData.target_shipping_date}
+                                    onChange={(val) => setFormData(prev => ({ ...prev, target_shipping_date: val }))}
+                                />
                                 <div>
                                     <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>运费方式</label>
                                     <div style={{ display: 'flex', gap: 8 }}>

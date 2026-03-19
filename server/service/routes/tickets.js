@@ -449,6 +449,7 @@ module.exports = function (db, authenticate, serviceUpload) {
             // Product - nested structure for frontend compatibility
             product_id: row.product_id,
             product_name: row.product_name,
+            product_name_en: row.product_name_en,
             product: row.product_id ? {
                 id: row.product_id,
                 name: row.product_name
@@ -1170,12 +1171,14 @@ module.exports = function (db, authenticate, serviceUpload) {
                     a.service_tier as account_service_tier,
                     a.account_type as account_type,
                     a.region as account_region,
+                    a.country as account_country,
                     c.name as contact_name,
                     c.email as contact_email,
                     c.job_title as contact_job_title,
                     d.name as dealer_name,
                     d.dealer_code as dealer_code,
                     p.model_name as product_name,
+                    pm.name_en as product_name_en,
                     p.serial_number as product_serial_number,
                     p.firmware_version as product_firmware,
                     p.product_line as product_line,
@@ -1189,6 +1192,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 LEFT JOIN contacts c ON t.contact_id = c.id
                 LEFT JOIN accounts d ON t.dealer_id = d.id
                 LEFT JOIN products p ON t.product_id = p.id
+                LEFT JOIN product_models pm ON p.model_name = pm.name_zh
                 LEFT JOIN users u1 ON t.assigned_to = u1.id
                 LEFT JOIN departments d1 ON u1.department_id = d1.id
                 LEFT JOIN users u2 ON t.submitted_by = u2.id
@@ -1286,6 +1290,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     service_tier: row.account_service_tier,
                     account_type: row.account_type,
                     region: row.account_region,
+                    country: row.account_country,
                     ticket_stats: stats || { total: 0, inquiry_count: 0, rma_count: 0, svc_count: 0 },
                     contacts: contacts || []
                 };
@@ -2469,7 +2474,12 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             const now = new Date().toISOString();
             const newTicketNumber = generateTicketNumber(target_type, channel_code);
-            const initialNode = 'submitted';
+            
+            // Determine initial node based on target type (same as creation logic)
+            let initialNode = 'submitted';
+            if (target_type === 'rma') initialNode = 'op_receiving';
+            if (target_type === 'svc') initialNode = 'submitted';
+            
             const priority = ticket.priority || 'P2';
 
             const slaDue = slaService.calculateSlaDue(db, priority, initialNode, now, target_type);
@@ -2531,7 +2541,30 @@ module.exports = function (db, authenticate, serviceUpload) {
             `).run(
                 id,
                 `已升级为 ${target_type.toUpperCase()} 工单: ${newTicketNumber}`,
-                JSON.stringify({ linked_ticket_id: result.lastInsertRowid, linked_ticket_number: newTicketNumber }),
+                JSON.stringify({ 
+                    linked_ticket_id: result.lastInsertRowid, 
+                    linked_ticket_number: newTicketNumber,
+                    upgrade_reason: reason || null,
+                    upgrade_type: target_type
+                }),
+                req.user.id,
+                req.user.name,
+                req.user.department || 'MS'
+            );
+
+            // 记录工单关闭原因（系统变更）
+            db.prepare(`
+                INSERT INTO ticket_activities (ticket_id, activity_type, content, metadata, actor_id, actor_name, actor_role, visibility)
+                VALUES (?, 'system_event', ?, ?, ?, ?, ?, 'all')
+            `).run(
+                id,
+                `工单因升级为${target_type.toUpperCase()}工单而关闭`,
+                JSON.stringify({ 
+                    event_type: 'closed_due_to_upgrade',
+                    reason: `升级为${target_type.toUpperCase()}工单: ${newTicketNumber}`,
+                    linked_ticket_id: result.lastInsertRowid,
+                    linked_ticket_number: newTicketNumber
+                }),
                 req.user.id,
                 req.user.name,
                 req.user.department || 'MS'
@@ -2548,6 +2581,9 @@ module.exports = function (db, authenticate, serviceUpload) {
                 req.user.name,
                 req.user.department || 'MS'
             );
+
+            // Trigger auto-assignment for the new ticket
+            autoAssignTicket(result.lastInsertRowid, initialNode, target_type, req.user.id);
 
             res.json({
                 success: true,

@@ -4,6 +4,7 @@ import { X, Save, Plus, Edit2, Shield, Package, Tag, Settings, Calendar, Check, 
 import { useAuthStore } from '../../store/useAuthStore';
 import ProductWarrantyRegistrationModal from '../Service/ProductWarrantyRegistrationModal';
 import type { WarrantyRegistrationData } from '../Service/ProductWarrantyRegistrationModal';
+import { CustomDatePicker } from '../UI/CustomDatePicker';
 
 interface Product {
     id: number;
@@ -43,6 +44,9 @@ interface ProductModel {
     id: number;
     name_zh: string;
     model_code: string;
+    sn_prefix?: string;
+    product_type?: string;
+    product_family?: string;
 }
 
 interface ProductSku {
@@ -69,6 +73,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
     const [saving, setSaving] = useState(false);
     const [models, setModels] = useState<ProductModel[]>([]);
     const [skus, setSkus] = useState<ProductSku[]>([]);
+    const [, setProductDropdownSettings] = useState<any>(null);
     const [showWarrantyModal, setShowWarrantyModal] = useState(false);
     // 补充信息字段现在始终展开显示在右侧栏
     // 暂存的保修数据（方案B：产品未入库时暂存，入库时一并提交）
@@ -146,15 +151,87 @@ const ProductModal: React.FC<ProductModalProps> = ({
 
     const fetchModelsAndSkus = async () => {
         try {
-            const [modelsRes, skusRes] = await Promise.all([
+            const [modelsRes, skusRes, settingsRes] = await Promise.all([
                 axios.get('/api/v1/admin/product-models', { headers: { Authorization: `Bearer ${token}` } }),
-                axios.get('/api/v1/admin/product-skus', { headers: { Authorization: `Bearer ${token}` } })
+                axios.get('/api/v1/admin/product-skus', { headers: { Authorization: `Bearer ${token}` } }),
+                axios.get('/api/v1/system/public-settings', { headers: { Authorization: `Bearer ${token}` } })
             ]);
-            if (modelsRes.data.success) setModels(modelsRes.data.data);
+            
+            // 保存系统设置
+            if (settingsRes.data.success) {
+                setProductDropdownSettings(settingsRes.data.data.product_dropdown);
+            }
+            
+            if (modelsRes.data.success) {
+                let modelsData = modelsRes.data.data;
+                
+                // SN前缀自动匹配产品型号（仅在新建产品时）
+                const snInput = (prefillSerialNumber || '').trim().toUpperCase();
+                
+                // 应用系统设置过滤（SN为空时）
+                if (snInput.length === 0 && settingsRes.data.success) {
+                    const settings = settingsRes.data.data.product_dropdown;
+                    if (settings) {
+                        const familyVisibility = settings.family_visibility || { A: true, B: false, C: true, D: true, E: false };
+                        const enableTypeFilter = settings.enable_type_filter !== false;
+                        const allowedTypes = settings.allowed_types || ['电影机', '摄像机', '电子寻像器', '寻像器', '套装'];
+                        
+                        modelsData = modelsData.filter((p: ProductModel) => {
+                            // 必须是启用的族群
+                            if (!familyVisibility[p.product_family as keyof typeof familyVisibility]) return false;
+                            
+                            // 必须有 sn_prefix
+                            if (!p.sn_prefix) return false;
+                            
+                            // 检查产品类型过滤
+                            if (enableTypeFilter) {
+                                const productType = (p.product_type || '').toLowerCase();
+                                const matchesType = allowedTypes.some((type: string) => 
+                                    productType.includes(type.toLowerCase())
+                                );
+                                if (!matchesType) return false;
+                            }
+                            
+                            return true;
+                        });
+                    }
+                }
+                
+                setModels(modelsData);
+                
+                // SN前缀自动匹配产品型号（仅在新建产品时）
+                if (!editingProduct && prefillSerialNumber) {
+                    const matchedByPrefix = modelsData.filter((p: ProductModel) => 
+                        p.sn_prefix && (
+                            p.sn_prefix.toUpperCase() === snInput ||  // 精确匹配
+                            snInput.startsWith(p.sn_prefix.toUpperCase())  // 输入以产品前缀开头
+                        )
+                    );
+                    
+                    if (matchedByPrefix.length === 1) {
+                        // 只有一个精确匹配，自动选择产品型号并填充分类和族群
+                        const matched = matchedByPrefix[0];
+                        setFormData(prev => ({
+                            ...prev,
+                            model_name: matched.name_zh,
+                            product_line: mapProductTypeToLine(matched.product_type) || 'Camera',
+                            product_family: (matched.product_family as 'A' | 'B' | 'C' | 'D' | 'E') || 'A'
+                        }));
+                    }
+                }
+            }
             if (skusRes.data.success) setSkus(skusRes.data.data);
         } catch (err) {
             console.error('Failed to fetch models or skus', err);
         }
+    };
+    
+    // 辅助函数：将product_type映射到产品线
+    const mapProductTypeToLine = (productType?: string): 'Camera' | 'EVF' | 'Accessory' | null => {
+        if (!productType) return null;
+        if (productType.includes('电影机') || productType.includes('摄像机')) return 'Camera';
+        if (productType.includes('寻像器')) return 'EVF';
+        return 'Accessory';
     };
 
     const handleSubmit = async () => {
@@ -167,7 +244,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
             return;
         }
         if (!formData.product_line) {
-            alert('请选择产品线');
+            alert('请选择分类');
             return;
         }
         if (!formData.product_family) {
@@ -342,7 +419,29 @@ const ProductModal: React.FC<ProductModalProps> = ({
                                         <input
                                             type="text"
                                             value={formData.serial_number || ''}
-                                            onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                setFormData(prev => ({ ...prev, serial_number: value }));
+                                                
+                                                // 根据序列号前缀自动匹配产品型号
+                                                if (value.length >= 2) {
+                                                    const prefix = value.split('_')[0]; // 获取下划线前的部分
+                                                    if (prefix) {
+                                                        const matchedModel = models.find(m => 
+                                                            m.sn_prefix && prefix.toUpperCase() === m.sn_prefix.toUpperCase()
+                                                        );
+                                                        if (matchedModel) {
+                                                            setFormData(prev => ({ 
+                                                                ...prev, 
+                                                                serial_number: value,
+                                                                model_name: matchedModel.name_zh,
+                                                                product_sku: '',
+                                                                sku_id: undefined
+                                                            }));
+                                                        }
+                                                    }
+                                                }
+                                            }}
                                             style={inputStyle}
                                             placeholder="例如: KVF_123121"
                                         />
@@ -351,11 +450,23 @@ const ProductModal: React.FC<ProductModalProps> = ({
                                         <label style={labelStyle}>型号名称 <span style={{ color: '#EF4444' }}>*</span></label>
                                         <select
                                             value={formData.model_name || ''}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, model_name: e.target.value, product_sku: '', sku_id: undefined }))}
+                                            onChange={(e) => {
+                                                const modelName = e.target.value;
+                                                const selectedModel = models.find(m => m.name_zh === modelName);
+                                                setFormData(prev => ({ 
+                                                    ...prev, 
+                                                    model_name: modelName, 
+                                                    product_sku: '', 
+                                                    sku_id: undefined,
+                                                    // 自动填充分类和族群
+                                                    product_line: selectedModel ? (mapProductTypeToLine(selectedModel.product_type) || prev.product_line) : prev.product_line,
+                                                    product_family: selectedModel?.product_family ? (selectedModel.product_family as 'A' | 'B' | 'C' | 'D' | 'E') : prev.product_family
+                                                }));
+                                            }}
                                             style={selectStyle}
                                         >
                                             <option value="" disabled>请选择型号</option>
-                                            {models.map(m => <option key={m.id} value={m.name_zh}>{m.name_zh}</option>)}
+                                            {models.filter(m => m.sn_prefix).map(m => <option key={m.id} value={m.name_zh}>{m.name_zh}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -386,7 +497,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                                     <div>
-                                        <label style={labelStyle}>产品线 <span style={{ color: '#EF4444' }}>*</span></label>
+                                        <label style={labelStyle}>分类 <span style={{ color: '#EF4444' }}>*</span></label>
                                         <select
                                             value={formData.product_line || 'Camera'}
                                             onChange={(e) => setFormData({ ...formData, product_line: e.target.value as Product['product_line'] })}
@@ -420,15 +531,11 @@ const ProductModal: React.FC<ProductModalProps> = ({
                                     <Settings size={14} /> 补充信息
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                                    <div>
-                                        <label style={labelStyle}>生产日期</label>
-                                        <input
-                                            type="date"
-                                            value={formData.production_date || ''}
-                                            onChange={(e) => setFormData({ ...formData, production_date: e.target.value })}
-                                            style={inputStyle}
-                                        />
-                                    </div>
+                                    <CustomDatePicker
+                                        label="生产日期"
+                                        value={formData.production_date || ''}
+                                        onChange={(val) => setFormData({ ...formData, production_date: val })}
+                                    />
                                     <div>
                                         <label style={labelStyle}>固件版本</label>
                                         <input
@@ -521,80 +628,96 @@ const ProductModal: React.FC<ProductModalProps> = ({
                                             </div>
                                         </>
                                     ) : (
-                                        /* 新产品或无保修产品：原始注册流程 */
-                                        <>
+                                        /* 新产品入库：不显示保修注册入口，仅显示状态 */
+                                        !editingProduct ? (
+                                            /* 新产品入库模式：仅显示保修状态提示 */
                                             <div style={{
                                                 padding: '12px', borderRadius: 8,
-                                                border: pendingWarrantyData
-                                                    ? '1px solid rgba(16,185,129,0.3)'
-                                                    : '1px solid rgba(255,255,255,0.08)',
-                                                background: pendingWarrantyData
-                                                    ? 'rgba(16,185,129,0.08)'
-                                                    : 'rgba(255,255,255,0.02)',
-                                                color: pendingWarrantyData ? '#10B981' : '#666',
+                                                border: '1px solid rgba(255,255,255,0.08)',
+                                                background: 'rgba(255,255,255,0.02)',
+                                                color: '#666',
                                                 fontSize: '0.85rem',
-                                                display: 'flex', alignItems: 'center', gap: 8,
-                                                marginBottom: 8
+                                                display: 'flex', alignItems: 'center', gap: 8
                                             }}>
-                                                {pendingWarrantyData ? (
-                                                    <>
-                                                        <Check size={16} />
-                                                        已填写（{pendingWarrantyData.saleDate}，{pendingWarrantyData.warrantyMonths}个月）
-                                                    </>
-                                                ) : (
-                                                    formData.warranty_start_date || '未设置（系统自动计算）'
-                                                )}
+                                                <Shield size={16} color="#666" />
+                                                <span>产品入库后可在详情页注册保修</span>
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setWarrantyPrefillData({
-                                                        productLine: formData.product_line,
-                                                        productFamily: formData.product_family,
-                                                        skuId: formData.sku_id || undefined,
-                                                        salesChannel: formData.sales_channel
-                                                    });
-                                                    setShowWarrantyModal(true);
-                                                }}
-                                                disabled={!formData.serial_number}
-                                                style={{
-                                                    width: '100%', padding: '10px 14px', borderRadius: 8,
-                                                    background: pendingWarrantyData
-                                                        ? 'rgba(16,185,129,0.1)'
-                                                        : 'rgba(59,130,246,0.1)',
+                                        ) : (
+                                            /* 编辑已有产品但无保修：显示注册保修按钮 */
+                                            <>
+                                                <div style={{
+                                                    padding: '12px', borderRadius: 8,
                                                     border: pendingWarrantyData
                                                         ? '1px solid rgba(16,185,129,0.3)'
-                                                        : '1px solid rgba(59,130,246,0.3)',
-                                                    color: pendingWarrantyData ? '#10B981' : '#3B82F6',
-                                                    fontSize: '0.8rem', fontWeight: 600,
-                                                    cursor: formData.serial_number ? 'pointer' : 'not-allowed',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                                    transition: 'all 0.2s',
-                                                    opacity: formData.serial_number ? 1 : 0.5
-                                                }}
-                                                onMouseEnter={e => {
-                                                    if (formData.serial_number) {
+                                                        : '1px solid rgba(255,255,255,0.08)',
+                                                    background: pendingWarrantyData
+                                                        ? 'rgba(16,185,129,0.08)'
+                                                        : 'rgba(255,255,255,0.02)',
+                                                    color: pendingWarrantyData ? '#10B981' : '#666',
+                                                    fontSize: '0.85rem',
+                                                    display: 'flex', alignItems: 'center', gap: 8,
+                                                    marginBottom: 8
+                                                }}>
+                                                    {pendingWarrantyData ? (
+                                                        <>
+                                                            <Check size={16} />
+                                                            已填写（{pendingWarrantyData.saleDate}，{pendingWarrantyData.warrantyMonths}个月）
+                                                        </>
+                                                    ) : (
+                                                        formData.warranty_start_date || '未设置（系统自动计算）'
+                                                    )}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setWarrantyPrefillData({
+                                                            productLine: formData.product_line,
+                                                            productFamily: formData.product_family,
+                                                            skuId: formData.sku_id || undefined,
+                                                            salesChannel: formData.sales_channel
+                                                        });
+                                                        setShowWarrantyModal(true);
+                                                    }}
+                                                    disabled={!formData.serial_number}
+                                                    style={{
+                                                        width: '100%', padding: '10px 14px', borderRadius: 8,
+                                                        background: pendingWarrantyData
+                                                            ? 'rgba(16,185,129,0.1)'
+                                                            : 'rgba(59,130,246,0.1)',
+                                                        border: pendingWarrantyData
+                                                            ? '1px solid rgba(16,185,129,0.3)'
+                                                            : '1px solid rgba(59,130,246,0.3)',
+                                                        color: pendingWarrantyData ? '#10B981' : '#3B82F6',
+                                                        fontSize: '0.8rem', fontWeight: 600,
+                                                        cursor: formData.serial_number ? 'pointer' : 'not-allowed',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                                        transition: 'all 0.2s',
+                                                        opacity: formData.serial_number ? 1 : 0.5
+                                                    }}
+                                                    onMouseEnter={e => {
+                                                        if (formData.serial_number) {
+                                                            e.currentTarget.style.background = pendingWarrantyData
+                                                                ? 'rgba(16,185,129,0.2)'
+                                                                : 'rgba(59,130,246,0.2)';
+                                                        }
+                                                    }}
+                                                    onMouseLeave={e => {
                                                         e.currentTarget.style.background = pendingWarrantyData
-                                                            ? 'rgba(16,185,129,0.2)'
-                                                            : 'rgba(59,130,246,0.2)';
+                                                            ? 'rgba(16,185,129,0.1)'
+                                                            : 'rgba(59,130,246,0.1)';
+                                                    }}
+                                                >
+                                                    <Calendar size={14} />
+                                                    {pendingWarrantyData ? '修改保修' : '注册保修'}
+                                                </button>
+                                                <div style={{ fontSize: '0.7rem', color: '#555', marginTop: 4 }}>
+                                                    {pendingWarrantyData
+                                                        ? '* 保修信息已暂存，将在保存入库时一并提交'
+                                                        : '* 保修日期由系统根据销售信息自动计算'
                                                     }
-                                                }}
-                                                onMouseLeave={e => {
-                                                    e.currentTarget.style.background = pendingWarrantyData
-                                                        ? 'rgba(16,185,129,0.1)'
-                                                        : 'rgba(59,130,246,0.1)';
-                                                }}
-                                            >
-                                                <Calendar size={14} />
-                                                {pendingWarrantyData ? '修改保修' : '注册保修'}
-                                            </button>
-                                            <div style={{ fontSize: '0.7rem', color: '#555', marginTop: 4 }}>
-                                                {pendingWarrantyData
-                                                    ? '* 保修信息已暂存，将在保存入库时一并提交'
-                                                    : '* 保修日期由系统根据销售信息自动计算'
-                                                }
-                                            </div>
-                                        </>
+                                                </div>
+                                            </>
+                                        )
                                     )}
                                 </div>
                             </div>

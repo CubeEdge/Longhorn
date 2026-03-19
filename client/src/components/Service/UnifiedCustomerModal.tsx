@@ -12,7 +12,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { X, Check, ChevronDown, ChevronUp, Plus, Trash2, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -755,15 +755,18 @@ const UnifiedCustomerModal: React.FC<UnifiedCustomerModalProps> = ({
 
                     {/* Footer */}
                     <div style={{
-                        padding: '16px 20px', borderTop: '1px solid var(--glass-border)',
-                        display: 'flex', justifyContent: 'flex-end', gap: 12, flexShrink: 0
+                        padding: '20px 32px', borderTop: '1px solid var(--glass-border)',
+                        display: 'flex', justifyContent: 'flex-end', gap: 16,
+                        background: 'var(--glass-bg-light)', flexShrink: 0
                     }}>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="glass-btn"
+                            disabled={loading}
                             style={{
-                                padding: '10px 20px'
+                                padding: '0 24px', height: 44, background: 'transparent', border: '1px solid var(--glass-border)',
+                                color: 'var(--text-main)', cursor: loading ? 'not-allowed' : 'pointer', borderRadius: 10, fontWeight: 600,
+                                fontSize: 14, opacity: loading ? 0.7 : 1
                             }}
                         >
                             取消
@@ -771,13 +774,16 @@ const UnifiedCustomerModal: React.FC<UnifiedCustomerModalProps> = ({
                         <button
                             type="submit"
                             disabled={loading}
-                            className="btn-primary"
                             style={{
-                                padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 6,
-                                opacity: loading ? 0.7 : 1
+                                padding: '0 32px', height: 44, background: '#FFD200', border: 'none',
+                                color: '#000', borderRadius: 10, fontWeight: 700,
+                                cursor: loading ? 'not-allowed' : 'pointer',
+                                display: 'flex', alignItems: 'center', gap: 8,
+                                opacity: loading ? 0.7 : 1,
+                                fontSize: 14, boxShadow: '0 4px 12px rgba(255,210,0,0.3)'
                             }}
                         >
-                            <Check size={16} />
+                            {loading ? <Loader2 size={20} className="animate-spin" /> : <Check size={20} />}
                             {loading ? '处理中...' : (isEditing ? '保存修改' : (ticketId ? '创建并关联' : '确认创建'))}
                         </button>
                     </div>

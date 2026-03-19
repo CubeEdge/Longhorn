@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, Plus, X, Search, ChevronDown, ChevronRight, CheckCircle, RefreshCcw } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
+import ConfirmModal from '../Service/ConfirmModal';
 
 const INTERACTION_FREQS_KEY = 'longhorn_interaction_freqs';
 
@@ -19,6 +20,7 @@ interface ParticipantsSidebarProps {
     onUpdate: () => void;
     isAdmin?: boolean;
     isMsLead?: boolean;
+    ticketType?: string;
 }
 
 interface UserOption {
@@ -37,8 +39,10 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
     participants,
     onUpdate,
     isAdmin = false,
-    isMsLead = false
+    isMsLead = false,
+    ticketType
 }) => {
+    const isRMA = ticketType?.toLowerCase() === 'rma';
     const { user: currentUserProfile } = useAuthStore();
     const [showInvite, setShowInvite] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
@@ -51,6 +55,13 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
     const [selectedTransferUser, setSelectedTransferUser] = useState<number | null>(null);
     const [isTransferring, setIsTransferring] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    
+    // 退出协作确认弹窗状态
+    const [exitConfirm, setExitConfirm] = useState<{ isOpen: boolean; userId: number | null; isSelf: boolean }>({
+        isOpen: false,
+        userId: null,
+        isSelf: false
+    });
 
     useEffect(() => {
         if (!showInvite && !showTransfer) return;
@@ -106,15 +117,17 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
         }
     };
 
-    const handleRemove = async (userId: number) => {
+    const handleRemove = (userId: number) => {
         const isSelf = currentUserProfile?.id === userId;
-        const msg = isSelf
-            ? '确定要退出该工单讨论吗？退出后将不再接收到此工单的评论通知。'
-            : '确定要移除该成员吗？';
-        if (!window.confirm(msg)) return;
+        setExitConfirm({ isOpen: true, userId, isSelf });
+    };
+    
+    const confirmRemove = async () => {
+        if (!exitConfirm.userId) return;
         try {
-            await axios.delete(`/api/v1/tickets/${ticketId}/participants/${userId}`,
+            await axios.delete(`/api/v1/tickets/${ticketId}/participants/${exitConfirm.userId}`,
                 { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+            setExitConfirm({ isOpen: false, userId: null, isSelf: false });
             onUpdate();
         } catch (e) {
             console.error('Remove participant failed', e);
@@ -404,12 +417,12 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                                     <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                                     {getRoleBadge(p.role)}
-                                    {p.role === 'assignee' && (
+                                    {p.role === 'assignee' && (allUsers.find(u => u.id === p.user_id)?.department || p.department_name || p.department) && (
                                         <span style={{ fontSize: 11, opacity: 0.6, padding: '0 4px', background: 'rgba(0,0,0,0.1)', borderRadius: 3 }}>
-                                            {allUsers.find(u => u.id === p.user_id)?.department || p.department_name || p.department || '-'}
+                                            {allUsers.find(u => u.id === p.user_id)?.department || p.department_name || p.department}
                                         </span>
                                     )}
-                                    {p.role === 'assignee' && (isAdmin || isMsLead || p.user_id === currentUserProfile?.id) && (
+                                    {p.role === 'assignee' && !isRMA && (isAdmin || isMsLead || p.user_id === currentUserProfile?.id) && (
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setShowTransfer(true); }}
                                             className="transfer-btn"
@@ -603,6 +616,21 @@ export const ParticipantsSidebar: React.FC<ParticipantsSidebarProps> = ({
                         </button>
                     </div>
                 </div>
+            )}
+            
+            {/* 退出协作确认弹窗 - Kine Orange 3秒倒计时 */}
+            {exitConfirm.isOpen && (
+                <ConfirmModal
+                    title={exitConfirm.isSelf ? '退出工单讨论' : '移除协作成员'}
+                    message={exitConfirm.isSelf 
+                        ? '确定要退出该工单讨论吗？退出后将不再接收到此工单的评论通知。' 
+                        : '确定要移除该成员吗？'}
+                    confirmText="确认"
+                    cancelText="取消"
+                    countdown={3}
+                    onConfirm={confirmRemove}
+                    onCancel={() => setExitConfirm({ isOpen: false, userId: null, isSelf: false })}
+                />
             )}
         </div>
     );

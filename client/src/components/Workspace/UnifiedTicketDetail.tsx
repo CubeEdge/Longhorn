@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreHorizontal, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight, Wrench, Calculator, CheckCircle, Shield, Search, BadgeDollarSign, ChevronRight, Zap, MessageSquare, RefreshCcw } from 'lucide-react';
+import { Package, Clock, ExternalLink, AlertTriangle, ArrowLeft, Edit2, MoreHorizontal, Trash2, X, Save, FileText, Paperclip, ShieldAlert, Loader2, ArrowRight, Wrench, Calculator, CheckCircle, Shield, Search, BadgeDollarSign, ChevronRight, Zap, MessageSquare, RefreshCcw, ArrowUpCircle } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
@@ -33,6 +33,7 @@ import { PIEditor } from './PIEditor';
 import { ClosingHandoverModal } from './ClosingHandoverModal';
 import ProductWarrantyRegistrationModal from '../Service/ProductWarrantyRegistrationModal';
 import ProductModal from './ProductModal';
+import { CustomDatePicker } from '../UI/CustomDatePicker';
 // Types
 // ==============================
 
@@ -222,6 +223,12 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     const [reopenCountdown, setReopenCountdown] = useState(9);
     const [isReopening, setIsReopening] = useState(false);
     const [feedbackView, setFeedbackView] = useState<'options' | 'input' | 'resolve_input'>('options');
+    
+    // 升级为RMA弹窗状态
+    const [isUpgradeRmaModalOpen, setIsUpgradeRmaModalOpen] = useState(false);
+    const [upgradeRmaReason, setUpgradeRmaReason] = useState('');
+    const [upgradeRmaCountdown, setUpgradeRmaCountdown] = useState(5);
+    const [isUpgradingRma, setIsUpgradingRma] = useState(false);
     
     // 关键节点编辑模式状态
     const [keyNodeEditMode, setKeyNodeEditMode] = useState<'op_receive' | 'op_shipping' | null>(null);
@@ -522,6 +529,27 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         padding: 4, minWidth: 160, zIndex: 100,
                         boxShadow: 'var(--glass-shadow-lg)'
                     }}>
+                        {/* 升级为RMA工单 (Inquiry Only) - 排在第一个 */}
+                        {ticket?.ticket_type?.toLowerCase() === 'inquiry' && !['resolved', 'closed', 'auto_closed'].includes(ticket?.current_node as string) && ((ticket as any)?.assigned_to === actingUser.id || hasPrivilege) && (
+                            <button
+                                onClick={() => {
+                                    setShowMoreMenu(false);
+                                    setIsUpgradeRmaModalOpen(true);
+                                    setUpgradeRmaCountdown(5);
+                                    setUpgradeRmaReason('');
+                                }}
+                                style={{
+                                    width: '100%', padding: '8px 12px',
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    background: 'transparent', border: 'none', color: '#F59E0B',
+                                    fontSize: 13, cursor: 'pointer', textAlign: 'left', borderRadius: 4
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(245,158,11,0.1)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                                <ArrowUpCircle size={14} /> 升级为RMA工单
+                            </button>
+                        )}
                         {/* 编辑工单 */}
                         {showEdit && ticket && (
                             <button
@@ -624,6 +652,15 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
         }
         return () => clearInterval(timer);
     }, [isReopenModalOpen, reopenCountdown]);
+
+    // 升级为RMA倒计时
+    useEffect(() => {
+        let timer: any;
+        if (isUpgradeRmaModalOpen && upgradeRmaCountdown > 0) {
+            timer = setInterval(() => setUpgradeRmaCountdown(prev => prev - 1), 1000);
+        }
+        return () => clearInterval(timer);
+    }, [isUpgradeRmaModalOpen, upgradeRmaCountdown]);
 
     // 处理更正请求：打开对应的完整编辑器
     const handleCorrectionRequest = useCallback((request: CorrectionRequest) => {
@@ -732,7 +769,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     ...act,
                     attachments: atts.filter((a: any) => a.activity_id === act.id)
                 }));
-                setTicket(res.data.data);
+                // 将account数据合并到ticket中，以便子组件访问
+                setTicket({
+                    ...res.data.data,
+                    account: res.data.account
+                });
                 setActivities(activitiesWithAttachments);
                 setParticipants(res.data.participants || []);
                 setTicketAttachments(atts);
@@ -859,7 +900,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 setActivities(activitiesRes.data.data || []);
             }
             if (detailRes.data.success) {
-                setTicket(detailRes.data.data);
+                // 将account数据合并到ticket中，以便子组件访问
+                setTicket({
+                    ...detailRes.data.data,
+                    account: detailRes.data.account
+                });
                 setParticipants(detailRes.data.participants || []);
                 setTicketAttachments(detailRes.data.attachments || []);
             }
@@ -962,11 +1007,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
     };
 
 
-    const handleUpgrade = async (type: 'rma' | 'svc') => {
-        if (!window.confirm(`确认要将此咨询工单升级为 ${type.toUpperCase()} 工单吗？此操作不可逆。`)) return;
+    const handleUpgrade = async (type: 'rma' | 'svc', reason?: string) => {
         try {
             const res = await axios.post(`/api/v1/tickets/${ticketId}/convert`, {
-                target_type: type
+                target_type: type,
+                reason: reason
             }, { headers: { Authorization: `Bearer ${token}` } });
             if (res.data.success) {
                 navigate(`/service/tickets/${res.data.data.new_ticket_id}`);
@@ -1714,6 +1759,7 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                         onUpdate={fetchDetail}
                         isAdmin={isGlobalAdmin}
                         isMsLead={isMsLead}
+                        ticketType={ticket?.ticket_type}
                     />
 
 
@@ -2590,6 +2636,78 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                     </div>
                 )
             }
+
+            {/* ====== Upgrade to RMA Modal ====== */}
+            {
+                isUpgradeRmaModalOpen && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 300,
+                        background: 'var(--modal-overlay)', backdropFilter: 'blur(5px)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <div style={{
+                            width: 440, background: 'var(--modal-bg)', borderRadius: 16,
+                            border: '1px solid #F59E0B', overflow: 'hidden',
+                            boxShadow: '0 20px 40px rgba(245, 158, 11, 0.15)'
+                        }}>
+                            <div style={{ padding: 24, textAlign: 'center' }}>
+                                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                                    <ArrowUpCircle size={24} color="#F59E0B" />
+                                </div>
+                                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-main)', marginBottom: 8 }}>升级为RMA工单</h3>
+                                <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                    此操作将把咨询工单 <b>{ticket.ticket_number}</b> 升级为RMA维修工单。<br />此操作<b>不可逆</b>，升级后工单将进入维修流程。
+                                    <br /><br />
+                                    请确认以下条件：
+                                </p>
+                                <ul style={{ textAlign: 'left', fontSize: 13, color: 'var(--text-secondary)', margin: '12px 0', paddingLeft: 24 }}>
+                                    <li>客户已确认需要维修服务</li>
+                                    <li>已核实产品在保修期内或客户接受付费维修</li>
+                                    <li>已获取产品序列号</li>
+                                </ul>
+                                <p style={{ margin: '8px 0 0', fontSize: 13, color: '#F59E0B' }}>
+                                    等待 {upgradeRmaCountdown > 0 ? <span style={{ fontWeight: 600 }}>{upgradeRmaCountdown}秒</span> : '解锁'}
+                                </p>
+                            </div>
+                            <div style={{ padding: '0 24px 24px' }}>
+                                <textarea
+                                    value={upgradeRmaReason}
+                                    onChange={e => setUpgradeRmaReason(e.target.value)}
+                                    placeholder="输入升级理由（必填，至少10个字符）..."
+                                    style={{ width: '100%', padding: '12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-main)', borderRadius: 8, minHeight: 80, fontSize: 14 }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', borderTop: '1px solid var(--glass-border)' }}>
+                                <button
+                                    onClick={() => { setIsUpgradeRmaModalOpen(false); setUpgradeRmaReason(''); }}
+                                    style={{ flex: 1, padding: 16, background: 'transparent', border: 'none', color: 'var(--text-main)', fontSize: 15, cursor: 'pointer' }}
+                                >取消</button>
+                                <div style={{ width: 1, background: 'var(--glass-border)' }} />
+                                <button
+                                    onClick={async () => {
+                                        setIsUpgradingRma(true);
+                                        await handleUpgrade('rma', upgradeRmaReason);
+                                        setIsUpgradingRma(false);
+                                        setIsUpgradeRmaModalOpen(false);
+                                        setUpgradeRmaReason('');
+                                    }}
+                                    disabled={upgradeRmaCountdown > 0 || upgradeRmaReason.trim().length < 10 || isUpgradingRma}
+                                    style={{
+                                        flex: 1, padding: 16, background: 'transparent', border: 'none',
+                                        color: (upgradeRmaCountdown > 0 || upgradeRmaReason.trim().length < 10) ? 'var(--text-tertiary)' : '#F59E0B',
+                                        fontSize: 15, fontWeight: 600,
+                                        cursor: (upgradeRmaCountdown > 0 || upgradeRmaReason.trim().length < 10) ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {upgradeRmaCountdown > 0 ? `确认升级 (${upgradeRmaCountdown}s)` : isUpgradingRma ? '升级中...' : '确认升级'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
             <SubmitDiagnosticModal
                 isOpen={isDiagnosticModalOpen}
                 onClose={() => {
@@ -3057,15 +3175,11 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                                     </div>
                                     
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                            <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{language === 'zh' ? '预设结案日期' : 'Auto-close Date'}</label>
-                                            <input 
-                                                type="date" 
-                                                value={autoCloseDate} 
-                                                onChange={(e) => setAutoCloseDate(e.target.value)}
-                                                style={{ background: 'var(--card-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 6, padding: '6px 10px', color: 'var(--text-main)', fontSize: 13 }}
-                                            />
-                                        </div>
+                                        <CustomDatePicker
+                                            label={language === 'zh' ? '预设结案日期' : 'Auto-close Date'}
+                                            value={autoCloseDate}
+                                            onChange={(val) => setAutoCloseDate(val)}
+                                        />
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                             <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{language === 'zh' ? '节点处理时限 (小时)' : 'Node SLA (Hours)'}</label>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -3092,20 +3206,44 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
 
                         {/* Footer / Upgrade Shortcut */}
                         <div style={{ padding: '16px 24px', background: 'rgba(0,0,0,0.1)', borderTop: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, opacity: 0.8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <AlertTriangle size={12} color="var(--text-tertiary)" />
                                 <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{language === 'zh' ? '发现是硬件故障？' : 'Hardware issue?'}</span>
                                 <button 
                                     onClick={() => {
                                         setIsReplyModalOpen(false);
-                                        handleUpgrade('rma');
+                                        setIsUpgradeRmaModalOpen(true);
+                                        setUpgradeRmaCountdown(5);
+                                        setUpgradeRmaReason('');
                                     }}
-                                    style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                    style={{ 
+                                        background: 'rgba(245, 158, 11, 0.15)', 
+                                        border: '1px solid rgba(245, 158, 11, 0.3)', 
+                                        color: '#F59E0B', 
+                                        fontSize: 11, 
+                                        fontWeight: 600, 
+                                        cursor: 'pointer', 
+                                        padding: '4px 10px',
+                                        borderRadius: 4,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.background = 'rgba(245, 158, 11, 0.25)';
+                                        e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.background = 'rgba(245, 158, 11, 0.15)';
+                                        e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                                    }}
                                 >
-                                    {language === 'zh' ? '直接升级为 RMA' : 'Upgrade to RMA'}
+                                    <ArrowUpCircle size={12} />
+                                    {language === 'zh' ? '升级为 RMA' : 'Upgrade to RMA'}
                                 </button>
                             </div>
-                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>Cmd + Enter {language === 'zh' ? '快速提交' : 'to Submit'}</span>
+
                         </div>
                     </div>
                 </div>

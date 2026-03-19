@@ -68,7 +68,8 @@ const LinkCorporateModal: React.FC<LinkCorporateModalProps> = ({
     // 搜索账户
     const searchAccounts = useCallback(async (query: string) => {
         if (!query.trim()) {
-            setAccounts([]);
+            // 如果没有搜索词，加载最近的20个客户
+            await loadRecentAccounts();
             return;
         }
         setSearching(true);
@@ -84,6 +85,26 @@ const LinkCorporateModal: React.FC<LinkCorporateModalProps> = ({
             }
         } catch (error) {
             console.error('Failed to search accounts:', error);
+        } finally {
+            setSearching(false);
+        }
+    }, [token]);
+    
+    // 加载最近的客户列表
+    const loadRecentAccounts = useCallback(async () => {
+        setSearching(true);
+        try {
+            const params = new URLSearchParams();
+            params.append('page_size', '20');
+            params.append('sort', '-updated_at'); // 按最近更新时间排序
+            const response = await axios.get(`/api/v1/accounts?${params.toString()}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (response.data?.success) {
+                setAccounts(response.data.data || []);
+            }
+        } catch (error) {
+            console.error('Failed to load recent accounts:', error);
         } finally {
             setSearching(false);
         }
@@ -123,6 +144,11 @@ const LinkCorporateModal: React.FC<LinkCorporateModalProps> = ({
             }
         };
     }, [searchQuery, searchAccounts]);
+    
+    // 组件挂载时加载最近的客户
+    useEffect(() => {
+        loadRecentAccounts();
+    }, [loadRecentAccounts]);
 
     // 选择账户
     const handleSelectAccount = async (account: Account) => {
@@ -150,10 +176,11 @@ const LinkCorporateModal: React.FC<LinkCorporateModalProps> = ({
         }
         setLoading(true);
         try {
-            await axios.put(`/api/v1/tickets/${ticketId}`, {
+            await axios.patch(`/api/v1/tickets/${ticketId}`, {
                 account_id: selectedAccount.id,
                 contact_id: selectedContact?.id || null,
-                reporter_name: selectedContact?.name || reporterSnapshot?.name || undefined
+                reporter_name: selectedContact?.name || reporterSnapshot?.name || undefined,
+                change_reason: `关联客户: ${selectedAccount.name}`
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -535,7 +562,7 @@ const LinkCorporateModal: React.FC<LinkCorporateModalProps> = ({
                             disabled={loading || !selectedAccount}
                             style={{
                                 padding: '10px 24px', background: selectedAccount ? 'var(--accent-gold)' : 'var(--accent-gold-muted)',
-                                border: 'none', borderRadius: 10, color: 'var(--bg-main)',
+                                border: 'none', borderRadius: 10, color: '#000',
                                 cursor: (loading || !selectedAccount) ? 'not-allowed' : 'pointer',
                                 fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8,
                                 transition: 'all 0.2s', opacity: selectedAccount ? 1 : 0.5

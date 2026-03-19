@@ -31,10 +31,10 @@ const DEFAULT_CONTENT = {
     diagnosis: {
         findings: '',
         root_cause: '',
-        troubleshooting_steps: []
+        troubleshooting_steps: ''
     },
     repair_process: {
-        actions_taken: [],
+        actions_taken: '',
         parts_replaced: [],
         testing_results: ''
     },
@@ -198,11 +198,17 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                                 ...prev.content.diagnosis,
                                 findings: diagnosticMetadata?.diagnosis || diagnosticMetadata?.symptom_confirmation || '暂无检测发现记录...',
                                 root_cause: diagnosticMetadata?.root_cause || '',
-                                troubleshooting_steps: diagnosticMetadata?.troubleshooting_steps || []
+                                troubleshooting_steps: Array.isArray(diagnosticMetadata?.troubleshooting_steps) 
+                                    ? diagnosticMetadata.troubleshooting_steps.join('\n') 
+                                    : (diagnosticMetadata?.troubleshooting_steps || '')
                             },
                             repair_process: {
                                 ...prev.content.repair_process,
-                                actions_taken: diagnosticMetadata?.repair_advice ? [diagnosticMetadata.repair_advice] : []
+                                actions_taken: diagnosticMetadata?.repair_advice 
+                                    ? diagnosticMetadata.repair_advice 
+                                    : (Array.isArray(diagnosticMetadata?.actions_taken) 
+                                        ? diagnosticMetadata.actions_taken.join('\n') 
+                                        : (diagnosticMetadata?.actions_taken || ''))
                             }
                         }
                     }));
@@ -529,14 +535,12 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                                         disabled={isReadOnly}
                                         placeholder="请描述故障根本原因分析..."
                                     />
-                                    <ArrayField
+                                    <TextArea
                                         label="排故过程"
-                                        items={reportData.content.diagnosis.troubleshooting_steps}
-                                        onAdd={() => addArrayItem('diagnosis.troubleshooting_steps', '')}
-                                        onRemove={(i) => removeArrayItem('diagnosis.troubleshooting_steps', i)}
-                                        onChange={(i, v) => updateArrayItem('diagnosis.troubleshooting_steps', i, v)}
+                                        value={reportData.content.diagnosis.troubleshooting_steps}
+                                        onChange={v => updateContent('diagnosis.troubleshooting_steps', v)}
                                         disabled={isReadOnly}
-                                        placeholder="记录具体的排故步骤"
+                                        placeholder="记录具体的排故步骤，每行一个步骤..."
                                     />
                                 </div>
                             </div>
@@ -550,14 +554,12 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                                     <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--text-main)' }}>维修记录与执行</h4>
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                    <ArrayField
+                                    <TextArea
                                         label="执行操作"
-                                        items={reportData.content.repair_process.actions_taken}
-                                        onAdd={() => addArrayItem('repair_process.actions_taken', '')}
-                                        onRemove={(i) => removeArrayItem('repair_process.actions_taken', i)}
-                                        onChange={(i, v) => updateArrayItem('repair_process.actions_taken', i, v)}
+                                        value={reportData.content.repair_process.actions_taken}
+                                        onChange={v => updateContent('repair_process.actions_taken', v)}
                                         disabled={isReadOnly}
-                                        placeholder="详细记录执行的维修动作"
+                                        placeholder="详细记录执行的维修动作，每行一个操作..."
                                     />
 
                                     {/* Parts Used */}
@@ -772,44 +774,4 @@ const TextArea: React.FC<{ label: string; value: string; onChange: (v: string) =
     </div>
 );
 
-const ArrayField: React.FC<{ label: string; items: string[]; onAdd: () => void; onRemove: (i: number) => void; onChange: (i: number, v: string) => void; disabled?: boolean; placeholder?: string }> = ({ label, items, onAdd, onRemove, onChange, disabled, placeholder }) => (
-    <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-            <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{label}</label>
-            {!disabled && (
-                <button
-                    onClick={onAdd}
-                    style={{
-                        padding: '4px 12px', background: 'var(--accent-gold-subtle)', border: '1px solid var(--glass-border-accent)',
-                        borderRadius: 6, color: 'var(--accent-gold)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500
-                    }}
-                >
-                    <Plus size={14} /> 添加
-                </button>
-            )}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {items.map((item, index) => (
-                <div key={index} style={{ display: 'flex', gap: 8 }}>
-                    <textarea
-                        value={item}
-                        onChange={e => onChange(index, e.target.value)}
-                        disabled={disabled}
-                        placeholder={placeholder}
-                        style={{
-                            flex: 1, padding: 10, background: 'var(--input-bg)',
-                            border: '1px solid var(--input-border)', borderRadius: 6,
-                            color: 'var(--text-main)', fontSize: 13, minHeight: 60, resize: 'vertical',
-                            fontFamily: 'inherit', lineHeight: 1.4
-                        }}
-                    />
-                    {!disabled && (
-                        <button onClick={() => onRemove(index)} style={{ padding: '0 10px', background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 6, color: '#EF4444', cursor: 'pointer', height: 36 }}>
-                            <Trash2 size={14} />
-                        </button>
-                    )}
-                </div>
-            ))}
-        </div>
-    </div>
-);
+

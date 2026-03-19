@@ -11,6 +11,46 @@ import { useLanguage } from '../i18n/useLanguage';
 
 const MODAL_Z_INDEX = 9999;
 
+// Column resize handle styles
+const colResizeHandleStyle = `
+  .col-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    cursor: col-resize;
+    background: transparent;
+    transition: background 0.2s;
+  }
+  .col-resize-handle:hover {
+    background: var(--kine-yellow);
+  }
+  .col-resize-handle:active {
+    background: var(--kine-yellow);
+  }
+`;
+
+// Column widths storage
+const COL_WIDTHS_KEY = 'longhorn_sku_col_widths';
+type ColKey = 'sku_code' | 'display_name' | 'model' | 'spec' | 'action';
+const DEFAULT_COL_WIDTHS: Record<ColKey, number> = { 
+    sku_code: 140, 
+    display_name: 200, 
+    model: 180, 
+    spec: 120, 
+    action: 80 
+};
+
+function loadColWidths(): Record<ColKey, number> {
+    try {
+        const saved = localStorage.getItem(COL_WIDTHS_KEY);
+        return saved ? { ...DEFAULT_COL_WIDTHS, ...JSON.parse(saved) } : { ...DEFAULT_COL_WIDTHS };
+    } catch {
+        return { ...DEFAULT_COL_WIDTHS };
+    }
+}
+
 interface ProductModel {
     id: number;
     name_zh: string;
@@ -38,7 +78,20 @@ interface ProductSku {
     // Joined fields
     name_zh?: string;
     brand?: string;
+    model_code?: string;
+    product_family?: string;
 }
+
+type ProductFamily = 'ALL' | 'A' | 'B' | 'C' | 'D' | 'E';
+
+const PRODUCT_FAMILY_TABS: { key: ProductFamily; label: string }[] = [
+    { key: 'ALL', label: '全部' },
+    { key: 'A', label: '在售电影机' },
+    { key: 'B', label: '广播摄像机' },
+    { key: 'C', label: '电子寻像器' },
+    { key: 'D', label: '历史产品' },
+    { key: 'E', label: '通用配件' }
+];
 
 const ProductSkusManagement: React.FC = () => {
     const { token, user } = useAuthStore();
@@ -53,7 +106,17 @@ const ProductSkusManagement: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterModelId, setFilterModelId] = useState<string>(initialModelId || 'ALL');
+    const [filterModelId, _setFilterModelId] = useState<string>(initialModelId || 'ALL');
+    const [filterFamily, setFilterFamily] = useState<ProductFamily>('ALL');
+    const [isSearchExpanded, setIsSearchExpanded] = useState(false); // 搜索框展开状态
+
+    // Column widths & resize
+    const [colWidths, setColWidths] = useState<Record<ColKey, number>>(loadColWidths);
+    const resizingRef = useRef<{ col: ColKey; startX: number; startWidth: number } | null>(null);
+
+    // Column sort state
+    type SortKey = 'sku_code' | 'display_name' | 'model' | 'spec';
+    const [sortConfig, setSortConfig] = useState<{ key: SortKey | null; dir: 'asc' | 'desc' }>({ key: null, dir: 'asc' });
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -78,7 +141,7 @@ const ProductSkusManagement: React.FC = () => {
         depth_cm: undefined,
         is_dangerous_goods: false,
         upc: '',
-        sn_prefix: ''
+        
     });
 
     const fetchData = async () => {
@@ -89,6 +152,7 @@ const ProductSkusManagement: React.FC = () => {
                 axios.get('/api/v1/admin/product-skus', {
                     params: {
                         model_id: filterModelId === 'ALL' ? undefined : filterModelId,
+                        product_family: filterFamily === 'ALL' ? undefined : filterFamily,
                         keyword: searchQuery
                     },
                     headers: { Authorization: `Bearer ${token}` }
@@ -111,7 +175,62 @@ const ProductSkusManagement: React.FC = () => {
 
     useEffect(() => {
         if (token) fetchData();
-    }, [token, filterModelId, searchQuery]);
+    }, [token, filterModelId, filterFamily, searchQuery]);
+
+    // Column resize handlers
+    const startColResize = (e: React.MouseEvent, col: ColKey) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resizingRef.current = { col, startX: e.clientX, startWidth: colWidths[col] };
+        const onMouseMove = (me: MouseEvent) => {
+            if (!resizingRef.current) return;
+            const delta = me.clientX - resizingRef.current.startX;
+            const newWidth = Math.max(50, resizingRef.current.startWidth + delta);
+            setColWidths(prev => {
+                const next = { ...prev, [resizingRef.current!.col]: newWidth };
+                localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(next));
+                return next;
+            });
+        };
+        const onMouseUp = () => {
+            resizingRef.current = null;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            document.body.style.cursor = '';
+        };
+        document.body.style.cursor = 'col-resize';
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    };
+
+    // Sort handler
+    const handleSort = (key: SortKey) => {
+        setSortConfig(prev => {
+            if (prev.key === key) {
+                if (prev.dir === 'asc') return { key, dir: 'desc' as const };
+                return { key: null, dir: 'asc' as const };
+            }
+            return { key, dir: 'asc' as const };
+        });
+    };
+
+    // Filter and sort SKUs
+    const filteredAndSortedSkus = skus.sort((a, b) => {
+        if (!sortConfig.key) return 0;
+        const dir = sortConfig.dir === 'asc' ? 1 : -1;
+        switch (sortConfig.key) {
+            case 'sku_code':
+                return (a.sku_code || '').localeCompare(b.sku_code || '') * dir;
+            case 'display_name':
+                return (a.display_name || '').localeCompare(b.display_name || '') * dir;
+            case 'model':
+                return (a.name_zh || '').localeCompare(b.name_zh || '') * dir;
+            case 'spec':
+                return (a.spec_label || '').localeCompare(b.spec_label || '') * dir;
+            default:
+                return 0;
+        }
+    });
 
     const handleOpenModal = (sku?: ProductSku) => {
         if (sku) {
@@ -132,7 +251,7 @@ const ProductSkusManagement: React.FC = () => {
                 depth_cm: sku.depth_cm,
                 is_dangerous_goods: !!sku.is_dangerous_goods,
                 upc: sku.upc || '',
-                sn_prefix: sku.sn_prefix || ''
+
             });
         } else {
             setEditingSku(null);
@@ -152,7 +271,7 @@ const ProductSkusManagement: React.FC = () => {
                 depth_cm: undefined,
                 is_dangerous_goods: false,
                 upc: '',
-                sn_prefix: ''
+
             });
         }
         setIsModalOpen(true);
@@ -220,8 +339,9 @@ const ProductSkusManagement: React.FC = () => {
 
     return (
         <div className="fade-in" style={{ padding: '24px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <style>{colResizeHandleStyle}</style>
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <button
                         onClick={() => navigate(-1)}
@@ -245,39 +365,98 @@ const ProductSkusManagement: React.FC = () => {
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ position: 'relative' }}>
-                        <input
-                            type="text"
-                            placeholder={_t('product.search_sku')}
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            style={{
-                                padding: '8px 12px', paddingLeft: '32px', borderRadius: 8, background: 'var(--glass-bg-hover)',
-                                border: '1px solid var(--glass-border)', color: 'var(--text-main)', width: 200, outline: 'none'
-                            }}
-                        />
-                        <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.5 }}>
-                            <Search size={14} />
-                        </div>
+                    {/* 搜索框 - 点击Icon展开，参考图5设计 */}
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        {!isSearchExpanded ? (
+                            <button
+                                onClick={() => setIsSearchExpanded(true)}
+                                style={{
+                                    width: 36, height: 36, borderRadius: '50%',
+                                    background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer', color: 'var(--text-secondary)'
+                                }}
+                            >
+                                <Search size={18} />
+                            </button>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <input
+                                    type="text"
+                                    placeholder={_t('product.search_sku')}
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                    autoFocus
+                                    style={{
+                                        padding: '8px 12px', paddingLeft: '32px', borderRadius: 8, background: 'var(--glass-bg-hover)',
+                                        border: '1px solid var(--glass-border)', color: 'var(--text-main)', width: 200, outline: 'none'
+                                    }}
+                                />
+                                <button
+                                    onClick={() => {
+                                        setIsSearchExpanded(false);
+                                        setSearchQuery('');
+                                    }}
+                                    style={{
+                                        width: 32, height: 32, borderRadius: '50%',
+                                        background: 'transparent', border: 'none',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer', color: 'var(--text-tertiary)'
+                                    }}
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        )}
+                        {isSearchExpanded && (
+                            <div style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.5, pointerEvents: 'none' }}>
+                                <Search size={14} />
+                            </div>
+                        )}
                     </div>
-                    <select
-                        value={filterModelId}
-                        onChange={e => setFilterModelId(e.target.value)}
-                        style={{
-                            padding: '8px 12px', borderRadius: 8, background: 'var(--glass-bg-hover)',
-                            border: '1px solid var(--glass-border)', color: 'var(--text-main)', outline: 'none'
-                        }}
-                    >
-                        <option value="ALL">{_t('common.all')}</option>
-                        {models.map(m => (
-                            <option key={m.id} value={m.id}>{m.name_zh}</option>
-                        ))}
-                    </select>
                     {canManage && (
                         <button className="btn-kine-lowkey" onClick={() => handleOpenModal()}>
                             <Plus size={18} /> {_t('product.add_sku')}
                         </button>
                     )}
+                </div>
+            </div>
+
+            {/* Product Family Tabs - 移到标题下方，与图1一致 */}
+            <div style={{ marginBottom: 20 }}>
+                <div style={{
+                    display: 'flex',
+                    gap: 2,
+                    background: 'var(--glass-bg-light)',
+                    padding: 3,
+                    borderRadius: 8,
+                    height: '36px',
+                    alignItems: 'center',
+                    width: 'fit-content',
+                    border: '1px solid var(--glass-border)'
+                }}>
+                    {PRODUCT_FAMILY_TABS.map((tab) => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setFilterFamily(tab.key)}
+                            style={{
+                                padding: '0 16px', height: '30px',
+                                background: filterFamily === tab.key ? 'var(--glass-bg-hover)' : 'transparent',
+                                color: filterFamily === tab.key ? 'var(--text-main)' : 'var(--text-secondary)',
+                                borderRadius: 6,
+                                fontWeight: filterFamily === tab.key ? 500 : 400,
+                                fontSize: '0.9rem',
+                                border: 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                boxShadow: filterFamily === tab.key ? '0 1px 2px rgba(0,0,0,0.2)' : 'none'
+                            }}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
@@ -294,21 +473,56 @@ const ProductSkusManagement: React.FC = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--glass-border)', textAlign: 'left' }}>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>商品规格 (SKU)</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>{_t('product.model_code')}</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>{_t('product.sku_id')}</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)' }}>规格标签</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)', textAlign: 'center' }}>状态</th>
-                            <th style={{ padding: 16, color: 'var(--text-secondary)', textAlign: 'center' }}>操作</th>
+                            <th 
+                                onClick={() => handleSort('sku_code')}
+                                style={{ padding: '16px', color: sortConfig.key === 'sku_code' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.sku_code, position: 'relative' }}
+                            >
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    SKU编码
+                                    {sortConfig.key === 'sku_code' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'sku_code')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
+                            </th>
+                            <th 
+                                onClick={() => handleSort('display_name')}
+                                style={{ padding: '16px', color: sortConfig.key === 'display_name' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.display_name, position: 'relative' }}
+                            >
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    商品规格名称
+                                    {sortConfig.key === 'display_name' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'display_name')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
+                            </th>
+                            <th 
+                                onClick={() => handleSort('model')}
+                                style={{ padding: '16px', color: sortConfig.key === 'model' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.model, position: 'relative' }}
+                            >
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    所属型号
+                                    {sortConfig.key === 'model' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'model')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
+                            </th>
+                            <th 
+                                onClick={() => handleSort('spec')}
+                                style={{ padding: '16px', color: sortConfig.key === 'spec' ? 'var(--text-main)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', width: colWidths.spec, position: 'relative' }}
+                            >
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                    规格标签
+                                    {sortConfig.key === 'spec' ? (sortConfig.dir === 'asc' ? ' ↑' : ' ↓') : <span style={{ fontSize: 10, opacity: 0.3 }}> ↕</span>}
+                                </span>
+                                <div onMouseDown={e => startColResize(e, 'spec')} onClick={e => e.stopPropagation()} className="col-resize-handle" />
+                            </th>
+                            <th style={{ padding: '16px', color: 'var(--text-secondary)', textAlign: 'center', width: colWidths.action }}>操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center' }}>{_t('product.loading')}</td></tr>
-                        ) : skus.length === 0 ? (
-                            <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>{_t('product.no_records')}</td></tr>
+                            <tr><td colSpan={5} style={{ padding: 40, textAlign: 'center' }}>{_t('product.loading')}</td></tr>
+                        ) : filteredAndSortedSkus.length === 0 ? (
+                            <tr><td colSpan={5} style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>{_t('product.no_records')}</td></tr>
                         ) : (
-                            skus.map(sku => (
+                            filteredAndSortedSkus.map(sku => (
                                 <tr
                                     key={sku.id}
                                     className="row-hover"
@@ -316,34 +530,26 @@ const ProductSkusManagement: React.FC = () => {
                                     onClick={() => navigate(`/service/product-skus/${sku.id}`)}
                                 >
                                     <td style={{ padding: 16 }}>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>{sku.sku_code}</div>
+                                    </td>
+                                    <td style={{ padding: 16 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <div style={{ width: 40, height: 40, borderRadius: 6, background: 'var(--bg-main)', border: '1px solid var(--glass-border)', overflow: 'hidden' }}>
-                                                {sku.sku_image ? <img src={sku.sku_image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <ImageIcon size={16} opacity={0.2} style={{ margin: '12px' }} />}
+                                            <div style={{ width: 36, height: 36, borderRadius: 6, background: 'var(--bg-main)', border: '1px solid var(--glass-border)', overflow: 'hidden' }}>
+                                                {sku.sku_image ? <img src={sku.sku_image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <ImageIcon size={14} opacity={0.2} style={{ margin: '11px' }} />}
                                             </div>
                                             <div>
-                                                <div style={{ fontWeight: 600 }}>{sku.display_name}</div>
+                                                <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>{sku.display_name}</div>
                                                 <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{sku.display_name_en}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td style={{ padding: 16 }}>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--accent-blue)' }}>{sku.sku_code.split('-')[0]}</div>
-                                    </td>
-                                    <td style={{ padding: 16 }}>
-                                        <div style={{ fontWeight: 600 }}>{sku.sku_code}</div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{sku.name_zh}</div>
+                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{sku.model_code}</div>
                                     </td>
                                     <td style={{ padding: 16 }}>
                                         <span style={{ fontSize: '0.85rem', background: 'var(--glass-bg-hover)', padding: '2px 8px', borderRadius: 4 }}>
                                             {sku.spec_label || '标准'}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: 16, textAlign: 'center' }}>
-                                        <span style={{
-                                            fontSize: '0.75rem', padding: '2px 8px', borderRadius: 10,
-                                            background: sku.is_active ? 'rgba(16,185,129,0.1)' : 'rgba(107,114,128,0.1)',
-                                            color: sku.is_active ? '#10B981' : '#9CA3AF'
-                                        }}>
-                                            {sku.is_active ? _t('product.on_sale') : _t('product.off_shelf')}
                                         </span>
                                     </td>
                                     <td style={{ padding: 16, textAlign: 'center' }}>
@@ -563,15 +769,7 @@ const ProductSkusManagement: React.FC = () => {
                                                 style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
                                             />
                                         </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>SN 前缀</label>
-                                            <input
-                                                type="text" value={formData.sn_prefix || ''}
-                                                onChange={e => setFormData({ ...formData, sn_prefix: e.target.value.toUpperCase() })}
-                                                placeholder="例: KE8"
-                                                style={{ padding: '10px 12px', borderRadius: 8, border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)', color: 'var(--text-main)', fontSize: '0.9rem' }}
-                                            />
-                                        </div>
+
                                     </div>
                                 </div>
                             </div>

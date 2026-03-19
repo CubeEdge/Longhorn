@@ -365,7 +365,7 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({
 
                     {/* Technical Damage Assessment */}
                     <div>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 12 }}>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
                             <AlertTriangle size={14} style={{ marginRight: 6, verticalAlign: 'middle', color: '#FFD200' }} />
                             技术损坏判定 (必填)
                         </label>
@@ -373,27 +373,27 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({
                             <button
                                 onClick={() => setDamageStatus('no_damage')}
                                 style={{
-                                    flex: 1, padding: '12px', background: damageStatus === 'no_damage' ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${damageStatus === 'no_damage' ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
-                                    color: damageStatus === 'no_damage' ? '#10B981' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    flex: 1, padding: '12px', background: damageStatus === 'no_damage' ? 'rgba(16,185,129,0.15)' : 'var(--glass-bg)',
+                                    border: `1px solid ${damageStatus === 'no_damage' ? '#10B981' : 'var(--glass-border)'}`,
+                                    color: damageStatus === 'no_damage' ? '#10B981' : 'var(--text-main)', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
                                     fontWeight: damageStatus === 'no_damage' ? 600 : 400
                                 }}
                             >无人为损坏 / 正常故障</button>
                             <button
                                 onClick={() => setDamageStatus('physical_damage')}
                                 style={{
-                                    flex: 1, padding: '12px', background: damageStatus === 'physical_damage' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${damageStatus === 'physical_damage' ? '#EF4444' : 'rgba(255,255,255,0.1)'}`,
-                                    color: damageStatus === 'physical_damage' ? '#EF4444' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    flex: 1, padding: '12px', background: damageStatus === 'physical_damage' ? 'rgba(239,68,68,0.15)' : 'var(--glass-bg)',
+                                    border: `1px solid ${damageStatus === 'physical_damage' ? '#EF4444' : 'var(--glass-border)'}`,
+                                    color: damageStatus === 'physical_damage' ? '#EF4444' : 'var(--text-main)', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
                                     fontWeight: damageStatus === 'physical_damage' ? 600 : 400
                                 }}
                             >人为损坏 / 物理损伤</button>
                             <button
                                 onClick={() => setDamageStatus('uncertain')}
                                 style={{
-                                    flex: 1, padding: '12px', background: damageStatus === 'uncertain' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${damageStatus === 'uncertain' ? '#FFD200' : 'rgba(255,255,255,0.1)'}`,
-                                    color: damageStatus === 'uncertain' ? '#FFD200' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    flex: 1, padding: '12px', background: damageStatus === 'uncertain' ? 'rgba(245,158,11,0.15)' : 'var(--glass-bg)',
+                                    border: `1px solid ${damageStatus === 'uncertain' ? '#FFD200' : 'var(--glass-border)'}`,
+                                    color: damageStatus === 'uncertain' ? '#FFD200' : 'var(--text-main)', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
                                     fontWeight: damageStatus === 'uncertain' ? 600 : 400
                                 }}
                             >无法判定</button>
@@ -402,34 +402,34 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({
 
                     {/* Warranty Suggestion (Optional) */}
                     <div>
-                        <label style={{ display: 'block', fontSize: 13, color: '#aaa', marginBottom: 12 }}>
+                        <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
                             保修建议 (选填，供商务参考)
                         </label>
                         <div style={{ display: 'flex', gap: 12 }}>
                             <button
                                 onClick={() => setWarrantySuggestion('suggest_in_warranty')}
                                 style={{
-                                    flex: 1, padding: '12px', background: warrantySuggestion === 'suggest_in_warranty' ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${warrantySuggestion === 'suggest_in_warranty' ? '#10B981' : 'rgba(255,255,255,0.1)'}`,
-                                    color: warrantySuggestion === 'suggest_in_warranty' ? '#10B981' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    flex: 1, padding: '12px', background: warrantySuggestion === 'suggest_in_warranty' ? 'rgba(16,185,129,0.15)' : 'var(--glass-bg)',
+                                    border: `1px solid ${warrantySuggestion === 'suggest_in_warranty' ? '#10B981' : 'var(--glass-border)'}`,
+                                    color: warrantySuggestion === 'suggest_in_warranty' ? '#10B981' : 'var(--text-main)', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
                                     fontWeight: warrantySuggestion === 'suggest_in_warranty' ? 600 : 400
                                 }}
                             >建议保内</button>
                             <button
                                 onClick={() => setWarrantySuggestion('suggest_out_warranty')}
                                 style={{
-                                    flex: 1, padding: '12px', background: warrantySuggestion === 'suggest_out_warranty' ? 'rgba(255,215,0,0.15)' : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${warrantySuggestion === 'suggest_out_warranty' ? '#FFD700' : 'rgba(255,255,255,0.1)'}`,
-                                    color: warrantySuggestion === 'suggest_out_warranty' ? '#FFD700' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    flex: 1, padding: '12px', background: warrantySuggestion === 'suggest_out_warranty' ? 'rgba(255,215,0,0.15)' : 'var(--glass-bg)',
+                                    border: `1px solid ${warrantySuggestion === 'suggest_out_warranty' ? '#FFD700' : 'var(--glass-border)'}`,
+                                    color: warrantySuggestion === 'suggest_out_warranty' ? '#FFD700' : 'var(--text-main)', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
                                     fontWeight: warrantySuggestion === 'suggest_out_warranty' ? 600 : 400
                                 }}
                             >建议保外</button>
                             <button
                                 onClick={() => setWarrantySuggestion('needs_verification')}
                                 style={{
-                                    flex: 1, padding: '12px', background: warrantySuggestion === 'needs_verification' ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.03)',
-                                    border: `1px solid ${warrantySuggestion === 'needs_verification' ? '#3B82F6' : 'rgba(255,255,255,0.1)'}`,
-                                    color: warrantySuggestion === 'needs_verification' ? '#3B82F6' : '#fff', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
+                                    flex: 1, padding: '12px', background: warrantySuggestion === 'needs_verification' ? 'rgba(59,130,246,0.15)' : 'var(--glass-bg)',
+                                    border: `1px solid ${warrantySuggestion === 'needs_verification' ? '#3B82F6' : 'var(--glass-border)'}`,
+                                    color: warrantySuggestion === 'needs_verification' ? '#3B82F6' : 'var(--text-main)', borderRadius: 8, cursor: 'pointer', transition: 'all 0.2s',
                                     fontWeight: warrantySuggestion === 'needs_verification' ? 600 : 400
                                 }}
                             >需进一步核实</button>

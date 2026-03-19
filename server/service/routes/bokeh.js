@@ -20,6 +20,38 @@ module.exports = (db, authenticate, aiService) => {
     };
 
     /**
+     * POST /api/v1/bokeh/chat
+     * Simple chat endpoint for translation and other AI tasks
+     */
+    router.post('/chat', authenticate, async (req, res) => {
+        try {
+            const { message, stream = false } = req.body;
+            
+            if (!message) {
+                return res.status(400).json({ error: 'Message is required' });
+            }
+
+            if (!aiService) {
+                return res.status(503).json({ error: 'AI service not available' });
+            }
+
+            const response = await aiService.generate(
+                'chat',
+                'You are a helpful assistant. Provide concise and accurate responses.',
+                message
+            );
+
+            res.json({ response });
+        } catch (err) {
+            console.error('[Bokeh] Chat error:', err);
+            res.status(500).json({ 
+                error: 'AI service error',
+                message: err.message 
+            });
+        }
+    });
+
+    /**
      * POST /api/v1/bokeh/search-tickets
      * Search historical tickets with permission isolation
      * 
