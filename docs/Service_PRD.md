@@ -2403,12 +2403,13 @@ AI标签提取示例：
 
 ---
 
-#### 4.2.5 维修发票与结算
+#### 4.2.5 维修发票与配件结算
 
 | 表名 | 说明 | 关键字段 | 详细设计 |
 |------|------|---------|----------|
 | **repair_invoices** | 维修发票/PI | invoice_number, total_amount, currency | [6.1](./Service_DataModel.md#61-维修发票-repair_invoices) |
-| **dealer_settlements** | 经销商定期结算 | settlement_number, period_start/end | [6.2](./Service_DataModel.md#62-经销商定期结算-dealer_settlements) |
+| **parts_consumption** | 配件消耗记录 | ticket_number, part_sku, total_amount | [6.2](./Service_DataModel.md#62-配件消耗记录-parts_consumption) |
+| **dealer_parts_settlements** | 经销商配件结算汇总 | settlement_number, period_type, status | [6.3](./Service_DataModel.md#63-经销商配件结算-dealer_parts_settlements) |
 
 ---
 

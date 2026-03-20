@@ -1201,27 +1201,68 @@ repair_invoices (维修发票/PI)
 
 ---
 
-### 6.2 经销商定期结算 (dealer_settlements)
+### 6.2 配件消耗记录 (parts_consumption)
 
 ```sql
-dealer_settlements (经销商定期结算)
+parts_consumption (配件消耗记录)
 ├── id: SERIAL PRIMARY KEY
-├── settlement_number: VARCHAR(30) UNIQUE
-├── dealer_id: INT NOT NULL
-├── period_start: DATE
-├── period_end: DATE
-├── settlement_type: ENUM('monthly', 'quarterly')
-├── total_repairs: INT
-├── total_parts_used: INT
-├── total_amount: DECIMAL(10,2)
-├── currency: ENUM('USD', 'EUR', 'CNY')
-├── invoice_ids: JSON -- [关联PI列表]
-├── detail_items: JSON -- [{sku, quantity, amount}]
-├── status: ENUM('pending_confirm', 'confirmed', 'pending_payment', 'paid')
-├── confirmed_at: TIMESTAMP
-├── paid_at: TIMESTAMP
+├── ticket_id: INT -- 关联工单 ID
+├── ticket_number: VARCHAR(30) -- 关联工单编号 (冗余)
+├── part_id: INT -- 关联配件主数据 ID
+├── part_sku: VARCHAR(100) -- 配件 SKU 编码
+├── part_name: VARCHAR(255) -- 配件名称 (冗余)
+├── quantity: INT DEFAULT 1 -- 消耗数量
+├── unit_price: DECIMAL(10,2) -- 结算单价
+├── currency: VARCHAR(10) DEFAULT 'CNY' -- 结算币种
+├── total_amount: DECIMAL(10,2) -- 结算总金额 (重要：并非 total_price_cny)
+├── source_type: VARCHAR(50) DEFAULT 'hq_inventory' -- 来源库存 (hq_inventory/dealer_inventory)
+├── dealer_id: INT -- 经销商 ID (若为经销商维修)
+├── dealer_name: VARCHAR(255) -- 经销商名称 (冗余)
+├── settlement_status: ENUM('pending', 'settled') DEFAULT 'pending' -- 结算状态
+├── settlement_id: INT -- 关联的结算单 ID (dealer_parts_settlements.id)
+├── used_by: INT -- 录入人 / 消耗执行人
+├── used_by_name: VARCHAR(255) -- 录入人姓名 (冗余)
+├── used_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- 消耗时间
+├── notes: TEXT -- 备注
+├── created_by: INT -- 创建人
+└── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+```
+
+---
+
+### 6.3 经销商配件结算 (dealer_parts_settlements)
+
+*系统基于 `parts_consumption` 中的 `settlement_id` 进行累加渲染汇总，以下为汇总账单主表。*
+
+```sql
+dealer_parts_settlements (经销商配件结算汇总)
+├── id: SERIAL PRIMARY KEY
+├── settlement_number: VARCHAR(30) UNIQUE -- 结算单编号 (如 SET20250001)
+├── dealer_id: INT NOT NULL -- 经销商 ID
+├── dealer_name: VARCHAR(255) -- 经销商名称
+├── period_start: DATE -- 结算周期起
+├── period_end: DATE -- 结算周期止
+├── period_type: ENUM('monthly', 'quarterly', 'custom') -- 周期类型
+├── total_quantity: INT -- 总消耗件数
+├── total_amount_cny: DECIMAL(10,2) -- 人民币汇总
+├── total_amount_usd: DECIMAL(10,2) -- 美元汇总
+├── total_amount_eur: DECIMAL(10,2) -- 欧元汇总
+├── status: ENUM('draft', 'confirmed', 'paid', 'cancelled')
+│
+├── // 节点追溯
+├── confirmed_by: INT -- 确认人
+├── confirmed_at: DATETIME -- 确认时间
+├── invoiced_by: INT -- 开票登记人
+├── invoiced_at: DATETIME -- 开票登记时间
+├── invoice_number: VARCHAR(100) -- 发票号
+├── paid_by: INT -- 付款确认人
+├── paid_at: DATETIME -- 付款确认时间
+├── payment_reference: VARCHAR(255) -- 付款参考号
+│
+├── created_by: INT
 ├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-└── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+├── updated_by: INT
+└── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ```
 
 ---

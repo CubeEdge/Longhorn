@@ -107,9 +107,10 @@ const PartsConsumptionPage: React.FC = () => {
             if (dateFrom) params.date_from = dateFrom;
             if (dateTo) params.date_to = dateTo;
 
+            const authHeaders = { Authorization: `Bearer ${token}` };
             const [recordsRes, summaryRes] = await Promise.all([
-                axios.get('/api/v1/parts-consumption', { headers, params }),
-                axios.get('/api/v1/parts-consumption/summary', { headers })
+                axios.get('/api/v1/parts-consumption', { headers: authHeaders, params }),
+                axios.get('/api/v1/parts-consumption/summary', { headers: authHeaders })
             ]);
 
             if (recordsRes.data?.success) {
@@ -123,7 +124,7 @@ const PartsConsumptionPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, selectedSource, selectedStatus, dateFrom, dateTo, headers]);
+    }, [searchTerm, selectedSource, selectedStatus, dateFrom, dateTo, token]);
 
     useEffect(() => {
         fetchData();

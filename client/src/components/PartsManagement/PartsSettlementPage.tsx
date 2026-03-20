@@ -113,10 +113,12 @@ const PartsSettlementPage: React.FC = () => {
             if (selectedStatus) params.status = selectedStatus;
             if (selectedType) params.settlement_type = selectedType;
 
+            const authHeaders = { Authorization: `Bearer ${token}` };
+
             const [settlementsRes, summaryRes, pendingRes] = await Promise.all([
-                axios.get('/api/v1/parts-settlements', { headers, params }),
-                axios.get('/api/v1/parts-settlements/summary', { headers }),
-                axios.get('/api/v1/parts-settlements/pending-consumptions', { headers })
+                axios.get('/api/v1/parts-settlements', { headers: authHeaders, params }),
+                axios.get('/api/v1/parts-settlements/summary', { headers: authHeaders }),
+                axios.get('/api/v1/parts-settlements/pending-consumptions', { headers: authHeaders })
             ]);
 
             if (settlementsRes.data?.success) {
@@ -133,7 +135,7 @@ const PartsSettlementPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedStatus, selectedType, headers]);
+    }, [selectedStatus, selectedType, token]);
 
     useEffect(() => {
         fetchData();

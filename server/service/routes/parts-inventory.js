@@ -57,7 +57,7 @@ module.exports = function(db, authenticate) {
                 FROM dealer_inventory di
                 JOIN parts_master pm ON di.part_id = pm.id
                 LEFT JOIN dealers d ON di.dealer_id = d.id
-                WHERE di.is_deleted = 0 AND pm.is_deleted = 0
+                WHERE pm.is_deleted = 0
             `;
 
             const params = [];
@@ -148,7 +148,7 @@ module.exports = function(db, authenticate) {
                 FROM dealer_inventory di
                 JOIN parts_master pm ON di.part_id = pm.id
                 LEFT JOIN sku_prices sp ON pm.sku = sp.sku
-                WHERE di.is_deleted = 0 AND pm.is_deleted = 0
+                WHERE pm.is_deleted = 0
                 ${dealer_id ? 'AND di.dealer_id = ?' : ''}
             `).get(dealer_id || []);
 
@@ -159,7 +159,7 @@ module.exports = function(db, authenticate) {
                     SUM(CASE WHEN di.quantity <= pm.min_stock_level THEN 1 ELSE 0 END) as critical_count
                 FROM dealer_inventory di
                 JOIN parts_master pm ON di.part_id = pm.id
-                WHERE di.is_deleted = 0 AND pm.is_deleted = 0
+                WHERE pm.is_deleted = 0
                 AND di.quantity <= pm.reorder_point
                 ${dealer_id ? 'AND di.dealer_id = ?' : ''}
             `).get(dealer_id || []);
@@ -174,7 +174,7 @@ module.exports = function(db, authenticate) {
                 FROM dealer_inventory di
                 JOIN parts_master pm ON di.part_id = pm.id
                 LEFT JOIN sku_prices sp ON pm.sku = sp.sku
-                WHERE di.is_deleted = 0 AND pm.is_deleted = 0
+                WHERE pm.is_deleted = 0
                 ${dealer_id ? 'AND di.dealer_id = ?' : ''}
                 GROUP BY pm.category
                 ORDER BY total_value_cny DESC
@@ -226,7 +226,7 @@ module.exports = function(db, authenticate) {
                 FROM dealer_inventory di
                 JOIN parts_master pm ON di.part_id = pm.id
                 LEFT JOIN dealers d ON di.dealer_id = d.id
-                WHERE di.is_deleted = 0 AND pm.is_deleted = 0
+                WHERE pm.is_deleted = 0
                 AND di.quantity <= pm.reorder_point
             `;
 

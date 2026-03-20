@@ -60,8 +60,6 @@ interface InventoryStats {
 
 const PartsInventoryPage: React.FC = () => {
     const { token, user } = useAuthStore();
-    const headers = { Authorization: `Bearer ${token}` };
-
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [stats, setStats] = useState<InventoryStats | null>(null);
     const [loading, setLoading] = useState(true);
@@ -77,9 +75,10 @@ const PartsInventoryPage: React.FC = () => {
             if (searchTerm) params.search = searchTerm;
             if (showLowStockOnly) params.low_stock = 'true';
 
+            const authHeaders = { Authorization: `Bearer ${token}` };
             const [inventoryRes, statsRes] = await Promise.all([
-                axios.get('/api/v1/parts-inventory', { headers, params }),
-                axios.get('/api/v1/parts-inventory/summary', { headers })
+                axios.get('/api/v1/parts-inventory', { headers: authHeaders, params }),
+                axios.get('/api/v1/parts-inventory/summary', { headers: authHeaders })
             ]);
 
             if (inventoryRes.data?.success) {
@@ -93,7 +92,7 @@ const PartsInventoryPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, showLowStockOnly, headers]);
+    }, [searchTerm, showLowStockOnly, token]);
 
     useEffect(() => {
         fetchInventory();

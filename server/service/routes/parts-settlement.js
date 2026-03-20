@@ -57,10 +57,10 @@ module.exports = function(db, authenticate) {
                     s.*,
                     d.name as dealer_name,
                     d.code as dealer_code,
-                    u.name as created_by_name,
-                    u2.name as confirmed_by_name,
+                    u.display_name as created_by_name,
+                    u2.display_name as confirmed_by_name,
                     (SELECT COUNT(*) FROM parts_consumption WHERE settlement_id = s.id) as consumption_count,
-                    (SELECT SUM(total_price_cny) FROM parts_consumption WHERE settlement_id = s.id) as total_amount
+                    (SELECT SUM(total_amount) FROM parts_consumption WHERE settlement_id = s.id) as total_amount
                 FROM dealer_parts_settlements s
                 LEFT JOIN dealers d ON s.dealer_id = d.id
                 LEFT JOIN users u ON s.created_by = u.id
@@ -252,7 +252,7 @@ module.exports = function(db, authenticate) {
                 SELECT
                     COUNT(*) as total_count,
                     SUM(c.quantity) as total_quantity,
-                    SUM(c.total_price_cny) as total_amount,
+                    SUM(c.total_amount) as total_amount,
                     COUNT(DISTINCT c.dealer_id) as dealer_count
                 FROM parts_consumption c
                 WHERE c.settlement_status = 'pending'
@@ -326,7 +326,7 @@ module.exports = function(db, authenticate) {
                 throw new Error('指定期间内没有待结算的消耗记录');
             }
 
-            const totalAmount = consumptions.reduce((sum, c) => sum + c.total_price_cny, 0);
+            const totalAmount = consumptions.reduce((sum, c) => sum + c.total_amount, 0);
             const totalQuantity = consumptions.reduce((sum, c) => sum + c.quantity, 0);
 
             const settlementNumber = generateSettlementNumber(db, settlement_type);
@@ -400,9 +400,9 @@ module.exports = function(db, authenticate) {
                     d.code as dealer_code,
                     d.contact_email as dealer_email,
                     d.contact_phone as dealer_phone,
-                    u.name as created_by_name,
-                    u2.name as confirmed_by_name,
-                    u3.name as paid_by_name
+                    u.display_name as created_by_name,
+                    u2.display_name as confirmed_by_name,
+                    u3.display_name as paid_by_name
                 FROM dealer_parts_settlements s
                 LEFT JOIN dealers d ON s.dealer_id = d.id
                 LEFT JOIN users u ON s.created_by = u.id

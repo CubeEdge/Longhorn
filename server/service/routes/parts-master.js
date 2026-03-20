@@ -43,34 +43,34 @@ module.exports = function(db, authenticate) {
                 compatible_model
             } = req.query;
 
-            let conditions = ['is_deleted = 0'];
+            let conditions = ['pm.is_deleted = 0'];
             let params = [];
 
             if (status) {
-                conditions.push('status = ?');
+                conditions.push('pm.status = ?');
                 params.push(status);
             }
 
             if (category) {
-                conditions.push('category = ?');
+                conditions.push('pm.category = ?');
                 params.push(category);
             }
 
             if (search) {
-                conditions.push('(sku LIKE ? OR name LIKE ? OR name_en LIKE ?)');
+                conditions.push('(pm.sku LIKE ? OR pm.name LIKE ? OR pm.name_en LIKE ?)');
                 const searchPattern = `%${search}%`;
                 params.push(searchPattern, searchPattern, searchPattern);
             }
 
             if (compatible_model) {
-                conditions.push('compatible_models LIKE ?');
+                conditions.push('pm.compatible_models LIKE ?');
                 params.push(`%${compatible_model}%`);
             }
 
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
             // 获取总数
-            const countSql = `SELECT COUNT(*) as total FROM parts_master ${whereClause}`;
+            const countSql = `SELECT COUNT(*) as total FROM parts_master pm ${whereClause}`;
             const { total } = db.prepare(countSql).get(...params);
 
             // 获取分页数据

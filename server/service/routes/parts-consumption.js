@@ -49,11 +49,12 @@ module.exports = function(db, authenticate) {
             let sql = `
                 SELECT 
                     pc.*,
+                    pc.total_amount as total_price_cny,
                     pm.sku as part_sku,
                     pm.name as part_name,
                     pm.category as part_category,
                     t.ticket_number,
-                    t.type as ticket_type,
+                    t.ticket_type,
                     d.name as dealer_name,
                     d.code as dealer_code
                 FROM parts_consumption pc

@@ -1534,18 +1534,19 @@ module.exports = function (db, authenticate, serviceUpload) {
                 return res.status(400).json({ success: false, error: '无效的工单类型' });
             }
 
-            // PRD: 以 SN 查询结果为准设置 product_id，避免前端型号下拉框造成的错误关联
-            let finalProductId = product_id;
+            // PRD: 以 SN 查询结果为准设置 product_id
+            // ⚠️ 前端下拉传入的 product_id 来自 product_models 表，
+            //    但 tickets.product_id 外键引用 products（设备台账）表，
+            //    因此只有 SN 精确匹配到设备时才设置 product_id
+            let finalProductId = null;
             if (serial_number) {
                 const device = db.prepare('SELECT id FROM products WHERE serial_number = ?').get(serial_number);
                 if (device) {
-                    // SN 在台账中，使用真实设备 ID（覆盖前端可能传入的错误 product_id）
                     finalProductId = device.id;
-                } else {
-                    // SN 不在台账中，清空 product_id（避免错误关联到其他设备）
-                    finalProductId = null;
                 }
+                // SN 不在台账 → finalProductId 保持 null
             }
+            // 无 SN 时 → finalProductId 保持 null（前端的 product_id 是 product_models.id，不能直接用）
 
             const now = new Date().toISOString();
             const ticketNumber = generateTicketNumber(ticket_type, channel_code);
@@ -1604,19 +1605,26 @@ module.exports = function (db, authenticate, serviceUpload) {
                 }
             }
 
+            // 清洗外键 ID：空字符串/非正整数 → null（防止 FK constraint 失败）
+            const cleanFk = (v) => {
+                if (v === null || v === undefined || v === '' || v === '0') return null;
+                const n = parseInt(v, 10);
+                return isNaN(n) || n <= 0 ? null : n;
+            };
+
             const result = db.prepare(insertSql).run(
                 ticketNumber, ticket_type, initialNode, mapNodeToStatus(initialNode),
                 priority, now, slaDueStr,
                 channel_code,
                 processedSnapshot,
-                account_id || null, contact_id || null, dealer_id || null, reporter_name || null, reporter_type || null, region || null,
-                finalProductId || null, serial_number || null, firmware_version || null, hardware_version || null,
+                cleanFk(account_id), cleanFk(contact_id), cleanFk(dealer_id), reporter_name || null, reporter_type || null, region || null,
+                cleanFk(finalProductId), serial_number || null, firmware_version || null, hardware_version || null,
                 issue_type || null, issue_category || null, issue_subcategory || null, severity || 3,
                 service_type || null, channel || null, problem_summary || null, communication_log || null,
                 problem_description || null, solution_for_customer || null, is_warranty !== undefined ? is_warranty : 1,
-                req.user.id, assigned_to || null, req.user.id,
+                req.user.id, cleanFk(assigned_to), req.user.id,
                 feedback_date || null,
-                parent_ticket_id || null,
+                cleanFk(parent_ticket_id),
                 now, now
             );
 

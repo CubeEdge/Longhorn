@@ -59,7 +59,10 @@ const PartsCatalogPage: React.FC = () => {
             if (searchTerm) params.search = searchTerm;
             if (selectedCategory) params.category = selectedCategory;
 
-            const res = await axios.get('/api/v1/parts-master', { headers, params });
+            const res = await axios.get('/api/v1/parts-master', {
+                headers: { Authorization: `Bearer ${token}` },
+                params
+            });
             if (res.data?.success) {
                 setParts(res.data.data);
             }
@@ -68,7 +71,7 @@ const PartsCatalogPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [searchTerm, selectedCategory, headers]);
+    }, [searchTerm, selectedCategory, token]);
 
     useEffect(() => {
         fetchParts();
