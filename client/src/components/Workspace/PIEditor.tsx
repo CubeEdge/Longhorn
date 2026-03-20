@@ -43,6 +43,7 @@ interface PIContent {
     };
     device_info: {
         product_name: string;
+        product_name_en?: string;
         serial_number: string;
         firmware_version: string;
     };
@@ -146,6 +147,12 @@ export const PIEditor: React.FC<PIEditorProps> = ({
         version: 1
     });
 
+    // 预览语言设置（独立于PDF设置，用于实时预览）
+    const [previewLanguage, setPreviewLanguage] = useState<'original' | 'zh-CN' | 'en-US' | 'ja-JP'>('original');
+
+    // Translations state - 存储各字段的翻译
+    const [translations] = useState<Record<string, Record<string, any>>>({});
+
     // Load existing PI or initialize from ticket data
     useEffect(() => {
         if (isOpen) {
@@ -216,8 +223,12 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                 // Get email from contact_email or contact.email or reporter_snapshot
                 const email = ticket.contact_email || ticket.contact?.email || ticket.reporter_snapshot?.email || '';
 
+                // 生成 PI 编号：PI-工单号-V1（草稿时显示准备发布的版本号）
+                const generatedPINumber = `PI-${ticketNumber}-V1`;
+
                 setPIData(prev => ({
                     ...prev,
+                    pi_number: generatedPINumber,
                     content: {
                         ...prev.content,
                         customer_info: {
@@ -228,6 +239,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                         },
                         device_info: {
                             product_name: ticket.product_name || '',
+                            product_name_en: ticket.product_name_en || '',
                             serial_number: ticket.serial_number || '',
                             firmware_version: ticket.firmware_version || ''
                         }
@@ -642,6 +654,27 @@ export const PIEditor: React.FC<PIEditorProps> = ({
             await axios.post(`/api/v1/rma-documents/pi/${piId}/recall`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            // 撤回后递增 PI 版本号
+            const currentVersion = piData.version || 1;
+            const nextVersion = currentVersion + 1;
+            const newPINumber = `PI-${ticketNumber}-V${nextVersion}`;
+            
+            // 更新本地状态
+            setPIData(prev => ({
+                ...prev,
+                pi_number: newPINumber,
+                version: nextVersion,
+                status: 'draft'
+            }));
+            
+            // 同步到后端（更新 pi_number 和 version）
+            await axios.put(`/api/v1/rma-documents/pi/${piId}`, {
+                pi_number: newPINumber,
+                version: nextVersion
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            
             loadPI();
             onSuccess();
         } catch (err: any) {
@@ -980,7 +1013,25 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                 </Section>
                             </div>
                         ) : (
-                            <PIPreview piData={piData} />
+                            <PIPreview 
+                                piData={piData} 
+                                language={previewLanguage}
+                                translations={translations}
+                                onLanguageChange={(lang) => {
+                                    // 保存滚动位置
+                                    const previewEl = document.querySelector('#pi-preview-scroll');
+                                    if (previewEl) {
+                                        const scrollPosition = (previewEl as HTMLElement).scrollTop;
+                                        setTimeout(() => {
+                                            const newPreviewEl = document.querySelector('#pi-preview-scroll');
+                                            if (newPreviewEl) {
+                                                (newPreviewEl as HTMLElement).scrollTop = scrollPosition;
+                                            }
+                                        }, 0);
+                                    }
+                                    setPreviewLanguage(lang);
+                                }}
+                            />
                         )}
                     </div>
 
@@ -1304,46 +1355,264 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     );
 };
 
-const PIPreview: React.FC<{ piData: PIData }> = ({ piData }) => (
-    <div style={{ flex: 1, overflow: 'auto', padding: 40, background: '#f5f5f5' }}>
-        <div id="pi-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', color: '#333', fontSize: 13 }}>
+// UI标签多语言映射表
+const PREVIEW_LABELS: Record<string, Record<string, string>> = {
+    'original': {
+        title: 'Proforma Invoice',
+        subtitle: '形式发票',
+        piNumber: 'PI编号',
+        date: '日期',
+        validUntil: '有效期至',
+        billTo: '账单抬头',
+        customerName: '客户名称',
+        address: '地址',
+        contact: '联系人',
+        email: '邮箱',
+        deviceInfo: '设备信息',
+        product: '产品',
+        serialNumber: '序列号',
+        description: '描述',
+        qty: '数量',
+        unitPrice: '单价',
+        total: '合计',
+        noItems: '无项目',
+        subtotal: '小计',
+        tax: '税额',
+        discount: '优惠',
+        totalAmount: '总计',
+        terms: '条款',
+        paymentTerms: '付款条款',
+        deliveryTerms: '交付条款',
+        validity: '有效期',
+        validDays: '此PI有效期为 {days} 天',
+        notes: '备注',
+        footer: '本文件由电脑生成，无需签名',
+        company: 'KINEFINITY INC.',
+        pendingTranslation: '[待翻译]'
+    },
+    'zh-CN': {
+        title: '形式发票',
+        subtitle: '',
+        piNumber: 'PI编号',
+        date: '日期',
+        validUntil: '有效期至',
+        billTo: '账单抬头',
+        customerName: '客户名称',
+        address: '地址',
+        contact: '联系人',
+        email: '邮箱',
+        deviceInfo: '设备信息',
+        product: '产品',
+        serialNumber: '序列号',
+        description: '描述',
+        qty: '数量',
+        unitPrice: '单价',
+        total: '合计',
+        noItems: '无项目',
+        subtotal: '小计',
+        tax: '税额',
+        discount: '优惠',
+        totalAmount: '总计',
+        terms: '条款',
+        paymentTerms: '付款条款',
+        deliveryTerms: '交付条款',
+        validity: '有效期',
+        validDays: '此PI有效期为 {days} 天',
+        notes: '备注',
+        footer: '本文件由电脑生成，无需签名',
+        company: 'KINEFINITY INC.',
+        pendingTranslation: '[待翻译]'
+    },
+    'en-US': {
+        title: 'Proforma Invoice',
+        subtitle: '',
+        piNumber: 'PI Number',
+        date: 'Date',
+        validUntil: 'Valid Until',
+        billTo: 'Bill To',
+        customerName: 'Customer Name',
+        address: 'Address',
+        contact: 'Contact',
+        email: 'Email',
+        deviceInfo: 'Device Information',
+        product: 'Product',
+        serialNumber: 'Serial Number',
+        description: 'Description',
+        qty: 'Qty',
+        unitPrice: 'Unit Price',
+        total: 'Total',
+        noItems: 'No items',
+        subtotal: 'Subtotal',
+        tax: 'Tax',
+        discount: 'Discount',
+        totalAmount: 'Total Amount',
+        terms: 'Terms & Conditions',
+        paymentTerms: 'Payment Terms',
+        deliveryTerms: 'Delivery Terms',
+        validity: 'Validity',
+        validDays: 'This PI is valid for {days} days',
+        notes: 'Notes',
+        footer: 'This is a computer-generated document. No signature required.',
+        company: 'KINEFINITY INC.',
+        pendingTranslation: '[Pending Translation]'
+    },
+    'ja-JP': {
+        title: 'プロフォーマインボイス',
+        subtitle: '',
+        piNumber: 'PI番号',
+        date: '日付',
+        validUntil: '有効期限',
+        billTo: '請求先',
+        customerName: '顧客名',
+        address: '住所',
+        contact: '担当者',
+        email: 'メール',
+        deviceInfo: '機器情報',
+        product: '製品',
+        serialNumber: 'シリアル番号',
+        description: '説明',
+        qty: '数量',
+        unitPrice: '単価',
+        total: '合計',
+        noItems: '項目なし',
+        subtotal: '小計',
+        tax: '税額',
+        discount: '割引',
+        totalAmount: '合計金額',
+        terms: '条件',
+        paymentTerms: '支払条件',
+        deliveryTerms: '配送条件',
+        validity: '有効期間',
+        validDays: 'このPIの有効期間は {days} 日間です',
+        notes: '備考',
+        footer: 'この文書はコンピューターで生成されています。署名は不要です。',
+        company: 'KINEFINITY INC.',
+        pendingTranslation: '[翻訳待ち]'
+    }
+};
+
+// 语言切换按钮组件
+const LanguageSwitcher: React.FC<{
+    currentLanguage: string;
+    onLanguageChange: (lang: 'original' | 'zh-CN' | 'en-US' | 'ja-JP') => void;
+}> = ({ currentLanguage, onLanguageChange }) => {
+    const languages = [
+        { value: 'original', label: '原文' },
+        { value: 'zh-CN', label: '中文' },
+        { value: 'en-US', label: 'English' },
+        { value: 'ja-JP', label: '日本語' }
+    ];
+
+    return (
+        <div style={{
+            display: 'flex',
+            gap: 8,
+            padding: '12px 16px',
+            background: '#fff',
+            borderBottom: '1px solid #ddd',
+            justifyContent: 'center',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10
+        }}>
+            {languages.map(lang => (
+                <button
+                    key={lang.value}
+                    onClick={() => onLanguageChange(lang.value as any)}
+                    style={{
+                        padding: '6px 14px',
+                        borderRadius: 6,
+                        background: currentLanguage === lang.value ? 'rgba(255,215,0,0.15)' : 'transparent',
+                        border: `1px solid ${currentLanguage === lang.value ? '#FFD200' : '#ddd'}`,
+                        color: currentLanguage === lang.value ? '#333' : '#888',
+                        fontSize: 13,
+                        fontWeight: currentLanguage === lang.value ? 600 : 400,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    {lang.label}
+                </button>
+            ))}
+        </div>
+    );
+};
+
+const PIPreview: React.FC<{
+    piData: PIData;
+    language: 'original' | 'zh-CN' | 'en-US' | 'ja-JP';
+    translations: Record<string, Record<string, any>>;
+    onLanguageChange: (lang: 'original' | 'zh-CN' | 'en-US' | 'ja-JP') => void;
+}> = ({ piData, language, translations, onLanguageChange }) => {
+    // 获取UI标签
+    const t = PREVIEW_LABELS[language] || PREVIEW_LABELS['original'];
+
+    // 获取翻译内容（PI预览不显示未翻译标记）
+    const getTranslatedContent = (fieldKey: string, originalValue: string): string => {
+        if (!originalValue || language === 'original' || language === 'zh-CN') {
+            return originalValue || '';
+        }
+        const translated = translations[language]?.[fieldKey];
+        return translated || originalValue;
+    };
+
+    // 渲染翻译内容（不显示待翻译标记）
+    const renderTranslatedContent = (fieldKey: string, originalValue: string) => {
+        return getTranslatedContent(fieldKey, originalValue);
+    };
+
+    // 获取产品型号显示值（非中文语言使用英文名称）
+    const getProductName = () => {
+        const { product_name, product_name_en } = piData.content.device_info;
+        if (language !== 'original' && language !== 'zh-CN' && product_name_en) {
+            return product_name_en;
+        }
+        return product_name || '-';
+    };
+
+    return (
+        <div id="pi-preview-scroll" style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}>
+            {/* 语言切换按钮 */}
+            <LanguageSwitcher currentLanguage={language} onLanguageChange={onLanguageChange} />
+            
+            <div id="pi-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', color: '#333', fontSize: 13 }}>
             {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: 36, borderBottom: '2px solid #333', paddingBottom: 16 }}>
-                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>Proforma Invoice</h1>
-                <p style={{ margin: '6px 0 0 0', fontSize: 14, color: '#666' }}>{piData.content.header.subtitle}</p>
+                <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>{t.title}</h1>
+                {t.subtitle && <p style={{ margin: '6px 0 0 0', fontSize: 14, color: '#666' }}>{t.subtitle}</p>}
             </div>
 
             {/* PI Info */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24, fontSize: 13 }}>
                 <div>
-                    <div style={{ fontSize: 12, color: '#666' }}>PI Number:</div>
+                    <div style={{ fontSize: 12, color: '#666' }}>{t.piNumber}:</div>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{piData.pi_number || 'DRAFT'}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 12, color: '#666' }}>Date:</div>
-                    <div>{new Date().toLocaleDateString()}</div>
-                    <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>Valid Until:</div>
-                    <div>{new Date(Date.now() + piData.content.terms.valid_days * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
+                    <div style={{ fontSize: 12, color: '#666' }}>{t.date}:</div>
+                    <div>{new Date().toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language)}</div>
+                    <div style={{ fontSize: 12, color: '#666', marginTop: 6 }}>{t.validUntil}:</div>
+                    <div>{new Date(Date.now() + piData.content.terms.valid_days * 24 * 60 * 60 * 1000).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language)}</div>
                 </div>
             </div>
 
             {/* Customer Info */}
             <div style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 12, color: '#666', borderBottom: '1px solid #ddd', paddingBottom: 6, marginBottom: 10 }}>Bill To:</h3>
+                <h3 style={{ fontSize: 12, color: '#666', borderBottom: '1px solid #ddd', paddingBottom: 6, marginBottom: 10 }}>{t.billTo}:</h3>
                 <div>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{piData.content.customer_info.name || '[Customer Name]'}</div>
-                    <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>{piData.content.customer_info.address || '[Address]'}</div>
-                    <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>Contact: {piData.content.customer_info.contact || '-'}</div>
-                    <div style={{ fontSize: 13, color: '#666' }}>Email: {piData.content.customer_info.email || '-'}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{piData.content.customer_info.name || `[${t.customerName}]`}</div>
+                    <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>{piData.content.customer_info.address || `[${t.address}]`}</div>
+                    <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>{t.contact}: {piData.content.customer_info.contact || '-'}</div>
+                    <div style={{ fontSize: 13, color: '#666' }}>{t.email}: {piData.content.customer_info.email || '-'}</div>
                 </div>
             </div>
 
             {/* Device Info */}
             <div style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 12, color: '#666', borderBottom: '1px solid #ddd', paddingBottom: 6, marginBottom: 10 }}>Device Information:</h3>
+                <h3 style={{ fontSize: 12, color: '#666', borderBottom: '1px solid #ddd', paddingBottom: 6, marginBottom: 10 }}>{t.deviceInfo}:</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 13 }}>
-                    <div><span style={{ color: '#666' }}>Product:</span> {piData.content.device_info.product_name || '-'}</div>
-                    <div><span style={{ color: '#666' }}>Serial Number:</span> {piData.content.device_info.serial_number || '-'}</div>
+                    <div><span style={{ color: '#666' }}>{t.product}:</span> {getProductName()}</div>
+                    <div><span style={{ color: '#666' }}>{t.serialNumber}:</span> {piData.content.device_info.serial_number || '-'}</div>
                 </div>
             </div>
 
@@ -1351,16 +1620,18 @@ const PIPreview: React.FC<{ piData: PIData }> = ({ piData }) => (
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, fontSize: 13 }}>
                 <thead>
                     <tr style={{ background: '#f5f5f5' }}>
-                        <th style={{ padding: 10, textAlign: 'left', borderBottom: '2px solid #333', fontSize: 12 }}>Description</th>
-                        <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #333', fontSize: 12, width: 60 }}>Qty</th>
-                        <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #333', fontSize: 12, width: 100 }}>Unit Price</th>
-                        <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #333', fontSize: 12, width: 100 }}>Total</th>
+                        <th style={{ padding: 10, textAlign: 'left', borderBottom: '2px solid #333', fontSize: 12 }}>{t.description}</th>
+                        <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #333', fontSize: 12, width: 60 }}>{t.qty}</th>
+                        <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #333', fontSize: 12, width: 100 }}>{t.unitPrice}</th>
+                        <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #333', fontSize: 12, width: 100 }}>{t.total}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {piData.content.items.map((item, index) => (
                         <tr key={item.id}>
-                            <td style={{ padding: 10, borderBottom: '1px solid #ddd' }}>{item.description || `[Item ${index + 1}]`}</td>
+                            <td style={{ padding: 10, borderBottom: '1px solid #ddd' }}>
+                                {renderTranslatedContent(`items.${item.id}.description`, item.description) || `[${t.description} ${index + 1}]`}
+                            </td>
                             <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{item.quantity}</td>
                             <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(item.unit_price || 0).toFixed(2)}</td>
                             <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(item.total || 0).toFixed(2)}</td>
@@ -1368,7 +1639,7 @@ const PIPreview: React.FC<{ piData: PIData }> = ({ piData }) => (
                     ))}
                     {piData.content.items.length === 0 && (
                         <tr>
-                            <td colSpan={4} style={{ padding: 30, textAlign: 'center', color: '#999' }}>No items</td>
+                            <td colSpan={4} style={{ padding: 30, textAlign: 'center', color: '#999' }}>{t.noItems}</td>
                         </tr>
                     )}
                 </tbody>
@@ -1377,48 +1648,48 @@ const PIPreview: React.FC<{ piData: PIData }> = ({ piData }) => (
             {/* Totals */}
             <div style={{ marginLeft: 'auto', width: 280, marginBottom: 24, fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eee' }}>
-                    <span>Subtotal:</span>
+                    <span>{t.subtotal}:</span>
                     <span>¥{Number(piData.subtotal || 0).toFixed(2)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eee' }}>
-                    <span>Tax ({piData.tax_rate}%):</span>
+                    <span>{t.tax} ({piData.tax_rate}%):</span>
                     <span>¥{Number(piData.tax_amount || 0).toFixed(2)}</span>
                 </div>
                 {piData.discount_amount > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eee', color: '#10B981' }}>
-                        <span>Discount:</span>
+                        <span>{t.discount}:</span>
                         <span>-¥{Number(piData.discount_amount || 0).toFixed(2)}</span>
                     </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #333', fontSize: 14, fontWeight: 700 }}>
-                    <span>Total:</span>
+                    <span>{t.totalAmount}:</span>
                     <span>¥{Number(piData.total_amount || 0).toFixed(2)}</span>
                 </div>
             </div>
 
             {/* Terms */}
             <div style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 12, color: '#666', borderBottom: '1px solid #ddd', paddingBottom: 6, marginBottom: 10 }}>Terms & Conditions:</h3>
+                <h3 style={{ fontSize: 12, color: '#666', borderBottom: '1px solid #ddd', paddingBottom: 6, marginBottom: 10 }}>{t.terms}:</h3>
                 <div style={{ fontSize: 13 }}>
-                    <div><strong>Payment Terms:</strong> {piData.content.terms.payment_terms}</div>
-                    <div style={{ marginTop: 6 }}><strong>Delivery Terms:</strong> {piData.content.terms.delivery_terms}</div>
-                    <div style={{ marginTop: 6 }}><strong>Validity:</strong> This PI is valid for {piData.content.terms.valid_days} days.</div>
+                    <div><strong>{t.paymentTerms}:</strong> {renderTranslatedContent('terms.payment_terms', piData.content.terms.payment_terms)}</div>
+                    <div style={{ marginTop: 6 }}><strong>{t.deliveryTerms}:</strong> {renderTranslatedContent('terms.delivery_terms', piData.content.terms.delivery_terms)}</div>
+                    <div style={{ marginTop: 6 }}><strong>{t.validity}:</strong> {t.validDays.replace('{days}', String(piData.content.terms.valid_days))}</div>
                 </div>
             </div>
 
             {/* Notes */}
             {piData.content.notes && (
                 <div style={{ marginBottom: 24 }}>
-                    <h3 style={{ fontSize: 12, color: '#666', borderBottom: '1px solid #ddd', paddingBottom: 6, marginBottom: 10 }}>Notes:</h3>
-                    <div style={{ fontSize: 13, whiteSpace: 'pre-wrap' }}>{piData.content.notes}</div>
+                    <h3 style={{ fontSize: 12, color: '#666', borderBottom: '1px solid #ddd', paddingBottom: 6, marginBottom: 10 }}>{t.notes}:</h3>
+                    <div style={{ fontSize: 13, whiteSpace: 'pre-wrap' }}>{renderTranslatedContent('notes', piData.content.notes)}</div>
                 </div>
             )}
 
             {/* Footer */}
             <div style={{ marginTop: 50, paddingTop: 16, borderTop: '1px solid #ddd', textAlign: 'center', fontSize: 11, color: '#999' }}>
-                <p>This is a computer-generated document. No signature required.</p>
-                <p style={{ marginTop: 6 }}>KINEFINITY TECHNOLOGY CO., LTD.</p>
+                <p>{t.company}</p>
             </div>
         </div>
     </div>
-);
+    );
+};

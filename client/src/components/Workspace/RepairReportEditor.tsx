@@ -159,6 +159,15 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     const [submitting, setSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
     const [ticketInfo, setTicketInfo] = useState<any>(null);
+    
+    // 状态保持：编辑区域滚动位置
+    const editScrollRef = useRef<HTMLDivElement>(null);
+    const [editScrollPosition, setEditScrollPosition] = useState(0);
+    // 状态保持：预览区域滚动位置
+    const previewScrollRef = useRef<HTMLDivElement>(null);
+    const [previewScrollPosition, setPreviewScrollPosition] = useState(0);
+    // 状态保持：翻译框展开状态（fieldKey -> boolean）
+    const [translationPanelExpanded, setTranslationPanelExpanded] = useState<Record<string, boolean>>({});
     // MS部门用户列表（用于编制人选择）
     const [msUsers, setMsUsers] = useState<Array<{ id: number; display_name: string; department_name?: string }>>([]);
     // Confirm modal state for publish/recall actions
@@ -209,8 +218,6 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     const [translations, setTranslations] = useState<Record<string, Record<string, any>>>({});
     const [activeTranslationLang, setActiveTranslationLang] = useState('en-US');
     const [translatingFields, setTranslatingFields] = useState<Set<string>>(new Set());
-    // Track which languages have been Bokeh translated (for re-translate confirmation)
-    const [bokehTranslatedLangs, setBokehTranslatedLangs] = useState<Set<string>>(new Set());
     // Re-translate confirmation modal state
     const [retranslateConfirm, setRetranslateConfirm] = useState<{
         isOpen: boolean;
@@ -234,16 +241,29 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         }
     }, [retranslateConfirm.isOpen, retranslateConfirm.countdown]);
 
+    // 恢复编辑区域滚动位置
+    useEffect(() => {
+        if (activeTab === 'edit' && editScrollRef.current) {
+            editScrollRef.current.scrollTop = editScrollPosition;
+        }
+    }, [activeTab, editScrollPosition]);
+
+    // 恢复预览区域滚动位置
+    useEffect(() => {
+        if (activeTab === 'preview' && previewScrollRef.current) {
+            previewScrollRef.current.scrollTop = previewScrollPosition;
+        }
+    }, [activeTab, previewScrollPosition]);
+
     const handleAITranslate = async (fieldKey: string, langCode: string, sourceText: string, currentEditValue?: string) => {
         if (!sourceText.trim()) return;
         
         const fieldLangKey = `${fieldKey}-${langCode}`;
-        const hasTranslatedBefore = bokehTranslatedLangs.has(langCode);
         // Use current edit value if provided (from textarea), otherwise fall back to saved translation
         const currentTranslation = currentEditValue !== undefined ? currentEditValue : (translations[langCode]?.[fieldKey] || '');
         
-        // If this language has been translated before and has content, show confirmation
-        if (hasTranslatedBefore && currentTranslation) {
+        // 如果文本框有内容，显示确认弹窗
+        if (currentTranslation.trim()) {
             setRetranslateConfirm({
                 isOpen: true,
                 fieldKey,
@@ -260,8 +280,6 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         try {
             // Directly call Bokeh AI for translation
             await callBokehAI(fieldKey, langCode, sourceText);
-            // Mark this language as having been Bokeh translated
-            setBokehTranslatedLangs(prev => new Set(prev).add(langCode));
         } catch (err) {
             console.error('Translation error:', err);
             showToast('Bokeh翻译失败，请稍后重试', 'error');
@@ -980,7 +998,13 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             </span>
                         )}
                         <button
-                            onClick={() => setActiveTab('edit')}
+                            onClick={() => {
+                                // 保存预览滚动位置
+                                if (previewScrollRef.current) {
+                                    setPreviewScrollPosition(previewScrollRef.current.scrollTop);
+                                }
+                                setActiveTab('edit');
+                            }}
                             style={{
                                 padding: '6px 16px', background: activeTab === 'edit' ? 'var(--glass-bg-hover)' : 'transparent',
                                 border: 'none', color: activeTab === 'edit' ? 'var(--text-main)' : 'var(--text-secondary)', borderRadius: 6,
@@ -992,6 +1016,10 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                         {!isOpMode && (
                             <button
                                 onClick={() => {
+                                    // 保存编辑滚动位置
+                                    if (editScrollRef.current) {
+                                        setEditScrollPosition(editScrollRef.current.scrollTop);
+                                    }
                                     calculateTotals();
                                     setActiveTab('preview');
                                 }}
@@ -1046,7 +1074,11 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             加载中...
                         </div>
                     ) : activeTab === 'edit' ? (
-                        <div style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        <div 
+                            ref={editScrollRef}
+                            onScroll={(e) => setEditScrollPosition(e.currentTarget.scrollTop)}
+                            style={{ flex: 1, overflow: 'auto', padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}
+                        >
                             {/* Header Info Panel */}
                             {isOpMode ? (
                                 <div style={{
@@ -1246,6 +1278,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                         translatingFields={translatingFields}
                                         onAITranslate={handleAITranslate}
                                         onSaveTranslation={saveTranslation}
+                                        translationPanelExpanded={translationPanelExpanded['issue_description.customer_reported']}
+                                        onTranslationPanelExpandedChange={(expanded) => setTranslationPanelExpanded(prev => ({ ...prev, 'issue_description.customer_reported': expanded }))}
                                     />
                                 </Section>
                             )}
@@ -1266,6 +1300,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     translatingFields={translatingFields}
                                     onAITranslate={handleAITranslate}
                                     onSaveTranslation={saveTranslation}
+                                    translationPanelExpanded={translationPanelExpanded['diagnosis.findings']}
+                                    onTranslationPanelExpandedChange={(expanded) => setTranslationPanelExpanded(prev => ({ ...prev, 'diagnosis.findings': expanded }))}
                                 />
                                 <TextArea
                                     label="根本原因"
@@ -1281,6 +1317,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     translatingFields={translatingFields}
                                     onAITranslate={handleAITranslate}
                                     onSaveTranslation={saveTranslation}
+                                    translationPanelExpanded={translationPanelExpanded['diagnosis.root_cause']}
+                                    onTranslationPanelExpandedChange={(expanded) => setTranslationPanelExpanded(prev => ({ ...prev, 'diagnosis.root_cause': expanded }))}
                                 />
                                 <TextArea
                                     label="排故步骤"
@@ -1296,6 +1334,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     translatingFields={translatingFields}
                                     onAITranslate={handleAITranslate}
                                     onSaveTranslation={saveTranslation}
+                                    translationPanelExpanded={translationPanelExpanded['diagnosis.troubleshooting_steps']}
+                                    onTranslationPanelExpandedChange={(expanded) => setTranslationPanelExpanded(prev => ({ ...prev, 'diagnosis.troubleshooting_steps': expanded }))}
                                 />
                             </Section>
 
@@ -1315,6 +1355,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     translatingFields={translatingFields}
                                     onAITranslate={handleAITranslate}
                                     onSaveTranslation={saveTranslation}
+                                    translationPanelExpanded={translationPanelExpanded['repair_process.actions_taken']}
+                                    onTranslationPanelExpandedChange={(expanded) => setTranslationPanelExpanded(prev => ({ ...prev, 'repair_process.actions_taken': expanded }))}
                                 />
                                 <TextArea
                                     label="测试结果"
@@ -1330,6 +1372,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     translatingFields={translatingFields}
                                     onAITranslate={handleAITranslate}
                                     onSaveTranslation={saveTranslation}
+                                    translationPanelExpanded={translationPanelExpanded['repair_process.testing_results']}
+                                    onTranslationPanelExpandedChange={(expanded) => setTranslationPanelExpanded(prev => ({ ...prev, 'repair_process.testing_results': expanded }))}
                                 />
                                 {/* 更换零件只读展示 - 在维修过程中展示零件信息 */}
                                 {reportData.content.repair_process.parts_replaced.length > 0 && (
@@ -1654,11 +1698,18 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                         </div>
                     ) : (
                         <ReportPreview 
+                            ref={previewScrollRef}
                             reportData={reportData} 
                             ticketInfo={ticketInfo} 
                             language={previewLanguage}
                             translations={translations}
-                            onLanguageChange={setPreviewLanguage}
+                            onLanguageChange={(lang) => {
+                                // 保存滚动位置
+                                if (previewScrollRef.current) {
+                                    setPreviewScrollPosition(previewScrollRef.current.scrollTop);
+                                }
+                                setPreviewLanguage(lang);
+                            }}
                         />
                     )}
                 </div>
@@ -1917,6 +1968,48 @@ const Section: React.FC<{ title: string; children: React.ReactNode; icon?: React
     </div>
 );
 
+// Auto-resizing textarea component
+const AutoResizeTextarea: React.FC<{ 
+    value: string; 
+    onChange: (v: string) => void; 
+    disabled?: boolean; 
+    placeholder?: string;
+}> = ({ value, onChange, disabled, placeholder }) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            // Reset height to auto to get the correct scrollHeight
+            textareaRef.current.style.height = 'auto';
+            // Set height to scrollHeight (minimum 40px for one line)
+            textareaRef.current.style.height = Math.max(40, textareaRef.current.scrollHeight) + 'px';
+        }
+    }, [value]);
+
+    return (
+        <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            disabled={disabled}
+            placeholder={placeholder}
+            style={{ 
+                width: '100%', 
+                minHeight: 40, 
+                padding: 12, 
+                background: 'var(--glass-bg-hover)', 
+                border: '1px solid var(--glass-border)', 
+                borderRadius: 6, 
+                color: 'var(--text-main)', 
+                fontSize: 13, 
+                resize: 'none', 
+                outline: 'none',
+                overflow: 'hidden'
+            }}
+        />
+    );
+};
+
 const Input: React.FC<{ label: string; value: string; onChange: (v: string) => void; disabled?: boolean }> = ({ label, value, onChange, disabled }) => (
     <div>
         <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</label>
@@ -1944,7 +2037,8 @@ const TextArea: React.FC<{
     translatingFields?: Set<string>;
     onAITranslate?: (fieldKey: string, lang: string, text: string) => void;
     onSaveTranslation?: (fieldKey: string, lang: string, text: string, isManual: boolean) => void;
-    bokehTranslatedLangs?: Set<string>;
+    translationPanelExpanded?: boolean;
+    onTranslationPanelExpandedChange?: (expanded: boolean) => void;
 }> = ({ 
     label, 
     value, 
@@ -1959,16 +2053,16 @@ const TextArea: React.FC<{
     translatingFields,
     onAITranslate,
     onSaveTranslation,
-    bokehTranslatedLangs
+    translationPanelExpanded,
+    onTranslationPanelExpandedChange
 }) => (
     <div style={{ marginBottom: 16 }}>
         <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>{label}</label>
-        <textarea
+        <AutoResizeTextarea
             value={value}
-            onChange={e => onChange(e.target.value)}
+            onChange={onChange}
             disabled={disabled}
             placeholder={placeholder}
-            style={{ width: '100%', minHeight: 80, padding: 12, background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 13, resize: 'vertical', outline: 'none' }}
         />
         {/* Inline Translation Panel */}
         {fieldKey && translations && onTranslationsUpdate && activeTranslationLang && onActiveTranslationLangChange && translatingFields && onAITranslate && onSaveTranslation && (
@@ -1981,7 +2075,8 @@ const TextArea: React.FC<{
                 translatingFields={translatingFields}
                 onAITranslate={onAITranslate}
                 onSaveTranslation={onSaveTranslation}
-                bokehTranslatedLangs={bokehTranslatedLangs || new Set()}
+                isExpanded={translationPanelExpanded}
+                onExpandedChange={onTranslationPanelExpandedChange}
             />
         )}
     </div>
@@ -2007,7 +2102,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 const PREVIEW_LABELS: Record<string, Record<string, string>> = {
     'original': {
         title: '维修报告',
-        subtitle: 'Repair Service Report',
+        subtitle: '',
         reportNumber: '报告编号',
         serviceType: '服务类型',
         warranty: '保内服务',
@@ -2055,13 +2150,13 @@ const PREVIEW_LABELS: Record<string, Record<string, string>> = {
         repairWarranty: '维修保修',
         days: '天',
         warrantyExclusions: '本保修仅适用于本次维修更换的部件，不包括:',
-        footer: '本报告由卓曜科技（深圳）有限公司出具 | KINEFINITY TECHNOLOGY CO., LTD.',
+        footer: '本报告由卓曜科技（深圳）有限公司出具 | KINEFINITY INC.',
         footerContact: '如有疑问，请联系 service@kinefinity.com',
         pendingTranslation: '[待翻译]'
     },
     'zh-CN': {
         title: '维修报告',
-        subtitle: 'Repair Service Report',
+        subtitle: '',
         reportNumber: '报告编号',
         serviceType: '服务类型',
         warranty: '保内服务',
@@ -2109,13 +2204,13 @@ const PREVIEW_LABELS: Record<string, Record<string, string>> = {
         repairWarranty: '维修保修',
         days: '天',
         warrantyExclusions: '本保修仅适用于本次维修更换的部件，不包括:',
-        footer: '本报告由卓曜科技（深圳）有限公司出具 | KINEFINITY TECHNOLOGY CO., LTD.',
+        footer: '本报告由卓曜科技（深圳）有限公司出具 | KINEFINITY INC.',
         footerContact: '如有疑问，请联系 service@kinefinity.com',
         pendingTranslation: '[待翻译]'
     },
     'en-US': {
         title: 'Repair Report',
-        subtitle: 'Repair Service Report',
+        subtitle: '',
         reportNumber: 'Report No.',
         serviceType: 'Service Type',
         warranty: 'In Warranty',
@@ -2163,13 +2258,13 @@ const PREVIEW_LABELS: Record<string, Record<string, string>> = {
         repairWarranty: 'Repair Warranty',
         days: 'days',
         warrantyExclusions: 'This warranty applies only to parts replaced in this repair, excluding:',
-        footer: 'Issued by KINEFINITY TECHNOLOGY CO., LTD.',
+        footer: 'Issued by KINEFINITY INC.',
         footerContact: 'For inquiries, contact service@kinefinity.com',
-        pendingTranslation: '[Pending Translation]'
+        pendingTranslation: '[Pending Translation]',
     },
     'ja-JP': {
         title: '修理報告書',
-        subtitle: 'Repair Service Report',
+        subtitle: '',
         reportNumber: '報告番号',
         serviceType: 'サービスタイプ',
         warranty: '保証期内',
@@ -2217,13 +2312,13 @@ const PREVIEW_LABELS: Record<string, Record<string, string>> = {
         repairWarranty: '修理保証',
         days: '日間',
         warrantyExclusions: '本保証は今回の修理で交換された部品にのみ適用され、以下を除きます:',
-        footer: 'KINEFINITY TECHNOLOGY CO., LTD. 発行',
+        footer: 'KINEFINITY INC. 発行',
         footerContact: 'お問い合わせ: service@kinefinity.com',
-        pendingTranslation: '[翻訳待ち]'
+        pendingTranslation: '[翻訳待ち]',
     },
     'de-DE': {
         title: 'Reparaturbericht',
-        subtitle: 'Repair Service Report',
+        subtitle: '',
         reportNumber: 'Bericht Nr.',
         serviceType: 'Serviceart',
         warranty: 'Garantie',
@@ -2271,9 +2366,9 @@ const PREVIEW_LABELS: Record<string, Record<string, string>> = {
         repairWarranty: 'Reparaturgarantie',
         days: 'Tage',
         warrantyExclusions: 'Diese Garantie gilt nur für in dieser Reparatur ausgetauschte Teile, ausgenommen:',
-        footer: 'Herausgegeben von KINEFINITY TECHNOLOGY CO., LTD.',
+        footer: 'Herausgegeben von KINEFINITY INC.',
         footerContact: 'Kontakt: service@kinefinity.com',
-        pendingTranslation: '[Übersetzung ausstehend]'
+        pendingTranslation: '[Übersetzung ausstehend]',
     }
 };
 
@@ -2296,7 +2391,7 @@ const LanguageSwitcher: React.FC<{
             gap: 8,
             padding: '12px 16px',
             background: '#fff',
-            borderBottom: '1px solid #e2e8f0',
+            borderBottom: '1px solid #ddd',
             justifyContent: 'center',
             position: 'sticky',
             top: 0,
@@ -2310,8 +2405,8 @@ const LanguageSwitcher: React.FC<{
                         padding: '6px 14px',
                         borderRadius: 6,
                         background: currentLanguage === lang.value ? 'rgba(255,215,0,0.15)' : 'transparent',
-                        border: `1px solid ${currentLanguage === lang.value ? '#FFD200' : '#e2e8f0'}`,
-                        color: currentLanguage === lang.value ? '#1a365d' : '#718096',
+                        border: `1px solid ${currentLanguage === lang.value ? '#FFD200' : '#ddd'}`,
+                        color: currentLanguage === lang.value ? '#333' : '#888',
                         fontSize: 13,
                         fontWeight: currentLanguage === lang.value ? 600 : 400,
                         cursor: 'pointer',
@@ -2325,13 +2420,13 @@ const LanguageSwitcher: React.FC<{
     );
 };
 
-const ReportPreview: React.FC<{
+const ReportPreview = React.forwardRef<HTMLDivElement, {
     reportData: ReportData;
     ticketInfo?: any;
     language: 'original' | 'zh-CN' | 'en-US' | 'ja-JP' | 'de-DE';
     translations: Record<string, Record<string, any>>;
     onLanguageChange: (lang: 'original' | 'zh-CN' | 'en-US' | 'ja-JP' | 'de-DE') => void;
-}> = ({ reportData, ticketInfo, language, translations, onLanguageChange }) => {
+}>(({ reportData, ticketInfo, language, translations, onLanguageChange }, ref) => {
     // 获取UI标签
     const t = PREVIEW_LABELS[language] || PREVIEW_LABELS['original'];
 
@@ -2372,37 +2467,37 @@ const ReportPreview: React.FC<{
     };
 
     return (
-        <div style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}>
+        <div ref={ref} style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}>
             {/* 语言切换按钮 */}
             <LanguageSwitcher currentLanguage={language} onLanguageChange={onLanguageChange} />
             
             <div id="repair-report-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', color: '#333', fontSize: 13 }}>
                 {/* Header */}
-                <div style={{ textAlign: 'center', marginBottom: 40, borderBottom: '3px solid #1a365d', paddingBottom: 20 }}>
-                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#1a365d' }}>{t.title}</h1>
-                    <p style={{ margin: '8px 0 0 0', fontSize: 14, color: '#4a5568' }}>{t.subtitle}</p>
+                <div style={{ textAlign: 'center', marginBottom: 40, borderBottom: '3px solid #333', paddingBottom: 20 }}>
+                    <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#333' }}>{t.title}</h1>
+                    {t.subtitle && <p style={{ margin: '8px 0 0 0', fontSize: 14, color: '#666' }}>{t.subtitle}</p>}
                 </div>
 
                 {/* Report Info Header */}
-                <div style={{ marginBottom: 30, padding: 16, background: '#f7fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ marginBottom: 30, padding: 16, background: '#fafafa', borderRadius: 8, border: '1px solid #e0e0e0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid #e0e0e0' }}>
                         <div style={{ display: 'flex', gap: 32 }}>
                             <div>
-                                <div style={{ fontSize: 11, color: '#718096' }}>{t.reportNumber}</div>
-                                <div style={{ fontSize: 14, fontWeight: 600, color: '#1a365d' }}>{reportData.report_number || 'DRAFT'}</div>
+                                <div style={{ fontSize: 11, color: '#888' }}>{t.reportNumber}</div>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: '#333' }}>{reportData.report_number || 'DRAFT'}</div>
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, color: '#718096' }}>{t.serviceType}</div>
+                                <div style={{ fontSize: 11, color: '#888' }}>{t.serviceType}</div>
                                 <div style={{ fontSize: 13, fontWeight: 600, color: reportData.service_type === 'warranty' ? '#38a169' : '#d69e2e' }}>
                                     {reportData.service_type === 'warranty' ? t.warranty : t.outOfWarranty}
                                 </div>
                             </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: 11, color: '#718096' }}>{t.reportDate}</div>
+                            <div style={{ fontSize: 11, color: '#888' }}>{t.reportDate}</div>
                             <div style={{ fontSize: 13 }}>{new Date().toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language)}</div>
                             {(reportData.prepared_by || reportData.created_by) && (
-                                <div style={{ fontSize: 11, color: '#718096', marginTop: 4 }}>
+                                <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
                                     {t.preparedBy}: {reportData.prepared_by?.display_name || reportData.created_by?.display_name}
                                 </div>
                             )}
@@ -2411,7 +2506,7 @@ const ReportPreview: React.FC<{
                     {ticketInfo && (
                         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
                             <div>
-                                <div style={{ fontSize: 10, color: '#718096' }}>{t.ticketDate}</div>
+                                <div style={{ fontSize: 10, color: '#888' }}>{t.ticketDate}</div>
                                 <div style={{ fontSize: 12, fontWeight: 500 }}>
                                     {reportData.ticket_created_date 
                                         ? new Date(reportData.ticket_created_date).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
@@ -2420,9 +2515,9 @@ const ReportPreview: React.FC<{
                                             : '-'}
                                 </div>
                             </div>
-                            <div style={{ width: 1, background: '#e2e8f0' }} />
+                            <div style={{ width: 1, background: '#e0e0e0' }} />
                             <div>
-                                <div style={{ fontSize: 10, color: '#718096' }}>{t.receivedDate}</div>
+                                <div style={{ fontSize: 10, color: '#888' }}>{t.receivedDate}</div>
                                 <div style={{ fontSize: 12, fontWeight: 500 }}>
                                     {reportData.received_date 
                                         ? new Date(reportData.received_date).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
@@ -2433,9 +2528,9 @@ const ReportPreview: React.FC<{
                                                 : '-'}
                                 </div>
                             </div>
-                            <div style={{ width: 1, background: '#e2e8f0' }} />
+                            <div style={{ width: 1, background: '#e0e0e0' }} />
                             <div>
-                                <div style={{ fontSize: 10, color: '#718096' }}>{t.diagnosisDate}</div>
+                                <div style={{ fontSize: 10, color: '#888' }}>{t.diagnosisDate}</div>
                                 <div style={{ fontSize: 12, fontWeight: 500 }}>
                                     {reportData.diagnosis_date 
                                         ? new Date(reportData.diagnosis_date).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
@@ -2444,9 +2539,9 @@ const ReportPreview: React.FC<{
                                             : '-'}
                                 </div>
                             </div>
-                            <div style={{ width: 1, background: '#e2e8f0' }} />
+                            <div style={{ width: 1, background: '#e0e0e0' }} />
                             <div>
-                                <div style={{ fontSize: 10, color: '#718096' }}>{t.completionDate}</div>
+                                <div style={{ fontSize: 10, color: '#888' }}>{t.completionDate}</div>
                                 <div style={{ fontSize: 12, fontWeight: 500 }}>
                                     {reportData.repair_date 
                                         ? new Date(reportData.repair_date).toLocaleDateString(language === 'original' || language === 'zh-CN' ? 'zh-CN' : language) 
@@ -2494,8 +2589,8 @@ const ReportPreview: React.FC<{
                 {/* 3. 问题描述 */}
                 <SectionPreview title={t.section3}>
                     <div style={{ marginBottom: 16 }}>
-                        <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>{t.customerReported}:</div>
-                        <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontStyle: 'italic', fontSize: 13 }}>
+                        <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>{t.customerReported}:</div>
+                        <div style={{ padding: 12, background: '#f5f5f5', borderRadius: 6, fontStyle: 'italic', fontSize: 13 }}>
                             {reportData.content.issue_description.customer_reported 
                                 ? renderTranslatedContent('issue_description.customer_reported', reportData.content.issue_description.customer_reported)
                                 : t.notProvided}
@@ -2509,8 +2604,8 @@ const ReportPreview: React.FC<{
                     <InfoBlock label={t.rootCause} value={renderTranslatedContent('diagnosis.root_cause', reportData.content.diagnosis.root_cause)} />
                     {reportData.content.diagnosis.troubleshooting_steps && (
                         <div>
-                            <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>{t.troubleshootingSteps}:</div>
-                            <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                            <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>{t.troubleshootingSteps}:</div>
+                            <div style={{ padding: 12, background: '#f5f5f5', borderRadius: 6, fontSize: 13, whiteSpace: 'pre-wrap' }}>
                                 {renderTranslatedContent('diagnosis.troubleshooting_steps', reportData.content.diagnosis.troubleshooting_steps)}
                             </div>
                         </div>
@@ -2521,8 +2616,8 @@ const ReportPreview: React.FC<{
                 <SectionPreview title={t.section5}>
                     {reportData.content.repair_process.actions_taken && (
                         <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontSize: 12, color: '#718096', marginBottom: 6 }}>{t.actionsTaken}:</div>
-                            <div style={{ padding: 12, background: '#f7fafc', borderRadius: 6, fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                            <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>{t.actionsTaken}:</div>
+                            <div style={{ padding: 12, background: '#f5f5f5', borderRadius: 6, fontSize: 13, whiteSpace: 'pre-wrap' }}>
                                 {renderTranslatedContent('repair_process.actions_taken', reportData.content.repair_process.actions_taken)}
                             </div>
                         </div>
@@ -2534,40 +2629,40 @@ const ReportPreview: React.FC<{
                 <SectionPreview title={t.section6}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, marginBottom: 16 }}>
                         <thead>
-                            <tr style={{ background: '#edf2f7' }}>
-                                <th style={{ padding: 10, textAlign: 'left', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>{t.item}</th>
-                                <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>{t.spec}</th>
-                                <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>{t.quantity}</th>
-                                <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>{t.unitPrice}</th>
-                                <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #cbd5e0', fontSize: 12 }}>{t.subtotal}</th>
+                            <tr style={{ background: '#f0f0f0' }}>
+                                <th style={{ padding: 10, textAlign: 'left', borderBottom: '2px solid #ccc', fontSize: 12 }}>{t.item}</th>
+                                <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #ccc', fontSize: 12 }}>{t.spec}</th>
+                                <th style={{ padding: 10, textAlign: 'center', borderBottom: '2px solid #ccc', fontSize: 12 }}>{t.quantity}</th>
+                                <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #ccc', fontSize: 12 }}>{t.unitPrice}</th>
+                                <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #ccc', fontSize: 12 }}>{t.subtotal}</th>
                             </tr>
                         </thead>
                         <tbody>
                             {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => (
                                 <tr key={`part-${i}`}>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>{t.part}: {part.name}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{part.part_number || '-'}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{part.quantity}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(part.unit_price || 0).toFixed(2)}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.part}: {part.name}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{part.part_number || '-'}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{part.quantity}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(part.unit_price || 0).toFixed(2)}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}</td>
                                 </tr>
                             ))}
                             {reportData.content.labor_charges.map((charge: LaborCharge, i: number) => (
                                 <tr key={`labor-${i}`}>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>{t.labor}: {charge.description}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>{charge.hours}{language === 'en-US' ? 'hrs' : language === 'de-DE' ? 'Std' : language === 'ja-JP' ? '時間' : '小时'}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>1</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>¥{Number(charge.rate || 0).toFixed(2)}/{language === 'en-US' ? 'hr' : language === 'de-DE' ? 'Std' : language === 'ja-JP' ? '時間' : '小时'}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(charge.total || 0).toFixed(2)}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.labor}: {charge.description}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{charge.hours}{language === 'en-US' ? 'hrs' : language === 'de-DE' ? 'Std' : language === 'ja-JP' ? '時間' : '小时'}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>1</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(charge.rate || 0).toFixed(2)}/{language === 'en-US' ? 'hr' : language === 'de-DE' ? 'Std' : language === 'ja-JP' ? '時間' : '小时'}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>¥{Number(charge.total || 0).toFixed(2)}</td>
                                 </tr>
                             ))}
                             {reportData.content.other_fees.map((fee: OtherFee, i: number) => (
                                 <tr key={`fee-${i}`}>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0' }}>{t.other}: {fee.description || (language === 'zh-CN' || language === 'original' ? '未命名费用' : 'Unnamed Fee')}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>-</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>1</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>-</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>¥{Number(fee.amount || 0).toFixed(2)}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.other}: {fee.description || (language === 'zh-CN' || language === 'original' ? '未命名费用' : 'Unnamed Fee')}</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>-</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>1</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>-</td>
+                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>¥{Number(fee.amount || 0).toFixed(2)}</td>
                                 </tr>
                             ))}
                             {reportData.content.repair_process.parts_replaced.length === 0 && 
@@ -2579,27 +2674,27 @@ const ReportPreview: React.FC<{
                             )}
                         </tbody>
                         <tfoot>
-                            <tr style={{ background: '#f7fafc' }}>
+                            <tr style={{ background: '#fafafa' }}>
                                 <td colSpan={3} style={{ padding: 10 }}></td>
-                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>{t.partsSubtotal}:</td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#666' }}>{t.partsSubtotal}:</td>
                                 <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.parts_total || 0).toFixed(2)}</td>
                             </tr>
-                            <tr style={{ background: '#f7fafc' }}>
+                            <tr style={{ background: '#fafafa' }}>
                                 <td colSpan={3} style={{ padding: 10 }}></td>
-                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>{t.laborSubtotal}:</td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#666' }}>{t.laborSubtotal}:</td>
                                 <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.labor_total || 0).toFixed(2)}</td>
                             </tr>
                             {reportData.content.other_fees.length > 0 && (
-                                <tr style={{ background: '#f7fafc' }}>
+                                <tr style={{ background: '#fafafa' }}>
                                     <td colSpan={3} style={{ padding: 10 }}></td>
-                                    <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#718096' }}>{t.otherFees}:</td>
+                                    <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#666' }}>{t.otherFees}:</td>
                                     <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>¥{Number(reportData.content.other_fees.reduce((sum, fee) => sum + fee.amount, 0)).toFixed(2)}</td>
                                 </tr>
                             )}
-                            <tr style={{ background: '#ffffff', borderTop: '2px solid #1a365d' }}>
+                            <tr style={{ background: '#ffffff', borderTop: '2px solid #333' }}>
                                 <td colSpan={3} style={{ padding: 12 }}></td>
-                                <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: '#1a365d', fontSize: 14 }}>{t.totalAmount}:</td>
-                                <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: '#1a365d', fontSize: 14 }}>{reportData.currency} {Number(reportData.total_cost || 0).toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: '#333', fontSize: 14 }}>{t.totalAmount}:</td>
+                                <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: '#333', fontSize: 14 }}>{reportData.currency} {Number(reportData.total_cost || 0).toLocaleString()}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -2611,9 +2706,9 @@ const ReportPreview: React.FC<{
                 </SectionPreview>
 
                 {/* Footer - 包含保修条款 */}
-                <div style={{ marginTop: 40, paddingTop: 20, borderTop: '2px solid #e2e8f0' }}>
-                    <div style={{ padding: 14, background: '#ebf8ff', borderRadius: 8, border: '1px solid #90cdf4', marginBottom: 20 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#2b6cb0', marginBottom: 6 }}>
+                <div style={{ marginTop: 40, paddingTop: 20, borderTop: '2px solid #e0e0e0' }}>
+                    <div style={{ padding: 14, background: '#f5f5f5', borderRadius: 8, border: '1px solid #ddd', marginBottom: 20 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 6 }}>
                             {t.repairWarranty}: {reportData.content.warranty_terms.repair_warranty_days} {t.days}
                         </div>
                         <div style={{ fontSize: 12, color: '#4a5568' }}>
@@ -2633,7 +2728,7 @@ const ReportPreview: React.FC<{
             </div>
         </div>
     );
-};
+});
 
 // Fee Sub-section Component with collapsible functionality
 const FeeSubSection: React.FC<{ 
@@ -2672,26 +2767,67 @@ const FeeSubSection: React.FC<{
 
 const SectionPreview: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#1a365d', borderBottom: '2px solid #e2e8f0', paddingBottom: 6, marginBottom: 12 }}>{title}</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: '#333', borderBottom: '2px solid #e0e0e0', paddingBottom: 6, marginBottom: 12 }}>{title}</h3>
         {children}
     </div>
 );
 
 const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
     <div>
-        <span style={{ fontSize: 12, color: '#718096' }}>{label}: </span>
+        <span style={{ fontSize: 12, color: '#666' }}>{label}: </span>
         <span style={{ fontSize: 13, fontWeight: 500 }}>{value || '-'}</span>
     </div>
 );
 
 const InfoBlock: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
     <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 12, color: '#718096', marginBottom: 4 }}>{label}:</div>
-        <div style={{ padding: 10, background: '#f7fafc', borderRadius: 6, lineHeight: 1.5, fontSize: 13 }}>
-            {value || <span style={{ color: '#a0aec0', fontStyle: 'italic' }}>[未提供]</span>}
+        <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>{label}:</div>
+        <div style={{ padding: 10, background: '#f5f5f5', borderRadius: 6, lineHeight: 1.5, fontSize: 13 }}>
+            {value || <span style={{ color: '#999', fontStyle: 'italic' }}>[未提供]</span>}
         </div>
     </div>
 );
+
+// Translation textarea with auto-resize
+const TranslationTextarea: React.FC<{
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+    hasTranslation: boolean;
+}> = ({ value, onChange, placeholder, hasTranslation }) => {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+            textareaRef.current.style.height = Math.max(36, textareaRef.current.scrollHeight) + 'px';
+        }
+    }, [value]);
+
+    return (
+        <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            placeholder={placeholder}
+            style={{
+                width: '100%', 
+                minHeight: 36, 
+                padding: 10,
+                borderRadius: 6, 
+                background: 'var(--glass-bg-hover)',
+                border: `1px solid ${hasTranslation ? 'var(--glass-border)' : 'var(--glass-border-subtle, var(--glass-border))'}`,
+                color: 'var(--text-main)',
+                fontSize: 12, 
+                lineHeight: 1.5,
+                resize: 'none', 
+                fontFamily: 'inherit',
+                transition: 'all 0.2s',
+                overflow: 'hidden'
+            }}
+        />
+    );
+};
 
 // Inline Translation Panel Component
 const InlineTranslationPanel: React.FC<{
@@ -2703,8 +2839,9 @@ const InlineTranslationPanel: React.FC<{
     translatingFields: Set<string>;
     onAITranslate: (fieldKey: string, lang: string, text: string, currentEditValue?: string) => void;
     onSaveTranslation: (fieldKey: string, lang: string, text: string, isManual: boolean) => void;
-    bokehTranslatedLangs: Set<string>;
     defaultExpanded?: boolean;
+    isExpanded?: boolean;
+    onExpandedChange?: (expanded: boolean) => void;
 }> = ({
     fieldKey,
     originalText,
@@ -2714,10 +2851,19 @@ const InlineTranslationPanel: React.FC<{
     translatingFields,
     onAITranslate,
     onSaveTranslation,
-    bokehTranslatedLangs,
-    defaultExpanded = false
+    defaultExpanded = false,
+    isExpanded: controlledIsExpanded,
+    onExpandedChange
 }) => {
-    const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+    const [internalIsExpanded, setInternalIsExpanded] = useState(defaultExpanded);
+    const isExpanded = controlledIsExpanded !== undefined ? controlledIsExpanded : internalIsExpanded;
+    const setIsExpanded = (value: boolean) => {
+        if (onExpandedChange) {
+            onExpandedChange(value);
+        } else {
+            setInternalIsExpanded(value);
+        }
+    };
     // Direct editing: textarea value is synced with current translation
     const [editValue, setEditValue] = useState('');
     // Track if this is the initial mount
@@ -2740,26 +2886,34 @@ const InlineTranslationPanel: React.FC<{
 
     const currentTranslation = translations[activeLang]?.[fieldKey] || '';
     const isTranslating = translatingFields.has(`${fieldKey}-${activeLang}`);
-    const hasBokehTranslatedBefore = bokehTranslatedLangs.has(activeLang);
+    // Track if user has manually edited to prevent AI translation from overwriting
+    const hasUserEdited = useRef(false);
 
-    // Sync editValue only on initial mount or when language changes (not when translation updates)
+    // Sync editValue when translation changes (from AI) or on initial mount
+    // But don't overwrite if user has manually edited and translation is from AI
     useEffect(() => {
-        if (isInitialMount.current) {
+        const isManualTranslation = translations[activeLang]?._meta?.is_manual_edit;
+        // Update if: initial mount, or translation is manual, or user hasn't edited yet
+        if (isInitialMount.current || isManualTranslation || !hasUserEdited.current) {
             setEditValue(currentTranslation);
-            isInitialMount.current = false;
+            if (isInitialMount.current) {
+                isInitialMount.current = false;
+            }
         }
-    }, []);
+    }, [currentTranslation]);
 
-    // Update editValue when language changes
+    // Update editValue when language changes (always update on language switch)
     useEffect(() => {
         if (!isInitialMount.current) {
             setEditValue(currentTranslation);
+            hasUserEdited.current = false; // Reset user edit flag on language change
         }
     }, [activeLang]);
 
     // Auto-save when user edits the textarea (debounced)
     useEffect(() => {
         if (editValue !== currentTranslation && editValue !== '') {
+            hasUserEdited.current = true; // Mark as user edited
             const timer = setTimeout(() => {
                 onSaveTranslation(fieldKey, activeLang, editValue, true);
             }, 800);
@@ -2858,26 +3012,17 @@ const InlineTranslationPanel: React.FC<{
                                     }}
                                 >
                                     <Sparkles size={10} />
-                                    {isTranslating ? '翻译中...' : (hasBokehTranslatedBefore ? '再Bokeh一次' : 'Bokeh翻译')}
+                                    {isTranslating ? '翻译中...' : (editValue.trim() ? '再Bokeh一次' : 'Bokeh翻译')}
                                 </button>
                             </div>
                         </div>
 
-                        {/* Direct editable textarea */}
-                        <textarea
+                        {/* Direct editable textarea - auto resize */}
+                        <TranslationTextarea
                             value={editValue}
-                            onChange={e => setEditValue(e.target.value)}
+                            onChange={setEditValue}
                             placeholder="暂无译文，点击右侧按钮生成"
-                            style={{
-                                width: '100%', minHeight: 60, padding: 10,
-                                borderRadius: 6, 
-                                background: 'var(--glass-bg-hover)',
-                                border: `1px solid ${currentTranslation ? 'var(--glass-border)' : 'var(--glass-border-subtle, var(--glass-border))'}`,
-                                color: 'var(--text-main)',
-                                fontSize: 12, lineHeight: 1.5,
-                                resize: 'vertical', fontFamily: 'inherit',
-                                transition: 'all 0.2s'
-                            }}
+                            hasTranslation={!!currentTranslation}
                         />
                         {editValue !== currentTranslation && (
                             <div style={{ fontSize: 10, color: '#10B981', marginTop: 4, textAlign: 'right' }}>
