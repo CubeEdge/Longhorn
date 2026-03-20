@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import PartsEditModal from './PartsEditModal';
 
 // Column resize handle styles
 const colResizeHandleStyle = `
@@ -100,7 +101,7 @@ function loadColWidths(): Record<ColKey, number> {
 type SortKey = 'sku' | 'name' | 'category' | 'price';
 
 const PartsCatalogPage: React.FC = () => {
-    const { t: _t } = useLanguage();
+    const { t: _t, language } = useLanguage();
     const { token, user } = useAuthStore();
     const navigate = useNavigate();
 
@@ -110,6 +111,7 @@ const PartsCatalogPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFamily, setSelectedFamily] = useState<ProductFamily>('ALL');
+    const [allModels, setAllModels] = useState<any[]>([]);
 
     // Search expand
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -124,6 +126,10 @@ const PartsCatalogPage: React.FC = () => {
 
     // Delete confirm
     const [deleteConfirm, setDeleteConfirm] = useState<Part | null>(null);
+
+    // Edit modal
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingPart, setEditingPart] = useState<Part | null>(null);
 
     const isAdmin = ['Admin', 'Lead', 'Exec'].includes(user?.role || '');
     const isOP = user?.department_code === 'OP';
@@ -152,7 +158,16 @@ const PartsCatalogPage: React.FC = () => {
     }, [searchQuery, token]);
 
     useEffect(() => {
-        if (token) fetchParts();
+        if (token) {
+            fetchParts();
+            
+            // Fetch models for ID translation
+            axios.get('/api/v1/admin/product-models?limit=100', {
+                headers: { Authorization: `Bearer ${token}` }
+            }).then(res => {
+                if (res.data?.success) setAllModels(res.data.data);
+            });
+        }
     }, [fetchParts, token]);
 
     // Family filter (client-side via compatible_models)
@@ -330,7 +345,7 @@ const PartsCatalogPage: React.FC = () => {
                     </div>
 
                     {isAdmin && (
-                        <button className="btn-kine-lowkey" onClick={() => navigate('/service/parts/new')}>
+                        <button className="btn-kine-lowkey" onClick={() => { setEditingPart(null); setIsModalOpen(true); }}>
                             <Plus size={18} /> 新增配件
                         </button>
                     )}
@@ -479,19 +494,31 @@ const PartsCatalogPage: React.FC = () => {
                                     {/* Compatible Models */}
                                     <td style={{ padding: 16 }}>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                            {(part.compatible_models || []).slice(0, 3).map((model, idx) => (
-                                                <span key={idx} style={{
-                                                    padding: '1px 6px',
-                                                    background: 'rgba(59,130,246,0.1)',
-                                                    border: '1px solid rgba(59,130,246,0.2)',
-                                                    borderRadius: 4,
-                                                    fontSize: '0.75rem',
-                                                    color: 'var(--text-secondary)',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    {model}
-                                                </span>
-                                            ))}
+                                            {(part.compatible_models || []).slice(0, 3).map((modelId, idx) => {
+                                                // 优先匹配 ID，其次匹配型号代码或中文名称
+                                                const modelObj = allModels.find(m => 
+                                                    String(m.id) === String(modelId) || 
+                                                    m.model_code === modelId || 
+                                                    m.name_zh === modelId
+                                                );
+                                                const label = modelObj 
+                                                    ? (language === 'zh' ? modelObj.name_zh : (modelObj.name_en || modelObj.name_zh))
+                                                    : modelId;
+                                                
+                                                return (
+                                                    <span key={idx} style={{
+                                                        padding: '1px 6px',
+                                                        background: 'rgba(59,130,246,0.1)',
+                                                        border: '1px solid rgba(59,130,246,0.2)',
+                                                        borderRadius: 4,
+                                                        fontSize: '0.75rem',
+                                                        color: 'var(--text-secondary)',
+                                                        whiteSpace: 'nowrap'
+                                                    }}>
+                                                        {label}
+                                                    </span>
+                                                );
+                                            })}
                                             {(part.compatible_models || []).length > 3 && (
                                                 <span style={{
                                                     padding: '1px 6px',
@@ -517,7 +544,7 @@ const PartsCatalogPage: React.FC = () => {
                                     <td style={{ padding: 16, textAlign: 'center' }}>
                                         {isAdmin && (
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); /* TODO: open edit modal */ }}
+                                                onClick={(e) => { e.stopPropagation(); setEditingPart(part); setIsModalOpen(true); }}
                                                 title="编辑"
                                                 style={{
                                                     background: 'transparent', border: 'none', padding: 8,
@@ -610,6 +637,15 @@ const PartsCatalogPage: React.FC = () => {
                     </div>
                 </>
             )}
+
+            {/* Parts Edit/Create Modal */}
+            <PartsEditModal
+                isOpen={isModalOpen}
+                editingPart={editingPart}
+                allModels={allModels}
+                onClose={() => { setIsModalOpen(false); setEditingPart(null); }}
+                onSaved={fetchParts}
+            />
         </div>
     );
 };

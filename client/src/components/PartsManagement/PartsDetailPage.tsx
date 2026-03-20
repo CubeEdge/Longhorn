@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
+import PartsEditModal from './PartsEditModal';
 
 const FAMILY_LABELS: Record<string, { label: string; color: string }> = {
     'A': { label: '在售电影机', color: 'rgba(59,130,246,0.15)' },
@@ -68,20 +69,35 @@ const PartsDetailPage: React.FC = () => {
     const [part, setPart] = useState<PartDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [allModels, setAllModels] = useState<any[]>([]);
 
     const isAdmin = ['Admin', 'Lead', 'Exec'].includes(user?.role || '');
     const isOP = user?.department_code === 'OP';
 
-    useEffect(() => {
+    const fetchPart = async () => {
         if (!id || !token) return;
-        setLoading(true);
-        axios.get(`/api/v1/parts-master/${id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-        }).then(res => {
+        try {
+            const res = await axios.get(`/api/v1/parts-master/${id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             if (res.data?.success) setPart(res.data.data);
-        }).catch((err: any) => {
+
+            // Fetch models for the modal
+            const modRes = await axios.get('/api/v1/admin/product-models?limit=100', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (modRes.data?.success) setAllModels(modRes.data.data);
+        } catch (err: any) {
             setError(err.response?.data?.error?.message || '加载失败');
-        }).finally(() => setLoading(false));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        setLoading(true);
+        fetchPart();
     }, [id, token]);
 
     if (loading) {
@@ -161,7 +177,7 @@ const PartsDetailPage: React.FC = () => {
                 </div>
                 {isAdmin && (
                     <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn-kine-lowkey" onClick={() => { /* TODO: open edit modal */ }}>
+                        <button className="btn-kine-lowkey" onClick={() => setIsModalOpen(true)}>
                             <Edit2 size={16} /> 编辑
                         </button>
                     </div>
@@ -300,6 +316,15 @@ const PartsDetailPage: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Parts Edit Modal */}
+            <PartsEditModal
+                isOpen={isModalOpen}
+                editingPart={part}
+                allModels={allModels}
+                onClose={() => setIsModalOpen(false)}
+                onSaved={fetchPart}
+            />
         </div>
     );
 };

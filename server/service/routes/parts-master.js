@@ -261,7 +261,7 @@ module.exports = function(db, authenticate) {
                 const result = insertPart.run(
                     sku, name, name_en || null, name, name_en || null, category, material_id || null, description || null,
                     specifications ? JSON.stringify(specifications) : null,
-                    compatible_models ? JSON.stringify(compatible_models) : '[]',
+                    '[]', // Initially empty, will update below
                     min_stock_level || 5, reorder_point || 10,
                     req.user.id
                 );
@@ -274,6 +274,29 @@ module.exports = function(db, authenticate) {
                     price_eur || 0,
                     cost_cny || 0
                 );
+
+                // 处理机型关联
+                if (Array.isArray(compatible_models) && compatible_models.length > 0) {
+                    const modelInfos = [];
+                    const insertJoin = db.prepare(`
+                        INSERT INTO product_model_parts (product_model_id, product_model_name, part_id, part_sku, part_name)
+                        VALUES (?, ?, ?, ?, ?)
+                    `);
+
+                    for (const modelId of compatible_models) {
+                        const m = db.prepare('SELECT id, name_zh, model_code FROM product_models WHERE id = ?').get(modelId);
+                        if (m) {
+                            insertJoin.run(m.id, m.name_zh, lastInsertRowid, sku, name);
+                            modelInfos.push(m.model_code || m.name_zh);
+                        }
+                    }
+
+                    // 更新冗余字段用于搜索
+                    db.prepare('UPDATE parts_master SET compatible_models = ? WHERE id = ?').run(
+                        JSON.stringify(modelInfos),
+                        lastInsertRowid
+                    );
+                }
             })();
 
             const result = { lastInsertRowid };
@@ -363,6 +386,35 @@ module.exports = function(db, authenticate) {
                     priceParams.push(part.sku); 
                     
                     db.prepare(`UPDATE sku_prices SET ${priceUpdates.join(', ')} WHERE sku = ?`).run(...priceParams);
+                }
+
+                // 处理机型关联更新
+                if (req.body.compatible_models !== undefined) {
+                    const newModelIds = Array.isArray(req.body.compatible_models) ? req.body.compatible_models : [];
+                    
+                    // 1. 清除旧关联
+                    db.prepare('DELETE FROM product_model_parts WHERE part_id = ?').run(req.params.id);
+                    
+                    // 2. 写入新关联
+                    const modelInfos = [];
+                    const insertJoin = db.prepare(`
+                        INSERT INTO product_model_parts (product_model_id, product_model_name, part_id, part_sku, part_name)
+                        VALUES (?, ?, ?, ?, ?)
+                    `);
+
+                    for (const modelId of newModelIds) {
+                        const m = db.prepare('SELECT id, name_zh, model_code FROM product_models WHERE id = ?').get(modelId);
+                        if (m) {
+                            insertJoin.run(m.id, m.name_zh, req.params.id, part.sku, part.name);
+                            modelInfos.push(m.model_code || m.name_zh);
+                        }
+                    }
+
+                    // 3. 同步更新冗余字段
+                    db.prepare('UPDATE parts_master SET compatible_models = ? WHERE id = ?').run(
+                        JSON.stringify(modelInfos),
+                        req.params.id
+                    );
                 }
             })();
 
