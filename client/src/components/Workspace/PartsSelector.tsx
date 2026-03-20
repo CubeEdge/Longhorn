@@ -34,7 +34,8 @@ interface PartOption {
 
 interface PartsSelectorProps {
     ticketId: number;
-    productModel?: string;      // 用于BOM推荐
+    productModel?: string;      // 产品型号名称（用于显示）
+    productModelId?: number;    // 产品型号ID（用于查询兼容配件）
     selectedParts: PartUsed[];
     onPartsChange: (parts: PartUsed[]) => void;
     canEdit: boolean;
@@ -52,6 +53,7 @@ const sourceTypeOptions = [
 export const PartsSelector: React.FC<PartsSelectorProps> = ({
     ticketId: _ticketId,  // 预留，用于未来扩展
     productModel,
+    productModelId,
     selectedParts,
     onPartsChange,
     canEdit,
@@ -92,7 +94,7 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // 搜索配件（限定为兼容配件）
+    // 搜索配件（限定为兼容配件，无结果时回退全部）
     const searchParts = useCallback(async (term: string) => {
         if (!term || term.length < 1) {
             setSearchResults([]);
@@ -100,15 +102,23 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
         }
         setSearching(true);
         try {
-            const res = await axios.get('/api/v1/parts-master', {
+            // 优先使用 productModelId 查询兼容配件
+            let res = await axios.get('/api/v1/parts-master', {
                 headers,
                 params: { 
                     search: term, 
                     status: 'active', 
-                    page_size: 50,
-                    compatible_model: productModel || undefined  // 限定为兼容配件
+                    page_size: 100,
+                    product_model_id: productModelId || undefined
                 }
             });
+            // 如果兼容配件无结果，回退搜索所有配件
+            if (res.data?.success && res.data.data.length === 0 && productModelId) {
+                res = await axios.get('/api/v1/parts-master', {
+                    headers,
+                    params: { search: term, status: 'active', page_size: 100 }
+                });
+            }
             if (res.data?.success) {
                 setSearchResults(res.data.data);
                 setShowDropdown(true);
@@ -118,22 +128,26 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
         } finally {
             setSearching(false);
         }
-    }, [headers, productModel]);
+    }, [headers, productModelId]);
 
-    // 加载兼容配件（聚焦时显示）
+    // 加载兼容配件（聚焦时显示，无结果时回退全部）
     const loadCompatibleParts = useCallback(async () => {
-        if (!productModel) return;
         setSearching(true);
         try {
-            const res = await axios.get('/api/v1/parts-master', {
+            // 优先使用 productModelId 加载兼容配件
+            let res = productModelId ? await axios.get('/api/v1/parts-master', {
                 headers,
-                params: { 
-                    status: 'active', 
-                    page_size: 50,
-                    compatible_model: productModel  // 只显示兼容配件
-                }
-            });
-            if (res.data?.success) {
+                params: { status: 'active', page_size: 100, product_model_id: productModelId }
+            }) : null;
+            
+            // 如果兼容配件无结果或无产品型号ID，加载所有配件
+            if (!res || !res.data?.success || res.data.data.length === 0) {
+                res = await axios.get('/api/v1/parts-master', {
+                    headers,
+                    params: { status: 'active', page_size: 100 }
+                });
+            }
+            if (res && res.data?.success) {
                 setSearchResults(res.data.data);
                 setShowDropdown(true);
             }
@@ -142,7 +156,7 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
         } finally {
             setSearching(false);
         }
-    }, [headers, productModel]);
+    }, [headers, productModelId]);
 
     // 防抖搜索（1个字符就开始搜索）
     useEffect(() => {
@@ -271,10 +285,11 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 onFocus={() => {
-                                    if (searchTerm.length >= 1) {
+                                    // 聚焦时：如果有搜索词则显示下拉，否则加载兼容配件
+                                    if (searchTerm.length >= 1 && searchResults.length > 0) {
                                         setShowDropdown(true);
                                     } else if (productModel) {
-                                        // 聚焦时加载兼容配件
+                                        // 聚焦时加载兼容配件（无论搜索框是否为空）
                                         loadCompatibleParts();
                                     }
                                 }}
@@ -316,7 +331,7 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
                                 background: 'var(--glass-bg)',
                                 border: '1px solid var(--glass-border)',
                                 borderRadius: 8,
-                                maxHeight: 400,  // 增加高度以显示更多
+                                maxHeight: 500,  // 增加高度以显示更多
                                 overflow: 'auto',
                                 zIndex: 9999,
                                 boxShadow: '0 8px 24px rgba(0,0,0,0.3)'

@@ -198,8 +198,8 @@ const PartsDetailPage: React.FC = () => {
                             <span style={{
                                 padding: '2px 10px', borderRadius: 4,
                                 background: 'var(--glass-bg-hover)', fontSize: '0.8rem',
-                                color: 'var(--text-secondary)', fontFamily: 'monospace',
-                                fontVariantNumeric: 'tabular-nums', letterSpacing: '0.02em'
+                                color: 'var(--text-secondary)',
+                                fontVariantNumeric: 'tabular-nums'
                             }}>
                                 {part.sku}
                             </span>
@@ -521,7 +521,7 @@ const PriceTag: React.FC<{ currency: string; symbol: string; value?: number }> =
         textAlign: 'center'
     }}>
         <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>{currency}</div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>
             {value ? `${symbol}${value.toLocaleString()}` : '—'}
         </div>
     </div>

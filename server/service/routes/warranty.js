@@ -164,7 +164,10 @@ module.exports = function (db, authenticate) {
                 
                 if (diagnosticActivity && diagnosticActivity.metadata) {
                     const metadata = JSON.parse(diagnosticActivity.metadata);
-                    if (metadata.estimated_parts || metadata.estimated_labor_hours) {
+                    // 修复：使用 !== undefined 检查，避免 0 或空数组被忽略
+                    const hasParts = Array.isArray(metadata.estimated_parts) && metadata.estimated_parts.length > 0;
+                    const hasLaborHours = typeof metadata.estimated_labor_hours === 'number' && metadata.estimated_labor_hours > 0;
+                    if (hasParts || hasLaborHours) {
                         diagnosticReport = {
                             estimated_parts: metadata.estimated_parts || [],
                             estimated_labor_hours: metadata.estimated_labor_hours || 0

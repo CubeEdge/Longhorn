@@ -2753,6 +2753,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 }}
                 ticketId={ticketId}
                 ticketNumber={ticket.ticket_number || ''}
+                productModel={ticket.product_name || ''}
+                productModelId={Number(ticket.product_model_id) || undefined}
                 onSuccess={() => {
                     setIsDiagnosticModalOpen(false);
                     fetchDetail();
@@ -2770,6 +2772,8 @@ const UnifiedTicketDetail: React.FC<Props> = ({ ticketId, onBack, viewContext })
                 onClose={() => setIsMSReviewPanelOpen(false)}
                 ticketId={ticketId}
                 ticketNumber={ticket.ticket_number || ''}
+                productModel={ticket.product_name || ''}
+                productModelId={Number(ticket.product_model_id) || undefined}
                 currentNode={ticket.current_node}
                 onSuccess={() => {
                     setIsMSReviewPanelOpen(false);

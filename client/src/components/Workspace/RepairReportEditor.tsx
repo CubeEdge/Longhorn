@@ -1364,6 +1364,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                             <PartsSelector
                                                 ticketId={ticketId}
                                                 productModel={ticketInfo?.product_name || reportData.content.device_info.product_name}
+                                                productModelId={ticketInfo?.product_model_id}
                                                 selectedParts={reportData.content.repair_process.parts_replaced}
                                                 onPartsChange={(parts) => updateContent('repair_process.parts_replaced', parts)}
                                                 canEdit={canEdit}

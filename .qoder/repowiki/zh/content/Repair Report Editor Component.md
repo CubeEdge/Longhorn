@@ -3,7 +3,10 @@
 <cite>
 **本文档引用的文件**
 - [RepairReportEditor.tsx](file://client/src/components/Workspace/RepairReportEditor.tsx)
+- [PartsSelector.tsx](file://client/src/components/Workspace/PartsSelector.tsx)
 - [OpRepairReportEditor.tsx](file://client/src/components/Workspace/OpRepairReportEditor.tsx)
+- [parts-master.js](file://server/service/routes/parts-master.js)
+- [parts.js](file://server/service/routes/parts.js)
 - [rma-documents.js](file://server/service/routes/rma-documents.js)
 - [bokeh.js](file://server/service/routes/bokeh.js)
 - [pdfExport.ts](file://client/src/utils/pdfExport.ts)
@@ -14,7 +17,7 @@
 
 ## 更新摘要
 **变更内容**
-- 重大架构改进：维修报告编辑器组件从约350行扩展到2966行，新增了AI智能翻译系统、多语言支持、PDF导出增强、费用计算系统和权限控制功能
+- 重大架构改进：维修报告编辑器组件从约350行扩展到2924行，新增了AI智能翻译系统、多语言支持、PDF导出增强、费用计算系统和权限控制功能
 - 新增AI智能翻译系统，支持英文、日文、德文的实时翻译和缓存
 - 增强的费用计算系统，支持零件、工时、其他费用的详细管理
 - 改进的报告预览功能，支持多语言实时预览
@@ -25,6 +28,9 @@
 - 新增翻译状态管理，支持AI翻译和手动编辑状态区分
 - 增强版本控制功能，支持文档版本管理和审计追踪
 - 改进的PDF导出功能，支持自定义纸张尺寸和页面方向
+- **新增配件选择工作流**：集成PartsSelector组件，支持从配件库选择配件、BOM推荐和手动添加非标准配件
+- **改进的数据绑定**：增强的配件数据绑定和验证机制
+- **新增配件管理功能**：支持配件搜索、BOM推荐、手动添加和来源类型管理
 
 ## 目录
 1. [简介](#简介)
@@ -42,11 +48,13 @@
 
 维修报告编辑器组件是长horn服务管理系统中的核心功能模块，用于创建、编辑和管理RMA（退货授权）维修报告文档。该组件提供了完整的维修报告生命周期管理，包括数据录入、实时计算、状态管理和PDF导出等功能。
 
-**更新** 维修报告编辑器组件经过大规模重构和增强，从原来的约350行扩展到2966行，新增了多项编辑能力和用户体验改进。新的组件提供了更直观的Textarea输入系统、增强的AI翻译功能、改进的费用计算系统和更完善的权限控制。
+**更新** 维修报告编辑器组件经过大规模重构和增强，从原来的约350行扩展到2924行，新增了多项编辑能力和用户体验改进。新的组件提供了更直观的Textarea输入系统、增强的AI翻译功能、改进的费用计算系统、更完善的权限控制和**全新的配件选择工作流**。
 
 该组件支持两种工作模式：
 - **MS模式**：市场/服务部门专用，提供完整的编辑功能和编制人选择
 - **OP模式**：运营节点模式，自动保存并简化界面，专注于核心维修记录编辑
+
+**新增功能**：组件现在集成了完整的配件选择系统，支持从配件库选择配件、BOM推荐和手动添加非标准配件，为维修报告提供了更完整的数据管理能力。
 
 ## 项目结构
 
@@ -65,43 +73,62 @@ A --> J[表单验证系统]
 A --> K[费用计算系统]
 A --> L[智能重翻译确认]
 A --> M[翻译状态跟踪]
+A --> N[PartsSelector配件选择器]
+N --> O[配件搜索]
+N --> P[BOM推荐]
+N --> Q[手动添加]
+N --> R[来源类型管理]
 end
 subgraph "运营组件"
-N[OpRepairReportEditor.tsx] --> O[Textarea输入系统]
-N --> P[自动保存机制]
-N --> Q[更正功能]
-N --> R[权限控制系统]
+S[OpRepairReportEditor.tsx] --> T[Textarea输入系统]
+S --> U[自动保存机制]
+S --> V[更正功能]
+S --> W[权限控制系统]
 end
 subgraph "服务器端路由"
-S[rma-documents.js] --> T[报告管理]
-S --> U[状态转换]
-S --> V[权限控制]
-S --> W[审计日志]
-S --> X[翻译API]
+X[parts-master.js] --> Y[配件主数据管理]
+X --> Z[BOM推荐]
+X --> AA[分类管理]
+BB[rma-documents.js] --> CC[报告管理]
+BB --> DD[状态转换]
+BB --> EE[权限控制]
+BB --> FF[审计日志]
+BB --> GG[翻译API]
+HH[bokeh.js] --> II[AI聊天服务]
 end
 subgraph "数据库迁移"
-Y[030_pi_and_report_tables.sql] --> Z[报告表结构]
-Y --> AA[工作流支持]
-BB[034_add_report_translations.sql] --> CC[翻译缓存表]
-BB --> DD[翻译审计日志]
-EE[048_add_report_prepared_by.sql] --> FF[用户识别字段]
-GG[bokeh.js] --> HH[AI聊天服务]
+JJ[030_pi_and_report_tables.sql] --> KK[报告表结构]
+JJ --> LL[工作流支持]
+MM[034_add_report_translations.sql] --> NN[翻译缓存表]
+MM --> OO[翻译审计日志]
+PP[048_add_report_prepared_by.sql] --> QQ[用户识别字段]
+RR[parts-master.js] --> SS[配件主数据表]
+RR --> TT[SKU价格表]
+RR --> UU[产品型号关联表]
 end
-N --> S
-S --> Y
 S --> BB
-S --> EE
-S --> GG
+BB --> JJ
+BB --> MM
+BB --> PP
+BB --> HH
+N --> RR
+RR --> JJ
+RR --> MM
+RR --> PP
 ```
 
 **图表来源**
-- [RepairReportEditor.tsx:1-2966](file://client/src/components/Workspace/RepairReportEditor.tsx#L1-L2966)
+- [RepairReportEditor.tsx:1-2924](file://client/src/components/Workspace/RepairReportEditor.tsx#L1-L2924)
+- [PartsSelector.tsx:1-740](file://client/src/components/Workspace/PartsSelector.tsx#L1-L740)
 - [OpRepairReportEditor.tsx:1-778](file://client/src/components/Workspace/OpRepairReportEditor.tsx#L1-L778)
+- [parts-master.js:1-621](file://server/service/routes/parts-master.js#L1-L621)
 - [rma-documents.js:1-1690](file://server/service/routes/rma-documents.js#L1-L1690)
 
 **章节来源**
-- [RepairReportEditor.tsx:1-2966](file://client/src/components/Workspace/RepairReportEditor.tsx#L1-L2966)
+- [RepairReportEditor.tsx:1-2924](file://client/src/components/Workspace/RepairReportEditor.tsx#L1-L2924)
+- [PartsSelector.tsx:1-740](file://client/src/components/Workspace/PartsSelector.tsx#L1-L740)
 - [OpRepairReportEditor.tsx:1-778](file://client/src/components/Workspace/OpRepairReportEditor.tsx#L1-L778)
+- [parts-master.js:1-621](file://server/service/routes/parts-master.js#L1-L621)
 - [rma-documents.js:1-1690](file://server/service/routes/rma-documents.js#L1-L1690)
 
 ## 核心组件
@@ -146,11 +173,13 @@ class ReportContent {
 }
 class PartUsed {
 +string id
++number part_id
 +string name
 +string part_number
 +number quantity
 +number unit_price
 +string status
++string source_type
 }
 class LaborCharge {
 +string description
@@ -197,6 +226,18 @@ class RetranslateConfirm {
 +string currentTranslation
 +number countdown
 }
+class PartsSelector {
++PartUsed[] selectedParts
++string productModel
++boolean canEdit
++string currency
++boolean isWarranty
++searchParts()
++fetchBomParts()
++handleSelectPart()
++handleUpdatePart()
++handleRemovePart()
+}
 ReportData --> ReportContent
 ReportContent --> PartUsed
 ReportContent --> LaborCharge
@@ -205,11 +246,13 @@ ReportData --> TranslationCache
 ReportData --> TranslationAuditLog
 ReportData --> User
 ReportData --> RetranslateConfirm
+ReportContent --> PartsSelector
 ```
 
 **图表来源**
 - [RepairReportEditor.tsx:77-110](file://client/src/components/Workspace/RepairReportEditor.tsx#L77-L110)
 - [RepairReportEditor.tsx:39-75](file://client/src/components/Workspace/RepairReportEditor.tsx#L39-L75)
+- [PartsSelector.tsx:12-21](file://client/src/components/Workspace/PartsSelector.tsx#L12-L21)
 - [034_add_report_translations.sql:13-48](file://server/service/migrations/034_add_report_translations.sql#L13-L48)
 
 ### 状态管理流程
@@ -236,15 +279,24 @@ state 翻译 {
 AI翻译 --> 手动编辑
 手动编辑 --> 翻译完成
 }
+state 配件选择 {
+[*] --> 搜索配件
+搜索配件 --> BOM推荐
+BOM推荐 --> 手动添加
+手动添加 --> 配件确认
+配件确认 --> 配件更新
+}
 ```
 
 **图表来源**
 - [RepairReportEditor.tsx:179-195](file://client/src/components/Workspace/RepairReportEditor.tsx#L179-L195)
+- [PartsSelector.tsx:175-202](file://client/src/components/Workspace/PartsSelector.tsx#L175-L202)
 - [rma-documents.js:52-57](file://server/service/routes/rma-documents.js#L52-L57)
 
 **章节来源**
 - [RepairReportEditor.tsx:77-110](file://client/src/components/Workspace/RepairReportEditor.tsx#L77-L110)
 - [RepairReportEditor.tsx:179-195](file://client/src/components/Workspace/RepairReportEditor.tsx#L179-L195)
+- [PartsSelector.tsx:175-202](file://client/src/components/Workspace/PartsSelector.tsx#L175-L202)
 
 ## 架构概览
 
@@ -262,38 +314,48 @@ A --> G[日期选择器]
 A --> H[表单验证]
 A --> I[智能重翻译确认]
 A --> J[翻译状态跟踪]
+A --> K[PartsSelector配件选择器]
+K --> L[搜索功能]
+K --> M[BOM推荐]
+K --> N[手动添加]
 end
 subgraph "状态管理层"
-K[React状态] --> L[本地存储]
-K --> M[自动保存]
-K --> N[实时计算]
-K --> O[翻译状态]
-K --> P[用户识别]
-K --> Q[错误处理]
-K --> R[重翻译确认]
+O[React状态] --> P[本地存储]
+O --> Q[自动保存]
+O --> R[实时计算]
+O --> S[翻译状态]
+O --> T[用户识别]
+O --> U[错误处理]
+O --> V[重翻译确认]
+O --> W[配件状态]
 end
 subgraph "数据处理层"
-S[深度更新] --> T[数组操作]
-S --> U[费用计算]
-S --> V[PDF导出]
-S --> W[翻译缓存]
-S --> X[重翻译处理]
+X[深度更新] --> Y[数组操作]
+X --> Z[费用计算]
+X --> AA[PDF导出]
+X --> BB[翻译缓存]
+X --> CC[重翻译处理]
+X --> DD[配件数据绑定]
 end
 subgraph "服务通信层"
-Y[HTTP请求] --> Z[认证头]
-Y --> AA[错误处理]
-Y --> BB[响应解析]
-Y --> CC[翻译API]
-Y --> DD[AI聊天服务]
+EE[HTTP请求] --> FF[认证头]
+EE --> GG[错误处理]
+EE --> HH[响应解析]
+EE --> II[翻译API]
+EE --> JJ[AI聊天服务]
+EE --> KK[配件API]
+KK --> LL[parts-master.js]
+KK --> MM[parts.js]
 end
-A --> K
-K --> S
-S --> Y
+A --> O
+O --> X
+X --> EE
 ```
 
 **图表来源**
 - [RepairReportEditor.tsx:208-223](file://client/src/components/Workspace/RepairReportEditor.tsx#L208-L223)
 - [RepairReportEditor.tsx:285-346](file://client/src/components/Workspace/RepairReportEditor.tsx#L285-L346)
+- [PartsSelector.tsx:52-60](file://client/src/components/Workspace/PartsSelector.tsx#L52-L60)
 
 ### 后端API架构
 
@@ -319,15 +381,24 @@ API->>DB : 存储翻译结果
 API->>Audit : 记录翻译操作
 Audit-->>API : 确认
 API-->>Client : 返回翻译结果
+Client->>API : 配件选择请求
+API->>DB : 查询配件主数据
+DB-->>API : 返回配件信息
+API->>DB : 查询BOM推荐
+DB-->>API : 返回BOM数据
+API-->>Client : 返回配件数据
 ```
 
 **图表来源**
 - [rma-documents.js:38-67](file://server/service/routes/rma-documents.js#L38-L67)
+- [parts-master.js:28-128](file://server/service/routes/parts-master.js#L28-L128)
 - [034_add_report_translations.sql:13-48](file://server/service/migrations/034_add_report_translations.sql#L13-L48)
 
 **章节来源**
 - [RepairReportEditor.tsx:208-346](file://client/src/components/Workspace/RepairReportEditor.tsx#L208-L346)
+- [PartsSelector.tsx:52-60](file://client/src/components/Workspace/PartsSelector.tsx#L52-L60)
 - [rma-documents.js:38-67](file://server/service/routes/rma-documents.js#L38-L67)
+- [parts-master.js:28-128](file://server/service/routes/parts-master.js#L28-L128)
 
 ## 详细组件分析
 
@@ -351,7 +422,8 @@ I --> J[导入诊断数据]
 J --> K[导入维修数据]
 H --> L[加载翻译缓存]
 K --> L
-L --> M[完成初始化]
+L --> M[加载配件数据]
+M --> N[完成初始化]
 ```
 
 **图表来源**
@@ -424,6 +496,7 @@ Editor-->>User : 显示保存状态
 | ReportPreview | 报告预览 | 多语言预览 |
 | CustomDatePicker | 日期选择器 | 精确日期输入 |
 | StatusBadge | 状态徽章 | 状态显示 |
+| PartsSelector | 配件选择器 | 配件管理 |
 
 #### 状态徽章组件
 
@@ -444,9 +517,57 @@ StatusBadge --> StatusConfig : 使用
 **图表来源**
 - [RepairReportEditor.tsx:2085-2099](file://client/src/components/Workspace/RepairReportEditor.tsx#L2085-L2099)
 
+#### 配件选择器组件
+
+**新增功能**：组件现在集成了完整的配件选择器系统：
+
+```mermaid
+classDiagram
+class PartsSelector {
++PartUsed[] selectedParts
++string productModel
++boolean canEdit
++string currency
++boolean isWarranty
++searchParts() void
++fetchBomParts() void
++handleSelectPart(PartOption) void
++handleUpdatePart(number, updates) void
++handleRemovePart(number) void
+}
+class PartUsed {
++string id
++number part_id
++string name
++string part_number
++number quantity
++number unit_price
++string status
++string source_type
+}
+class PartOption {
++number id
++string sku
++string name
++string name_en
++string category
++number price_cny
++number price_usd
++number price_eur
++string[] compatible_models
+}
+PartsSelector --> PartUsed : 管理
+PartsSelector --> PartOption : 搜索
+```
+
+**图表来源**
+- [PartsSelector.tsx:52-60](file://client/src/components/Workspace/PartsSelector.tsx#L52-L60)
+- [PartsSelector.tsx:12-21](file://client/src/components/Workspace/PartsSelector.tsx#L12-L21)
+
 **章节来源**
 - [RepairReportEditor.tsx:1960-2099](file://client/src/components/Workspace/RepairReportEditor.tsx#L1960-L2099)
 - [RepairReportEditor.tsx:2085-2099](file://client/src/components/Workspace/RepairReportEditor.tsx#L2085-L2099)
+- [PartsSelector.tsx:52-60](file://client/src/components/Workspace/PartsSelector.tsx#L52-L60)
 
 ### 运营维修报告编辑器
 
@@ -531,7 +652,7 @@ InlineTranslationPanel --> RetranslateConfirm : 触发
 ```
 
 **图表来源**
-- [RepairReportEditor.tsx:2832-2966](file://client/src/components/Workspace/RepairReportEditor.tsx#L2832-L2966)
+- [RepairReportEditor.tsx:2832-2924](file://client/src/components/Workspace/RepairReportEditor.tsx#L2832-L2924)
 - [RepairReportEditor.tsx:1857-1909](file://client/src/components/Workspace/RepairReportEditor.tsx#L1857-L1909)
 
 #### 翻译工作流程
@@ -859,11 +980,13 @@ class OtherFee {
 }
 class PartUsed {
 +string id
++number part_id
 +string name
 +string part_number
 +number quantity
 +number unit_price
 +string status
++string source_type
 }
 FeeSubSection --> LaborCharge
 FeeSubSection --> OtherFee
@@ -1168,6 +1291,143 @@ D --> |否| F[状态: AI翻译]
 **章节来源**
 - [RepairReportEditor.tsx:2878-2885](file://client/src/components/Workspace/RepairReportEditor.tsx#L2878-L2885)
 
+### 配件选择工作流
+
+#### 配件选择器架构
+
+**新增功能**：组件现在集成了完整的配件选择器系统，支持多种配件管理方式：
+
+```mermaid
+flowchart TD
+A[用户打开配件选择器] --> B[加载兼容配件]
+B --> C[显示搜索框]
+C --> D[用户输入搜索]
+D --> E{搜索条件}
+E --> |1个字符| F[开始防抖搜索]
+E --> |焦点| G[加载兼容配件]
+F --> H[查询配件主数据]
+G --> H
+H --> I{搜索结果}
+I --> |有结果| J[显示下拉菜单]
+I --> |无结果| K[显示空状态]
+J --> L[用户选择配件]
+K --> L
+L --> M{是否已存在}
+M --> |是| N[增加数量]
+M --> |否| O[添加新配件]
+N --> P[更新配件列表]
+O --> P
+P --> Q[计算费用]
+Q --> R[更新报告]
+```
+
+**图表来源**
+- [PartsSelector.tsx:95-151](file://client/src/components/Workspace/PartsSelector.tsx#L95-L151)
+- [PartsSelector.tsx:175-202](file://client/src/components/Workspace/PartsSelector.tsx#L175-L202)
+
+#### 配件数据绑定
+
+```mermaid
+classDiagram
+class PartsSelector {
++PartUsed[] selectedParts
++string productModel
++boolean canEdit
++string currency
++boolean isWarranty
++onPartsChange(PartUsed[]) void
++handleSelectPart(PartOption) void
++handleUpdatePart(number, updates) void
++handleRemovePart(number) void
+}
+class PartUsed {
++string id
++number part_id
++string name
++string part_number
++number quantity
++number unit_price
++string status
++string source_type
+}
+class PartOption {
++number id
++string sku
++string name
++string name_en
++string category
++number price_cny
++number price_usd
++number price_eur
++string[] compatible_models
+}
+PartsSelector --> PartUsed : 管理
+PartsSelector --> PartOption : 选择
+```
+
+**图表来源**
+- [PartsSelector.tsx:52-60](file://client/src/components/Workspace/PartsSelector.tsx#L52-L60)
+- [PartsSelector.tsx:12-21](file://client/src/components/Workspace/PartsSelector.tsx#L12-L21)
+
+#### 配件来源类型管理
+
+```mermaid
+classDiagram
+class SourceTypeOptions {
++hq_inventory : HQ库存
++dealer_inventory : 经销商库存
++external_purchase : 外部采购
++warranty_free : 保修免费
+}
+class PartUsed {
++string source_type
++render() JSX.Element
+}
+SourceTypeOptions --> PartUsed : 影响
+```
+
+**图表来源**
+- [PartsSelector.tsx:45-50](file://client/src/components/Workspace/PartsSelector.tsx#L45-L50)
+
+**章节来源**
+- [PartsSelector.tsx:95-151](file://client/src/components/Workspace/PartsSelector.tsx#L95-L151)
+- [PartsSelector.tsx:175-202](file://client/src/components/Workspace/PartsSelector.tsx#L175-L202)
+- [PartsSelector.tsx:45-50](file://client/src/components/Workspace/PartsSelector.tsx#L45-L50)
+
+### 配件API集成
+
+#### 配件主数据管理
+
+**新增功能**：组件现在集成了完整的配件主数据管理API：
+
+```mermaid
+sequenceDiagram
+participant Client as 客户端
+participant PartsMaster as parts-master.js
+participant Parts as parts.js
+participant DB as 数据库
+Client->>PartsMaster : GET /parts-master
+PartsMaster->>DB : 查询配件主数据
+DB-->>PartsMaster : 返回配件列表
+PartsMaster-->>Client : 返回配件数据
+Client->>PartsMaster : GET /parts-master/bom
+PartsMaster->>DB : 查询BOM推荐
+DB-->>PartsMaster : 返回BOM数据
+PartsMaster-->>Client : 返回BOM推荐
+Client->>Parts : GET /parts
+Parts->>DB : 查询配件目录
+DB-->>Parts : 返回配件目录
+Parts-->>Client : 返回配件目录
+```
+
+**图表来源**
+- [parts-master.js:28-128](file://server/service/routes/parts-master.js#L28-L128)
+- [parts.js:20-81](file://server/service/routes/parts.js#L20-L81)
+
+**章节来源**
+- [parts-master.js:28-128](file://server/service/routes/parts-master.js#L28-L128)
+- [parts.js:20-81](file://server/service/routes/parts.js#L20-L81)
+
 ## 依赖关系分析
 
 ### 前端依赖关系
@@ -1184,30 +1444,35 @@ I[@tiptap/react] --> J[富文本编辑]
 K[core-js] --> L[兼容性支持]
 M[react-router] --> N[路由管理]
 O[bokeh.js] --> P[AI聊天服务]
+Q[parts-master.js] --> R[配件API]
+Q --> S[parts.js]
 end
 subgraph "内部依赖"
-Q[useAuthStore] --> R[认证状态]
-S[pdfExport] --> T[PDF导出]
-U[ConfirmModal] --> V[确认对话框]
-W[InlineTranslationPanel] --> X[AI翻译集成]
-Y[ReportPreview] --> Z[多语言预览]
-AA[CustomDatePicker] --> BB[日期选择器]
-CC[TranslationTextarea] --> DD[翻译文本域]
-EE[RetranslateConfirm] --> FF[重翻译确认]
+T[useAuthStore] --> U[认证状态]
+V[pdfExport] --> W[PDF导出]
+X[ConfirmModal] --> Y[确认对话框]
+Z[InlineTranslationPanel] --> AA[AI翻译集成]
+AB[ReportPreview] --> AC[多语言预览]
+AD[CustomDatePicker] --> AE[日期选择器]
+AF[TranslationTextarea] --> AG[翻译文本域]
+AH[RetranslateConfirm] --> AI[重翻译确认]
+AJ[PartsSelector] --> AK[配件管理]
 end
-A --> Q
+A --> T
 E --> F
 G --> H
 I --> J
-W --> X
-Y --> Z
-AA --> BB
-CC --> DD
-EE --> FF
+Z --> AA
+AB --> AC
+AD --> AE
+AF --> AG
+AH --> AI
+AJ --> AK
 ```
 
 **图表来源**
 - [RepairReportEditor.tsx:1-8](file://client/src/components/Workspace/RepairReportEditor.tsx#L1-L8)
+- [PartsSelector.tsx:7-10](file://client/src/components/Workspace/PartsSelector.tsx#L7-L10)
 
 ### 后端依赖关系
 
@@ -1220,40 +1485,52 @@ A --> D[document_audit_log表]
 A --> E[translation_cache表]
 A --> F[translation_audit_log表]
 A --> G[users表]
+A --> H[parts_master表]
+A --> I[sku_prices表]
+A --> J[product_model_parts表]
 end
 subgraph "业务逻辑层"
-H[RMA文档路由] --> I[报告管理]
-H --> J[状态转换]
-H --> K[权限控制]
-L[审计日志路由] --> M[审计日志]
-L --> N[统计分析]
-O[Bokeh AI路由] --> P[聊天服务]
-P --> Q[AI翻译]
+K[parts-master.js] --> L[配件主数据管理]
+K --> M[BOM推荐]
+K --> N[分类管理]
+O[rma-documents.js] --> P[报告管理]
+O --> Q[状态转换]
+O --> R[权限控制]
+S[bokeh.js] --> T[聊天服务]
+T --> U[AI翻译]
 end
 subgraph "迁移管理"
-R[030_pi_and_report_tables.sql] --> S[报告表结构]
-R --> T[工作流支持]
-U[034_add_report_translations.sql] --> V[翻译缓存表]
-U --> W[翻译审计日志]
-X[048_add_report_prepared_by.sql] --> Y[用户识别字段]
+V[030_pi_and_report_tables.sql] --> W[报告表结构]
+V --> X[工作流支持]
+Y[034_add_report_translations.sql] --> Z[翻译缓存表]
+Y --> AA[翻译审计日志]
+BB[048_add_report_prepared_by.sql] --> CC[用户识别字段]
+DD[parts-master.js] --> EE[配件主数据表]
+DD --> FF[SKU价格表]
+DD --> GG[产品型号关联表]
 end
-H --> A
-L --> A
 O --> A
-R --> A
-U --> A
-X --> A
+K --> A
+S --> A
+V --> A
+Y --> A
+BB --> A
+DD --> A
 ```
 
 **图表来源**
 - [rma-documents.js:1-1690](file://server/service/routes/rma-documents.js#L1-L1690)
+- [parts-master.js:1-621](file://server/service/routes/parts-master.js#L1-L621)
 - [030_pi_and_report_tables.sql:64-114](file://server/service/migrations/030_pi_and_report_tables.sql#L64-L114)
 - [034_add_report_translations.sql:1-51](file://server/service/migrations/034_add_report_translations.sql#L1-L51)
 - [048_add_report_prepared_by.sql:1-10](file://server/service/migrations/048_add_report_prepared_by.sql#L1-L10)
+- [parts-master.js:1-621](file://server/service/routes/parts-master.js#L1-L621)
 
 **章节来源**
 - [RepairReportEditor.tsx:1-8](file://client/src/components/Workspace/RepairReportEditor.tsx#L1-L8)
+- [PartsSelector.tsx:7-10](file://client/src/components/Workspace/PartsSelector.tsx#L7-L10)
 - [rma-documents.js:1-1690](file://server/service/routes/rma-documents.js#L1-L1690)
+- [parts-master.js:1-621](file://server/service/routes/parts-master.js#L1-L621)
 
 ## 性能考虑
 
@@ -1316,6 +1593,36 @@ X --> A
     - 状态缓存避免重复计算
     - 图标状态优化渲染
 
+15. **配件选择器优化**
+    - 防抖搜索减少API调用
+    - 懒加载BOM推荐
+    - 本地状态管理避免重复计算
+
+16. **配件数据绑定优化**
+    - 部件更新使用索引定位
+    - 数量变更批量处理
+    - 来源类型快速切换
+
+17. **配件搜索优化**
+    - 1字符开始搜索
+    - 下拉菜单懒加载
+    - 搜索结果缓存
+
+18. **BOM推荐优化**
+    - 机型匹配优先
+    - 兼容模式降级
+    - 结果排序优化
+
+19. **手动添加优化**
+    - 表单验证前置
+    - 快速添加模式
+    - 默认值预填充
+
+20. **配件来源管理优化**
+    - 类型颜色标识
+    - 快捷选择按钮
+    - 状态快速切换
+
 ### 渲染优化
 
 1. **条件渲染**
@@ -1348,6 +1655,16 @@ X --> A
 8. **重翻译确认优化**
    - 倒计时状态管理
    - 弹窗懒加载
+
+9. **配件选择器渲染优化**
+   - 搜索结果虚拟化
+   - BOM推荐懒加载
+   - 手动添加表单优化
+
+10. **配件列表渲染优化**
+    - 部件行状态缓存
+    - 数量变更局部更新
+    - 来源类型快速渲染
 
 ## 故障排除指南
 
@@ -1444,10 +1761,26 @@ X --> A
 - 验证日志记录逻辑
 - 确认用户权限检查
 
+#### 配件选择器问题
+- 检查配件API连接
+- 验证搜索功能
+- 确认BOM推荐加载
+
+#### 配件数据绑定问题
+- 检查配件状态更新
+- 验证数量变更逻辑
+- 确认来源类型切换
+
+#### 配件来源管理问题
+- 检查来源类型配置
+- 验证颜色标识
+- 确认快捷选择功能
+
 **章节来源**
 - [RepairReportEditor.tsx:354-363](file://client/src/components/Workspace/RepairReportEditor.tsx#L354-L363)
 - [RepairReportEditor.tsx:801-848](file://client/src/components/Workspace/RepairReportEditor.tsx#L801-L848)
 - [OpRepairReportEditor.tsx:115-121](file://client/src/components/Workspace/OpRepairReportEditor.tsx#L115-L121)
+- [PartsSelector.tsx:95-151](file://client/src/components/Workspace/PartsSelector.tsx#L95-L151)
 
 ## 结论
 
@@ -1483,5 +1816,12 @@ X --> A
 28. **多语言支持**：支持英文、日文、德文的自动翻译
 29. **翻译状态跟踪**：区分AI翻译和手动编辑的状态
 30. **翻译缓存优化**：数据库唯一约束和使用计数
+31. **全新的配件选择工作流**：集成PartsSelector组件，支持配件搜索、BOM推荐和手动添加
+32. **改进的数据绑定**：增强的配件数据绑定和验证机制
+33. **配件管理功能**：支持配件来源类型管理和状态跟踪
+34. **API集成优化**：完整的配件主数据和目录API支持
+35. **渲染性能优化**：配件选择器的虚拟化和懒加载机制
 
-该组件为长horn系统的RMA服务提供了坚实的技术基础，能够有效提升服务效率和质量管理水平。新增的textarea-based输入系统和AI智能翻译功能显著改善了用户体验，同时保持了数据完整性和功能完整性，为用户提供更加流畅和可靠的维修报告管理体验。
+该组件为长horn系统的RMA服务提供了坚实的技术基础，能够有效提升服务效率和质量管理水平。新增的textarea-based输入系统、AI智能翻译功能和**全新的配件选择工作流**显著改善了用户体验，同时保持了数据完整性和功能完整性，为用户提供更加流畅和可靠的维修报告管理体验。
+
+**更新** 新增的配件选择工作流是本次更新的核心亮点，它不仅增强了维修报告的数据完整性，还为运营团队提供了更高效的配件管理能力。通过集成PartsSelector组件，用户可以轻松地从配件库中选择合适的配件，系统会自动计算相关费用并更新报告状态，大大简化了维修报告的创建和编辑流程。

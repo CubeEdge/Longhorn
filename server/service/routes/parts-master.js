@@ -40,7 +40,8 @@ module.exports = function(db, authenticate) {
                 search,
                 category,
                 status = 'active',
-                compatible_model
+                compatible_model,
+                product_model_id  // 新增：产品型号ID，用于精确查询兼容配件
             } = req.query;
 
             let conditions = ['pm.is_deleted = 0'];
@@ -62,7 +63,13 @@ module.exports = function(db, authenticate) {
                 params.push(searchPattern, searchPattern, searchPattern);
             }
 
-            if (compatible_model) {
+            // 优先使用 product_model_id 查询兼容配件（通过关联表）
+            if (product_model_id) {
+                // 使用 product_model_parts 关联表查询
+                conditions.push('EXISTS (SELECT 1 FROM product_model_parts pmp WHERE pmp.part_id = pm.id AND pmp.product_model_id = ?)');
+                params.push(parseInt(product_model_id));
+            } else if (compatible_model) {
+                // 兼容性回退：使用文本匹配
                 conditions.push('pm.compatible_models LIKE ?');
                 params.push(`%${compatible_model}%`);
             }

@@ -448,6 +448,7 @@ module.exports = function (db, authenticate, serviceUpload) {
 
             // Product - nested structure for frontend compatibility
             product_id: row.product_id,
+            product_model_id: row.product_model_id,
             product_name: row.product_name,
             product_name_en: row.product_name_en,
             product: row.product_id ? {
@@ -1178,6 +1179,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     d.name as dealer_name,
                     d.dealer_code as dealer_code,
                     p.model_name as product_name,
+                    pm.id as product_model_id,
                     pm.name_en as product_name_en,
                     p.serial_number as product_serial_number,
                     p.firmware_version as product_firmware,
@@ -1496,6 +1498,7 @@ module.exports = function (db, authenticate, serviceUpload) {
 
                 // Product
                 product_id,
+                product_model_id,  // 新增：产品型号ID
                 serial_number,
                 firmware_version,
                 hardware_version,
@@ -1568,7 +1571,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     channel_code,
                     reporter_snapshot,
                     account_id, contact_id, dealer_id, reporter_name, reporter_type, region,
-                    product_id, serial_number, firmware_version, hardware_version,
+                    product_id, product_model_id, serial_number, firmware_version, hardware_version,
                     issue_type, issue_category, issue_subcategory, severity,
                     service_type, channel, problem_summary, communication_log,
                     problem_description, solution_for_customer, is_warranty,
@@ -1582,7 +1585,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                     ?,
                     ?,
                     ?, ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?,
                     ?, ?, ?, ?,
                     ?, ?, ?, ?,
                     ?, ?, ?,
@@ -1618,7 +1621,7 @@ module.exports = function (db, authenticate, serviceUpload) {
                 channel_code,
                 processedSnapshot,
                 cleanFk(account_id), cleanFk(contact_id), cleanFk(dealer_id), reporter_name || null, reporter_type || null, region || null,
-                cleanFk(finalProductId), serial_number || null, firmware_version || null, hardware_version || null,
+                cleanFk(finalProductId), cleanFk(product_model_id), serial_number || null, firmware_version || null, hardware_version || null,
                 issue_type || null, issue_category || null, issue_subcategory || null, severity || 3,
                 service_type || null, channel || null, problem_summary || null, communication_log || null,
                 problem_description || null, solution_for_customer || null, is_warranty !== undefined ? is_warranty : 1,

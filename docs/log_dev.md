@@ -1,4 +1,15 @@
 # 开发会话日志 (Development Session Log)
+
+## [2026-03-20] MS审核配件编辑功能增强 (v12.3.331)
+### Feature Enhancement
+- **MS审核配件编辑**: MSReviewPanel新增配件搜索和其他费用编辑功能，配件限定为RMA工单产品型号兼容范围。
+- **兼容配件加载**: 配件搜索框聚焦时自动加载当前产品型号的兼容配件列表。
+- **费用编辑**: 支持添加运费、检测费等其他费用项。
+- **诊断报告配件限定**: SubmitDiagnosticModal配件搜索范围限定为兼容配件，下拉列表高度增加至400px。
+
+### Infrastructure
+- **版本发布**: 递增前端版本至 `client` v12.3.331 / 服务端 `server` v1.8.28。
+- **全量部署**: 执行 `./scripts/deploy.sh` 同步至生产环境 `mini`。
  
  ## [2026-03-18] 部署流强化与全量清理更新 (v12.3.146)
  ### Infrastructure & Deployment

@@ -24,6 +24,8 @@ interface SubmitDiagnosticModalProps {
     onClose: () => void;
     ticketId: number;
     ticketNumber: string;
+    productModel?: string;  // 产品型号名称（用于显示）
+    productModelId?: number;  // 产品型号ID（用于查询兼容配件）
     onSuccess: () => void;
     // 编辑模式相关 props（用于更正历史记录）
     editMode?: boolean;
@@ -32,7 +34,7 @@ interface SubmitDiagnosticModalProps {
 }
 
 export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({ 
-    isOpen, onClose, ticketId, ticketNumber, onSuccess,
+    isOpen, onClose, ticketId, ticketNumber, productModel, productModelId, onSuccess,
     editMode = false, editData = null, correctionReason: _correctionReason = ''
 }) => {
     const { token } = useAuthStore();
@@ -50,6 +52,7 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({
     const [estimatedParts, setEstimatedParts] = useState<EstimatedPart[]>([]);
     const [partSearchTerm, setPartSearchTerm] = useState('');
     const [partOptions, setPartOptions] = useState<PartOption[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
 
     // 编辑模式：预填数据
     React.useEffect(() => {
@@ -78,20 +81,63 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({
     };
 
     const searchParts = async (term: string) => {
-        if (!term || term.length < 2) {
+        if (!term || term.length < 1) {
             setPartOptions([]);
             return;
         }
+        setIsSearching(true);
         try {
-            const res = await axios.get('/api/v1/parts-master', {
+            // 优先使用 productModelId 查询兼容配件
+            let res = await axios.get('/api/v1/parts-master', {
                 headers: { Authorization: `Bearer ${token}` },
-                params: { search: term, status: 'active', page_size: 10 }
+                params: { 
+                    search: term, 
+                    status: 'active', 
+                    page_size: 50,
+                    product_model_id: productModelId || undefined
+                }
             });
+            // 如果兼容配件无结果，回退搜索所有配件
+            if (res.data?.success && res.data.data.length === 0 && productModelId) {
+                res = await axios.get('/api/v1/parts-master', {
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: { search: term, status: 'active', page_size: 50 }
+                });
+            }
             if (res.data?.success) {
                 setPartOptions(res.data.data);
             }
         } catch (err) {
             console.error('Failed to search parts', err);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    // 加载兼容配件（聚焦时显示）
+    const loadCompatibleParts = async () => {
+        setIsSearching(true);
+        try {
+            // 优先使用 productModelId 加载兼容配件
+            let res = productModelId ? await axios.get('/api/v1/parts-master', {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { status: 'active', page_size: 50, product_model_id: productModelId }
+            }) : null;
+            
+            // 如果兼容配件无结果或无产品型号ID，加载所有配件
+            if (!res || !res.data?.success || res.data.data.length === 0) {
+                res = await axios.get('/api/v1/parts-master', {
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: { status: 'active', page_size: 50 }
+                });
+            }
+            if (res && res.data?.success) {
+                setPartOptions(res.data.data);
+            }
+        } catch (err) {
+            console.error('Failed to load compatible parts', err);
+        } finally {
+            setIsSearching(false);
         }
     };
 
@@ -300,21 +346,30 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({
                                 />
                             </div>
                             <div>
-                                <label style={{ display: 'block', fontSize: 11, color: '#888', marginBottom: 6 }}>添加预估配件</label>
+                                <label style={{ display: 'block', fontSize: 11, color: '#888', marginBottom: 6 }}>添加预估配件 {productModel && <span style={{ color: '#3B82F6' }}>(兼容 {productModel})</span>}</label>
                                 <div style={{ position: 'relative' }}>
                                     <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#666' }} />
+                                    {isSearching && <Loader2 size={14} className="animate-spin" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#3B82F6' }} />}
                                     <input
                                         type="text"
-                                        placeholder="输入型号或 SKU..."
+                                        placeholder="点击查看兼容配件，或输入搜索..."
                                         value={partSearchTerm}
                                         onChange={e => {
                                             setPartSearchTerm(e.target.value);
                                             searchParts(e.target.value);
                                         }}
+                                        onFocus={() => {
+                                            // 聚焦时：如果有搜索词则显示搜索结果，否则加载兼容配件
+                                            if (partSearchTerm.length >= 1 && partOptions.length > 0) {
+                                                // 已有搜索结果，不做处理
+                                            } else if (productModel) {
+                                                loadCompatibleParts();
+                                            }
+                                        }}
                                         style={{ width: '100%', padding: '8px 12px 8px 32px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, color: '#fff', fontSize: 13 }}
                                     />
                                     {partOptions.length > 0 && (
-                                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#2c2c2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, marginTop: 4, zIndex: 100, maxHeight: 150, overflowY: 'auto', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }}>
+                                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#2c2c2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, marginTop: 4, zIndex: 100, maxHeight: 400, overflowY: 'auto', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }}>
                                             {partOptions.map(p => (
                                                 <div
                                                     key={p.id}

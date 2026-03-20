@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Calculator, CheckCircle, AlertTriangle, DollarSign, FileText, Loader2, Save, Shield, ShieldAlert, ShieldX } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Calculator, CheckCircle, AlertTriangle, DollarSign, FileText, Loader2, Save, Shield, ShieldAlert, ShieldX, Search, Plus, Trash2, Package } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -25,8 +25,24 @@ interface MSReviewPanelProps {
     onClose: () => void;
     ticketId: number;
     ticketNumber: string;
+    productModel?: string;  // 产品型号名称（用于显示）
+    productModelId?: number;  // 产品型号ID（用于查询兼容配件）
     onSuccess: () => void;
     currentNode?: string;  // 用于检测是否为更正模式
+}
+
+interface PartOption {
+    id: number;
+    sku: string;
+    name: string;
+    category: string;
+    price_cny: number;
+}
+
+interface OtherFee {
+    id: string;
+    description: string;
+    amount: number;
 }
 
 interface WarrantyCalculation {
@@ -43,8 +59,9 @@ interface TechnicalAssessment {
     technical_warranty_suggestion: string;
 }
 
-export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, ticketId, ticketNumber, onSuccess, currentNode }) => {
+export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, ticketId, ticketNumber, productModel, productModelId, onSuccess, currentNode }) => {
     const { token } = useAuthStore();
+    const headers = { Authorization: `Bearer ${token}` };
     const [loading, setLoading] = useState(false);
     const [calculating, setCalculating] = useState(false);
 
@@ -73,6 +90,16 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
     const [diagnosisParts, setDiagnosisParts] = useState<Array<{part_id: number; name: string; sku: string; quantity: number; price: number}>>([]);
     const [diagnosisLaborHours, setDiagnosisLaborHours] = useState<number>(0);
     const [hasImportedFromDiagnosis, setHasImportedFromDiagnosis] = useState(false);
+
+    // MS 配件编辑状态
+    const [msParts, setMsParts] = useState<Array<{part_id: number; name: string; sku: string; quantity: number; price: number}>>([]);
+    const [partSearchTerm, setPartSearchTerm] = useState('');
+    const [partOptions, setPartOptions] = useState<PartOption[]>([]);
+    const [isSearchingParts, setIsSearchingParts] = useState(false);
+    const [otherFees, setOtherFees] = useState<OtherFee[]>([]);
+    const [showAddFee, setShowAddFee] = useState(false);
+    const [newFeeDesc, setNewFeeDesc] = useState('');
+    const [newFeeAmount, setNewFeeAmount] = useState('');
 
     useEffect(() => {
         if (isOpen && ticketId) {
@@ -140,12 +167,17 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                 // 从诊断报告导入配件和工时预估
                 if (res.data.data.diagnostic_report) {
                     const diagReport = res.data.data.diagnostic_report;
-                    if (diagReport.estimated_parts && diagReport.estimated_parts.length > 0) {
+                    console.log('[MSReviewPanel] Diagnostic report loaded:', diagReport);
+                    // 修复：检查数组长度而不是 truthy 值
+                    if (Array.isArray(diagReport.estimated_parts) && diagReport.estimated_parts.length > 0) {
                         setDiagnosisParts(diagReport.estimated_parts);
                     }
-                    if (diagReport.estimated_labor_hours) {
+                    // 修复：检查是否为数字类型且大于0
+                    if (typeof diagReport.estimated_labor_hours === 'number' && diagReport.estimated_labor_hours > 0) {
                         setDiagnosisLaborHours(diagReport.estimated_labor_hours);
                     }
+                } else {
+                    console.log('[MSReviewPanel] No diagnostic report found in response');
                 }
             }
         } catch (err) {
@@ -188,6 +220,119 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
             console.error('Failed to fetch existing MS review:', err);
         }
     };
+
+    // 配件搜索（限定为兼容配件，无结果时回退全部）
+    const searchParts = useCallback(async (term: string) => {
+        if (!term || term.length < 1) {
+            setPartOptions([]);
+            return;
+        }
+        setIsSearchingParts(true);
+        try {
+            // 优先使用 productModelId 查询兼容配件
+            let res = await axios.get('/api/v1/parts-master', {
+                headers,
+                params: { 
+                    search: term, 
+                    status: 'active', 
+                    page_size: 50,
+                    product_model_id: productModelId || undefined
+                }
+            });
+            // 如果兼容配件无结果，回退搜索所有配件
+            if (res.data?.success && res.data.data.length === 0 && productModelId) {
+                res = await axios.get('/api/v1/parts-master', {
+                    headers,
+                    params: { search: term, status: 'active', page_size: 50 }
+                });
+            }
+            if (res.data?.success) {
+                setPartOptions(res.data.data);
+            }
+        } catch (err) {
+            console.error('Failed to search parts:', err);
+        } finally {
+            setIsSearchingParts(false);
+        }
+    }, [headers, productModelId]);
+
+    // 加载兼容配件（聚焦时显示，无结果时回退全部）
+    const loadCompatibleParts = useCallback(async () => {
+        setIsSearchingParts(true);
+        try {
+            // 优先使用 productModelId 加载兼容配件
+            let res = productModelId ? await axios.get('/api/v1/parts-master', {
+                headers,
+                params: { status: 'active', page_size: 50, product_model_id: productModelId }
+            }) : null;
+            
+            // 如果兼容配件无结果或无产品型号ID，加载所有配件
+            if (!res || !res.data?.success || res.data.data.length === 0) {
+                res = await axios.get('/api/v1/parts-master', {
+                    headers,
+                    params: { status: 'active', page_size: 50 }
+                });
+            }
+            if (res && res.data?.success) {
+                setPartOptions(res.data.data);
+            }
+        } catch (err) {
+            console.error('Failed to load compatible parts:', err);
+        } finally {
+            setIsSearchingParts(false);
+        }
+    }, [headers, productModelId]);
+
+    // 添加配件
+    const addPart = (part: PartOption) => {
+        const existing = msParts.find(p => p.part_id === part.id);
+        if (existing) {
+            setMsParts(prev => prev.map(p => p.part_id === part.id ? { ...p, quantity: p.quantity + 1 } : p));
+        } else {
+            setMsParts(prev => [...prev, {
+                part_id: part.id,
+                name: part.name,
+                sku: part.sku,
+                quantity: 1,
+                price: part.price_cny
+            }]);
+        }
+        setPartSearchTerm('');
+        setPartOptions([]);
+    };
+
+    // 删除配件
+    const removePart = (partId: number) => {
+        setMsParts(prev => prev.filter(p => p.part_id !== partId));
+    };
+
+    // 更新配件数量
+    const updatePartQuantity = (partId: number, qty: number) => {
+        setMsParts(prev => prev.map(p => p.part_id === partId ? { ...p, quantity: Math.max(1, qty) } : p));
+    };
+
+    // 添加其他费用
+    const addOtherFee = () => {
+        if (!newFeeDesc.trim() || !newFeeAmount) return;
+        setOtherFees(prev => [...prev, {
+            id: `fee-${Date.now()}`,
+            description: newFeeDesc.trim(),
+            amount: parseFloat(newFeeAmount) || 0
+        }]);
+        setNewFeeDesc('');
+        setNewFeeAmount('');
+        setShowAddFee(false);
+    };
+
+    // 删除其他费用
+    const removeOtherFee = (feeId: string) => {
+        setOtherFees(prev => prev.filter(f => f.id !== feeId));
+    };
+
+    // 计算MS编辑的配件总价
+    const msPartsTotal = msParts.reduce((sum, p) => sum + p.price * p.quantity, 0);
+    // 计算其他费用总价
+    const otherFeesTotal = otherFees.reduce((sum, f) => sum + f.amount, 0);
 
     const calculateWarranty = async () => {
         setCalculating(true);
@@ -733,6 +878,160 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                         }}
                                     />
                                 </div>
+                            </div>
+
+                            {/* MS 配件编辑区域 */}
+                            <div style={{ marginBottom: 16, padding: 12, background: 'var(--glass-bg)', borderRadius: 8, border: '1px solid var(--glass-border)' }}>
+                                <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Package size={14} style={{ color: '#F59E0B' }} />
+                                    <span style={{ color: '#F59E0B' }}>MS 添加配件/费用</span>
+                                </div>
+
+                                {/* 配件搜索 */}
+                                <div style={{ marginBottom: 12, position: 'relative' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'var(--glass-bg-light)', borderRadius: 6, border: '1px solid var(--glass-border)' }}>
+                                        <Search size={14} color="var(--text-tertiary)" />
+                                        <input
+                                            type="text"
+                                            value={partSearchTerm}
+                                            onChange={e => {
+                                                setPartSearchTerm(e.target.value);
+                                                searchParts(e.target.value);
+                                            }}
+                                            onFocus={() => {
+                                                if (partSearchTerm.length >= 1 && partOptions.length > 0) {
+                                                    // 已有搜索结果
+                                                } else if (productModel) {
+                                                    loadCompatibleParts();
+                                                }
+                                            }}
+                                            placeholder={productModel ? `搜索 ${productModel} 兼容配件...` : '搜索配件...'}
+                                            style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--text-main)', fontSize: 13 }}
+                                        />
+                                        {isSearchingParts && <Loader2 size={14} className="animate-spin" color="var(--text-tertiary)" />}
+                                    </div>
+                                    {/* 配件下拉列表 */}
+                                    {partOptions.length > 0 && (
+                                        <div style={{ 
+                                            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+                                            background: 'var(--modal-bg, #2c2c2e)', border: '1px solid var(--glass-border)',
+                                            borderRadius: 8, marginTop: 4, maxHeight: 300, overflowY: 'auto',
+                                            boxShadow: '0 8px 24px rgba(0,0,0,0.4)'
+                                        }}>
+                                            {partOptions.map(p => (
+                                                <div
+                                                    key={p.id}
+                                                    onClick={() => addPart(p)}
+                                                    style={{ 
+                                                        padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--glass-border)',
+                                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                                    }}
+                                                    onMouseOver={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                                                    onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                                                >
+                                                    <div>
+                                                        <div style={{ fontSize: 13, color: 'var(--text-main)' }}>{p.name}</div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
+                                                            {p.sku} · {p.category}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ fontSize: 13, color: '#F59E0B', fontWeight: 500 }}>¥{p.price_cny.toLocaleString()}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* MS 已添加配件列表 */}
+                                {msParts.length > 0 && (
+                                    <div style={{ marginBottom: 12 }}>
+                                        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6 }}>MS添加配件 ({msParts.length}项)</div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            {msParts.map((part) => (
+                                                <div key={part.part_id} style={{ 
+                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                    padding: '8px 10px', background: 'var(--glass-bg-light)', borderRadius: 6, fontSize: 13
+                                                }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                                                        <span style={{ color: 'var(--text-main)' }}>{part.name}</span>
+                                                        <span style={{ color: 'var(--text-tertiary)', fontSize: 11, fontFamily: 'monospace' }}>{part.sku}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <button onClick={() => updatePartQuantity(part.part_id, part.quantity - 1)} style={{ width: 24, height: 24, border: '1px solid var(--glass-border)', borderRadius: 4, background: 'var(--glass-bg)', color: 'var(--text-main)', cursor: 'pointer' }}>-</button>
+                                                        <span style={{ width: 30, textAlign: 'center', color: 'var(--text-main)' }}>{part.quantity}</span>
+                                                        <button onClick={() => updatePartQuantity(part.part_id, part.quantity + 1)} style={{ width: 24, height: 24, border: '1px solid var(--glass-border)', borderRadius: 4, background: 'var(--glass-bg)', color: 'var(--text-main)', cursor: 'pointer' }}>+</button>
+                                                        <span style={{ color: '#F59E0B', fontWeight: 500, width: 80, textAlign: 'right' }}>¥{(part.price * part.quantity).toLocaleString()}</span>
+                                                        <button onClick={() => removePart(part.part_id)} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}>
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* 其他费用 */}
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>其他费用</span>
+                                        {!showAddFee && (
+                                            <button onClick={() => setShowAddFee(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', background: 'transparent', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 11, cursor: 'pointer' }}>
+                                                <Plus size={12} /> 添加费用
+                                            </button>
+                                        )}
+                                    </div>
+                                    {showAddFee && (
+                                        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                                            <input
+                                                type="text"
+                                                value={newFeeDesc}
+                                                onChange={e => setNewFeeDesc(e.target.value)}
+                                                placeholder="费用描述"
+                                                style={{ flex: 2, padding: '8px 10px', background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 12, outline: 'none' }}
+                                            />
+                                            <input
+                                                type="number"
+                                                value={newFeeAmount}
+                                                onChange={e => setNewFeeAmount(e.target.value)}
+                                                placeholder="金额"
+                                                style={{ flex: 1, padding: '8px 10px', background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 12, outline: 'none' }}
+                                            />
+                                            <button onClick={addOtherFee} style={{ padding: '0 12px', background: '#F59E0B', border: 'none', borderRadius: 6, color: '#000', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>添加</button>
+                                            <button onClick={() => { setShowAddFee(false); setNewFeeDesc(''); setNewFeeAmount(''); }} style={{ padding: '0 8px', background: 'transparent', border: '1px solid var(--glass-border)', borderRadius: 6, color: 'var(--text-tertiary)', fontSize: 12, cursor: 'pointer' }}>取消</button>
+                                        </div>
+                                    )}
+                                    {otherFees.length > 0 && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            {otherFees.map((fee) => (
+                                                <div key={fee.id} style={{ 
+                                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                    padding: '8px 10px', background: 'var(--glass-bg-light)', borderRadius: 6, fontSize: 13
+                                                }}>
+                                                    <span style={{ color: 'var(--text-main)' }}>{fee.description}</span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <span style={{ color: '#F59E0B', fontWeight: 500 }}>¥{fee.amount.toLocaleString()}</span>
+                                                        <button onClick={() => removeOtherFee(fee.id)} style={{ background: 'transparent', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}>
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* MS添加费用小计 */}
+                                {(msParts.length > 0 || otherFees.length > 0) && (
+                                    <div style={{ 
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: '10px 0 0 0', marginTop: 12, borderTop: '1px solid var(--glass-border)',
+                                        fontSize: 13, fontWeight: 600
+                                    }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>MS添加小计</span>
+                                        <span style={{ color: '#F59E0B' }}>¥{(msPartsTotal + otherFeesTotal).toLocaleString()}</span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* 快捷填充按钮 - 从诊断报告导入 */}
