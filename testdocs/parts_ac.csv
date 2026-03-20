@@ -1,0 +1,35 @@
+﻿#,兼容机型,SKU,物料ID,分类,内部名称（CN）,内部名称（EN）,对外名称（CN）,对外名称（EN）,CNY,USD,EUR
+1,EAGLE SDI KVF,S2-119-012-01,2-119-012-01,主板,EAGLE SDI主板,EAGLE SDI EVF Main Board,EAGLE 主板,EAGLE SDI EVF Main Board,982,187,187
+2,EAGLE SDI KVF,S2-119-011-01,2-119-011-01,接口板,EAGLE SDI 按键板,EAGLE SDI EVF Button Board,EAGLE 按键板,EAGLE SDI EVF Button Board,276,68,68
+3,EAGLE SDI KVF/Ealge HDMI KVF,S2-119-003-01,2-119-003-01,大模块,EAGLE 目镜模组,EAGLE SDI EVF Optics Module,EAGLE 目镜模组,EAGLE SDI EVF Optics Module,3982,586,586
+1,EAGLE HDMI KVF,S2-119-015-01,2-119-015-01,主板,Eagle HDMI主板,EAGLE HDMI EVF Main Board,EAGLE 主板,EAGLE HDMI EVF Main Board,982,187,187
+2,EAGLE HDMI KVF,S2-119-016-01,2-119-016-01,接口板,Eagle 接口板,EAGLE HDMI EVF Interface Board,EAGLE 按键板,EAGLE HDMI EVF Interface Board,276,68,68
+4,MAVO Edge 8K,S1-019-003-01,1-019-003-01,CMOS传感器,Edge 8K 传感器,MAVO Edge 8K Sensor,Edge 8K CMOS 传感器,MAVO Edge 8K Sensor,15000,2499,2499
+5,MAVO Edge 6K/MAVO mark2 LF,S1-019-004-01,1-019-004-01,CMOS传感器,Edge 6K/MM2 LF 传感器,MAVO Edge 6K/mark2 LF Sensor,Edge 6K CMOS 传感器,MAVO Edge 6K/mark2 LF Sensor,9500,1599,1599
+6,MAVO mark2 S35,S1-019-005-01,1-019-005-01,CMOS传感器,MM2 S35 传感器,MAVO mark2 S35 Sensor,MM2 S35 传感器,MAVO mark2 S35 Sensor,,,
+7,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,S3-800-002-01,3-800-002-01,主板,Edge/MM2 主板,MAVO Edge/mark2 Element/Main Board,Edge主板,MAVO Edge/mark2 Main Board,4000,799,799
+8,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,S1-010-001-01,1-010-001-01,主板,Edge/MM2 MC，图像处理模块,MAVO Edge/mark2 MC Board,Edge图像处理模块,MAVO Edge/mark2 Image Processing Module,5500,1199,1199
+9,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,S1-010-010-02,1-010-010-02,显示,Edge/MM2 HDA，显示模块,MAVO Edge/mark2 HDA Board,Edge显示模块,MAVO Edge/mark2 Display Module,990,199,199
+10,MAVO Edge 6K/MAVO Edge 8K,S1-010-006-01,1-010-006-01,电源,Edge Back板，电源模块,MAVO Edge Back Power Board,Edge电源模块,MAVO Edge Power Module,990,299,299
+11,MAVO mark2 S35/MAVO mark2 LF,S1-010-007-01,1-010-007-01,电源,MM2 Back板，电源模块,MAVO mark2 Sback Power Board,MM2 电源模块,MAVO mark2 Power Module,990,299,299
+12,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,S1-019-008-01,1-019-008-01,接口板,Edge dock板（DK板）,MAVO Edge/mark2 Dock Board,Edge主板接口模块,MAVO Edge/mark2 Mainboard Interface,990,249,249
+13,MAVO Edge 6K/MAVO Edge 8K,B-011-001-02,B-011-001-02,大模块,Edge 8K 前部,MAVO Edge 8K Front Part,Edge 8K 前部,MAVO Edge 8K Front Part,,,
+14,MAVO Edge 6K/MAVO Edge 8K,B-011-002-01,B-011-002-01,大模块,Edge 6K 前部,MAVO Edge 6K Front Part,Edge 6K 前部,MAVO Edge 6K Front Part,,,
+15,MAVO Edge 6K/MAVO Edge 8K,S1-016-501-02,1-016-501-02,大模块,Edge ND模块,MAVO Edge ND Module,Edge ND模块,MAVO Edge ND Module,4000,750,€750.00
+16,MAVO Edge 6K/MAVO Edge 8K,S4-000-004-01,4-000-004-01,零件,Edge ND电机,MAVO Edge ND Motor,Edge ND电机,MAVO Edge ND Motor,,59,59
+17,MAVO Edge 6K/MAVO Edge 8K,S1-019-010-01,1-019-010-01,接口板,Edge FRONT PCB,MAVO Edge FRONT PCB,Edge 前部模组,MAVO Edge FRONT Module,,69,69
+18,MAVO mark2 S35/MAVO mark2 LF,S1-019-017-01,1-019-017-01,零件,Edge/MM2 侧屏,MAVO Edge/mark2 Side Screen,Edge/MM2 侧屏,MAVO Edge/mark2 Side Screen,590,120,120
+19,MAVO mark2 S35/MAVO mark2 LF,S1-011-001-01,1-011-001-01,接口板,Edge/MM2 上Video口,MAVO Edge/mark2 Video Port (Top),Edge Video口（上）,MAVO Edge/mark2 Video Port (Top),290,59,59
+20,MAVO mark2 S35/MAVO mark2 LF,S1-011-002-01,1-011-002-01,接口板,Edge/MM2 下Video口,MAVO Edge/mark2 Video Port (Bot),Edge Video口（上）,MAVO Edge/mark2 Video Port (Bot),290,59,59
+21,MAVO Edge 6K/MAVO Edge 8K,S1-010-012-01,1-010-012-01,接口板,Edge 按键板,MAVO Edge Botton Board,Edge按键板,MAVO Edge Botton Board,690,95,95
+22,MAVO mark2 S35/MAVO mark2 LF,S1-010-013-01,1-010-013-01,接口板,MM2 按键板,MAVO mark2 Botton Board,MM2按键板,MAVO mark2 Botton Board,690,95,95
+23,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,S1-019-013-02,1-019-013-02,接口板,Edge/MM2 3.5MM接口和USB-C接口,MAVO Edge/mark2 USB-C and 3.5mm Module,USB接口小板,,690,95,95
+24,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,S4-000-003-01,4-000-003-01,零件,Edge/MM2 风扇,MAVO Edge/mark2 Fan,风扇,MAVO Edge/mark2 Fan,120,65,65
+25,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,S1-011-013-01,1-011-013-01,接口板,Edge/MM2 SDI模块,MAVO Edge/mark2 SDI Module,SDI模块,MAVO Edge/mark2 SDI Module,390,69,69
+26,MAVO Edge 6K/MAVO Edge 8K,S1-011-014-01,1-011-014-01,接口板,Edge 八爪鱼,MAVO Edge RS/TC/Sync Module,Edge RS模块,MAVO Edge RS/TC/Sync Module,290,59,59
+27,MAVO mark2 S35/MAVO mark2 LF,S1-011-015-01,1-011-015-01,接口板,MM2 八爪鱼,MAVO mark2 RS/TC/Sync Module,MM2 RS模块,MAVO mark2 RS/TC/Sync Module,290,59,59
+28,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,S1-010-010-01,1-010-010-01,接口板,Edge UPS小板,MAVO Edge/mark2 UPS Board,Edge UPS小板,MAVO Edge/mark2 UPS Board,590,95,95
+29,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,S4-000-005-01,4-000-005-01,零件,Edge/MM2 TF卡,MAVO Edge/mark2 TF Card,Edge/MM2 系统存储卡,MAVO Edge/mark2 Memory Module,,,
+30,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,S1-016-305-01,1-016-305-01,接口板,Edge/MM2 卡农口模块,MAVO Edge/mark2 XLR,Edge/MM2 卡农口模块,MAVO Edge/mark2 XLR Module,,95,95
+31,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,B-019-001-01,B-019-001-01,接口板,Edge/MM2 Lens口（5芯双键）,MAVO Edge/mark2 Lens Port,Edge/MM2 Lens口（5芯双键）,MAVO Edge/mark2 Lens Port,,,
+32,MAVO Edge 6K/MAVO Edge 8K/MAVO mark2 S35/MAVO mark2 LF,S1-015-402-02,1-015-402-02,零件,Edge/MM2 卡农口盖子,MAVO Edge/mark2 XLR Rubber Cover,Edge/MM2 卡农口盖子,MAVO Edge/mark2 XLR Rubber Cover,,,

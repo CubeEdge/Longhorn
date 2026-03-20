@@ -5,6 +5,7 @@
 
 export { default as PartsManagementPage } from './PartsManagementPage';
 export { default as PartsCatalogPage } from './PartsCatalogPage';
+export { default as PartsDetailPage } from './PartsDetailPage';
 export { default as PartsInventoryPage } from './PartsInventoryPage';
 export { default as PartsConsumptionPage } from './PartsConsumptionPage';
 export { default as PartsSettlementPage } from './PartsSettlementPage';

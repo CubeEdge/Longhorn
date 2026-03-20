@@ -159,9 +159,9 @@ module.exports = function(db, authenticate) {
                 });
             }
 
-            // 获取关联的产品型号信息
+            // 获取关联的产品型号信息（含族群）
             const compatibleModels = db.prepare(`
-                SELECT pmp.*, pm.name as model_name
+                SELECT pmp.*, pm.name_zh as model_name, pm.name_en as model_name_en, pm.product_family, pm.model_code
                 FROM product_model_parts pmp
                 JOIN product_models pm ON pmp.product_model_id = pm.id
                 WHERE pmp.part_id = ?

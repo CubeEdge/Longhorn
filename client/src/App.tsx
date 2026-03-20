@@ -58,7 +58,7 @@ import ProductModelsManagement from './components/ProductModelsManagement';
 import ProductModelDetailPage from './components/ProductModelDetailPage';
 import ProductSkusManagement from './components/ProductSkusManagement';
 import ProductSkuDetailPage from './components/ProductSkuDetailPage';
-import { PartsManagementPage, PartsCatalogPage, PartsInventoryPage, PartsConsumptionPage, PartsSettlementPage } from './components/PartsManagement';
+import { PartsCatalogPage, PartsDetailPage, PartsInventoryPage, PartsConsumptionPage, PartsSettlementPage } from './components/PartsManagement';
 import CustomerDetailPage from './components/CustomerDetailPage';
 
 import KnowledgeAuditLog from './components/KnowledgeAuditLog';
@@ -274,11 +274,11 @@ const App: React.FC = () => {
           <Route path="/tech-hub/wiki/:slug" element={<KinefinityWiki />} />
 
           {/* Parts Management */}
-          <Route path="/service/parts" element={<PartsManagementPage />} />
-          <Route path="/service/parts/catalog" element={<PartsCatalogPage />} />
+          <Route path="/service/parts" element={<PartsCatalogPage />} />
           <Route path="/service/parts/inventory" element={<PartsInventoryPage />} />
           <Route path="/service/parts/consumption" element={<PartsConsumptionPage />} />
           <Route path="/service/parts/settlement" element={<PartsSettlementPage />} />
+          <Route path="/service/parts/:id" element={<PartsDetailPage />} />
 
           {/* Dealer Inventory Management */}
           <Route path="/service/dealer-operations" element={<DealerInventoryListPage />} />
