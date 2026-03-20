@@ -4,9 +4,10 @@ import axios from 'axios';
 import { 
     ArrowLeft, Edit2, Trash2, Shield, Calendar, 
     Activity, CheckCircle, AlertTriangle, 
-    MoreVertical, Power, Clock, Settings, User, 
+    MoreHorizontal, Power, Clock, Settings, User, 
     Cpu, Globe, Calculator, X, Info, HelpCircle, AlertCircle
 } from 'lucide-react';
+import ConfirmModal from './Service/ConfirmModal';
 import { useAuthStore } from '../store/useAuthStore';
 import ProductModal from './Workspace/ProductModal';
 import ProductWarrantyRegistrationModal from './Service/ProductWarrantyRegistrationModal';
@@ -74,8 +75,14 @@ const ProductDetailPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        type: 'status' | 'delete' | null;
+        targetStatus: string;
+        reason: string;
+        loading: boolean;
+    }>({ isOpen: false, type: null, targetStatus: '', reason: '', loading: false });
     const [showCalculationModal, setShowCalculationModal] = useState(false);
     const [isWarrantyRegistrationOpen, setIsWarrantyRegistrationOpen] = useState(false);
 
@@ -117,34 +124,7 @@ const ProductDetailPage: React.FC = () => {
         }
     };
 
-    const handleDelete = async () => {
-        if (!product) return;
-        try {
-            const res = await axios.delete(`/api/v1/admin/products/${product.id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.data.success) {
-                navigate('/products');
-            }
-        } catch (err: any) {
-            alert(err.response?.data?.error?.message || '删除失败');
-        }
-    };
 
-    const handleStatusChange = async (status: string) => {
-        if (!product) return;
-        try {
-            const res = await axios.put(`/api/v1/admin/products/${product.id}`, 
-                { status }, 
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            if (res.data.success) {
-                fetchProductDetail();
-            }
-        } catch (err: any) {
-            alert(err.response?.data?.error?.message || '更新状态失败');
-        }
-    };
 
     if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>加载中...</div>;
     if (error || !product) return <div style={{ padding: 40, textAlign: 'center', color: '#EF4444' }}>{error || '未找到产品'}</div>;
@@ -264,7 +244,7 @@ const ProductDetailPage: React.FC = () => {
                             onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-secondary)'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
                         >
-                            <MoreVertical size={20} />
+                            <MoreHorizontal size={20} />
                         </button>
                     {showMoreMenu && (
                         <>
@@ -302,7 +282,16 @@ const ProductDetailPage: React.FC = () => {
                                 </button>
                                 {product.status !== 'ACTIVE' && (
                                     <button
-                                        onClick={() => { handleStatusChange('ACTIVE'); setShowMoreMenu(false); }}
+                                        onClick={() => {
+                                            setShowMoreMenu(false);
+                                            setConfirmModal({
+                                                isOpen: true,
+                                                type: 'status',
+                                                targetStatus: 'ACTIVE',
+                                                reason: '',
+                                                loading: false
+                                            });
+                                        }}
                                         style={{
                                             width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
                                             background: 'transparent', border: 'none', borderRadius: 8, color: '#10B981',
@@ -314,7 +303,16 @@ const ProductDetailPage: React.FC = () => {
                                 )}
                                 {product.status !== 'IN_REPAIR' && (
                                     <button
-                                        onClick={() => { handleStatusChange('IN_REPAIR'); setShowMoreMenu(false); }}
+                                        onClick={() => {
+                                            setShowMoreMenu(false);
+                                            setConfirmModal({
+                                                isOpen: true,
+                                                type: 'status',
+                                                targetStatus: 'IN_REPAIR',
+                                                reason: '',
+                                                loading: false
+                                            });
+                                        }}
                                         style={{
                                             width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
                                             background: 'none', border: 'none', borderRadius: 8, color: '#FFD200',
@@ -326,7 +324,16 @@ const ProductDetailPage: React.FC = () => {
                                 )}
                                 <div style={{ height: 1, background: 'var(--glass-border)', margin: '4px 0' }} />
                                 <button
-                                    onClick={() => { setIsDeleteModalOpen(true); setShowMoreMenu(false); }}
+                                    onClick={() => {
+                                        setShowMoreMenu(false);
+                                        setConfirmModal({
+                                            isOpen: true,
+                                            type: 'delete',
+                                            targetStatus: '',
+                                            reason: '',
+                                            loading: false
+                                        });
+                                    }}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 12px',
                                         background: 'none', border: 'none', borderRadius: 8, color: '#EF4444',
@@ -482,26 +489,69 @@ const ProductDetailPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Delete Confirmation Modal */}
-            {isDeleteModalOpen && (
-                <div 
-                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onClick={() => setIsDeleteModalOpen(false)}
-                >
-                    <div style={{ width: 400, background: 'var(--modal-bg, #1c1c1e)', borderRadius: 20, border: '1px solid var(--glass-border)', padding: 32, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                            <Trash2 size={32} color="#EF4444" />
+            {/* Confirm Modal */}
+            {confirmModal.isOpen && product && (
+                <ConfirmModal
+                    title={confirmModal.type === 'delete' ? '确认删除产品' : '确认修改产品状态'}
+                    message={
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <p>
+                                {confirmModal.type === 'delete'
+                                    ? `确定要删除产品 "${product.model_name}" (${product.serial_number}) 吗？此操作不可撤销。`
+                                    : `确定要将产品状态修改为"${confirmModal.targetStatus === 'ACTIVE' ? '在役' : '维修中'}"吗？`
+                                }
+                            </p>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                    {confirmModal.type === 'delete' ? '删除原因 *' : '修改原因 *'}
+                                </label>
+                                <textarea
+                                    value={confirmModal.reason}
+                                    onChange={e => setConfirmModal(prev => ({ ...prev, reason: e.target.value }))}
+                                    placeholder={`请输入${confirmModal.type === 'delete' ? '删除' : '修改'}原因...`}
+                                    rows={3}
+                                    style={{
+                                        width: '100%', padding: '8px 12px', borderRadius: 6,
+                                        border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)',
+                                        color: 'var(--text-main)', fontSize: '0.9rem', resize: 'none'
+                                    }}
+                                />
+                            </div>
                         </div>
-                        <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: 'var(--text-main)', marginBottom: 12 }}>确认删除产品</h3>
-                        <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 32 }}>
-                            确定要删除产品 <strong>{product.model_name}</strong> ({product.serial_number}) 吗？<br />此操作不可撤销。
-                        </p>
-                        <div style={{ display: 'flex', gap: 12 }}>
-                            <button onClick={() => setIsDeleteModalOpen(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, background: 'var(--glass-bg-light)', border: 'none', color: 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer' }}>取消</button>
-                            <button onClick={handleDelete} style={{ flex: 1, padding: '12px', borderRadius: 12, background: '#EF4444', border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>确认删除</button>
-                        </div>
-                    </div>
-                </div>
+                    }
+                    confirmText={confirmModal.type === 'delete' ? '确认删除' : '确认修改'}
+                    cancelText="取消"
+                    isDanger={true}
+                    countdown={5}
+                    loading={confirmModal.loading}
+                    onConfirm={async () => {
+                        if (!confirmModal.reason.trim()) {
+                            alert(`请输入${confirmModal.type === 'delete' ? '删除' : '修改'}原因`);
+                            return;
+                        }
+                        setConfirmModal(prev => ({ ...prev, loading: true }));
+                        try {
+                            if (confirmModal.type === 'delete') {
+                                await axios.delete(`/api/v1/admin/products/${product.id}`, {
+                                    headers: { Authorization: `Bearer ${token}` },
+                                    data: { reason: confirmModal.reason }
+                                });
+                                navigate('/products');
+                            } else {
+                                await axios.put(`/api/v1/admin/products/${product.id}`, 
+                                    { status: confirmModal.targetStatus, reason: confirmModal.reason }, 
+                                    { headers: { Authorization: `Bearer ${token}` } }
+                                );
+                                fetchProductDetail();
+                            }
+                            setConfirmModal({ isOpen: false, type: null, targetStatus: '', reason: '', loading: false });
+                        } catch (err: any) {
+                            alert(err.response?.data?.error?.message || '操作失败');
+                            setConfirmModal(prev => ({ ...prev, loading: false }));
+                        }
+                    }}
+                    onCancel={() => setConfirmModal({ isOpen: false, type: null, targetStatus: '', reason: '', loading: false })}
+                />
             )}
 
             {/* Warranty Calculation Modal - 同步 ProductModal 样式 */}

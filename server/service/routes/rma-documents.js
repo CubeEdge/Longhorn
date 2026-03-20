@@ -49,6 +49,101 @@ module.exports = function (db, authenticate) {
         return `RR-${dateKey}-${String(seq).padStart(3, '0')}`;
     }
 
+    /**
+     * 同步维修报告配件到 parts_consumption 表
+     * @param {number} ticketId - 工单ID
+     * @param {number} reportId - 维修报告ID
+     * @param {Array} partsReplaced - 配件列表
+     * @param {string} currency - 货币
+     * @param {number} userId - 操作用户ID
+     * @param {string} userName - 操作用户名
+     */
+    function syncPartsConsumption(ticketId, reportId, partsReplaced, currency, userId, userName) {
+        // 获取现有配件消耗记录（source_type = repair_report）
+        const existingConsumptions = db.prepare(
+            `SELECT * FROM parts_consumption 
+             WHERE ticket_id = ? AND source_type = 'repair_report' AND is_deleted = 0`
+        ).all(ticketId);
+
+        const existingMap = new Map();
+        existingConsumptions.forEach(c => {
+            // 使用 source_ref_id 作为匹配键（存储前端part的id）
+            existingMap.set(c.source_ref_id, c);
+        });
+
+        const processedIds = new Set();
+
+        // 遍历新的配件列表
+        (partsReplaced || []).forEach(part => {
+            const sourceRefId = part.id;
+            processedIds.add(sourceRefId);
+
+            const existing = existingMap.get(sourceRefId);
+            const unitPrice = part.unit_price || 0;
+            const quantity = part.quantity || 1;
+
+            if (existing) {
+                // 更新现有记录
+                db.prepare(`
+                    UPDATE parts_consumption SET
+                        part_id = ?,
+                        part_name = ?,
+                        part_sku = ?,
+                        quantity = ?,
+                        unit_price = ?,
+                        total_price = ?,
+                        currency = ?,
+                        condition_type = ?,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                `).run(
+                    part.part_id || null,
+                    part.name,
+                    part.part_number || null,
+                    quantity,
+                    unitPrice,
+                    unitPrice * quantity,
+                    currency || 'CNY',
+                    part.status || 'new',
+                    existing.id
+                );
+            } else {
+                // 新增记录
+                db.prepare(`
+                    INSERT INTO parts_consumption (
+                        ticket_id, part_id, part_name, part_sku, quantity,
+                        unit_price, total_price, currency, condition_type,
+                        source_type, source_ref_id, source_document_id,
+                        settlement_status, created_by, created_by_name
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'repair_report', ?, ?, 'pending', ?, ?)
+                `).run(
+                    ticketId,
+                    part.part_id || null,
+                    part.name,
+                    part.part_number || null,
+                    quantity,
+                    unitPrice,
+                    unitPrice * quantity,
+                    currency || 'CNY',
+                    part.status || 'new',
+                    sourceRefId,
+                    reportId,
+                    userId,
+                    userName
+                );
+            }
+        });
+
+        // 删除不在新列表中的记录（软删除）
+        existingConsumptions.forEach(c => {
+            if (!processedIds.has(c.source_ref_id)) {
+                db.prepare(
+                    `UPDATE parts_consumption SET is_deleted = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+                ).run(c.id);
+            }
+        });
+    }
+
     function logDocumentAudit(db, documentType, documentId, action, userId, userName, changesSummary, comment) {
         db.prepare(`
             INSERT INTO document_audit_log (document_type, document_id, action, user_id, user_name, changes_summary, comment)
@@ -1055,6 +1150,19 @@ module.exports = function (db, authenticate) {
             params.push(req.params.id);
 
             db.prepare(`UPDATE repair_reports SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+
+            // 同步配件消耗记录
+            if (content !== undefined && content.repair_process?.parts_replaced) {
+                const reportCurrency = currency !== undefined ? currency : report.currency;
+                syncPartsConsumption(
+                    report.ticket_id,
+                    parseInt(req.params.id),
+                    content.repair_process.parts_replaced,
+                    reportCurrency,
+                    req.user.id,
+                    req.user.display_name || req.user.username
+                );
+            }
 
             // Log audit
             logDocumentAudit(db, 'repair_report', req.params.id, 'updated', req.user.id, req.user.display_name || req.user.username, null, null);

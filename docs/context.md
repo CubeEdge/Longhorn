@@ -21,9 +21,10 @@
 2.  **Remote Ops**: 远程执行必须遵循 `OPS.md` 的 Non-interactive SSH 规范 (login shell)。
 5.  **UI风格**：主题色为 **Kine Yellow** (#FFD700)。所有UI设计风格，Web 端遵循 **macOS26** 风格，iOS 端遵循 **iOS26** 风格。成功 选中采用 **Kine Green**(#10B981);警示危险紧急 采用 **kine red**(#EF4444)；**Kine Blue** (#3B82F6)。**AI 渐变色** (Bokeh Gradient)：青色(Teal #00BFA5)到淡紫色(Lavender #8E24AA)的渐变色。
 6.  **UI风格**：严格使用 macOS26 语义化颜色（Semantic Colors），以确保 UI 能自动适配浅色（Light）和深色（Dark）模式
+7. 数字字体采用fontVariantNumeric: 'tabular-nums'
 
-7.  **多语言交互**: 严禁硬编码文字，确保支持 简中、英、德、日。
-8.  **版本管理**: 每次修改代码后，**必须**同步递增 `client` 和 `server` 的版本号（通常在 `package.json` 中维护 Z 位版本）。
+8.  **多语言交互**: 严禁硬编码文字，确保支持 简中、英、德、日。
+9.  **版本管理**: 每次修改代码后，**必须**同步递增 `client` 和 `server` 的版本号（通常在 `package.json` 中维护 Z 位版本）。
 
 ## 2. 技术栈 (Tech Stack)
 

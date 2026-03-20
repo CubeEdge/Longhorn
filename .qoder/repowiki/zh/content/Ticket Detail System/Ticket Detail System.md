@@ -21,6 +21,7 @@
 - [log_prompt.md](file://docs/log_prompt.md)
 - [check_attachments.js](file://server/scripts/check_attachments.js)
 - [system.js](file://server/service/routes/system.js)
+- [fix_activity_actors.js](file://server/scripts/fix_activity_actors.js)
 </cite>
 
 ## 更新摘要
@@ -32,6 +33,8 @@
 - 增强活动时间轴中的附件网格展示功能
 - 实现附件权限控制和访问令牌机制
 - 优化 HEIC 格式兼容性和缩略图生成
+- **新增工单创建活动详情增强功能**，支持对工单创建活动的更正和编辑
+- **增强修正功能**，支持复杂活动类型的更正请求，包括维修报告、诊断报告和工单创建活动
 
 ## 目录
 1. [项目概述](#项目概述)
@@ -41,17 +44,20 @@
 5. [权限控制机制](#权限控制机制)
 6. [工作流处理](#工作流处理)
 7. [附件管理系统](#附件管理系统)
-8. [修正功能增强](#修正功能增强)
-9. [UI/UX改进](#uiux改进)
-10. [性能优化策略](#性能优化策略)
-11. [错误处理与调试](#错误处理与调试)
-12. [总结](#总结)
+8. [工单创建活动详情增强](#工单创建活动详情增强)
+9. [修正功能增强](#修正功能增强)
+10. [UI/UX改进](#uiux改进)
+11. [性能优化策略](#性能优化策略)
+12. [错误处理与调试](#错误处理与调试)
+13. [总结](#总结)
 
 ## 项目概述
 
 工单详情系统是Longhorn项目中的核心功能模块，负责提供统一的工单管理界面，支持多种工单类型（咨询工单、RMA返修工单、经销商维修工单）的统一展示和操作。该系统采用前后端分离架构，前端使用React构建现代化的用户界面，后端基于Express.js提供RESTful API服务。
 
 **最新更新**引入了全新的附件管理功能，显著提升了工单详情的附件处理能力和用户体验。系统现在支持完整的附件生命周期管理，包括上传、预览、下载和权限控制。活动时间轴中集成了附件网格展示，提供直观的多媒体内容浏览体验。同时，系统实现了高效的附件查询优化和HEIC格式兼容性处理。
+
+**新增功能**：工单创建活动详情增强功能，支持对工单创建活动的更正和编辑，包括工单基本信息的修正、创建原因的更正等。这一功能通过ActivityDetailDrawer组件实现，为用户提供了一站式的工单创建活动管理体验。
 
 ## 系统架构
 
@@ -73,6 +79,7 @@ CollapsiblePanel[可折叠面板]
 FieldUpdateContent[字段更新内容]
 DiagnosticReport[诊断报告]
 OpRepairReport[OP维修报告]
+TicketCreationEnhancement[工单创建活动增强]
 End
 subgraph "API网关"
 Auth[认证中间件]
@@ -101,7 +108,8 @@ Hooks --> Store
 Detail --> Drawer
 Drawer --> Correction
 Drawer --> Timeline
-Drawer --> AttachmentGrid
+Drawer --> TicketCreationEnhancement
+Timeline --> AttachmentGrid
 AttachmentGrid --> MediaLightbox
 AttachmentZone --> Upload
 Upload --> Attachments
@@ -172,6 +180,8 @@ class ActivityDetailDrawer {
 +correctionReason : string
 +canCorrectActivity() : boolean
 +handleCorrection() : Promise<void>
++onCorrectionRequest : Function
++onKeyNodeCorrectionRequest : Function
 }
 class MediaLightbox {
 +url : string
@@ -231,6 +241,8 @@ class ActivityDetailDrawer {
 +onRefresh : Function
 +correctionModal : boolean
 +correctionReason : string
++onCorrectionRequest : Function
++onKeyNodeCorrectionRequest : Function
 +canCorrectActivity() : boolean
 +handleCorrection() : Promise<void>
 }
@@ -253,6 +265,12 @@ class OpRepairReportContent {
 +metadata : any
 +render() : JSX.Element
 }
+class TicketCreationEnhancement {
++activity : Activity
++ticket : Ticket
++onCorrectionRequest : Function
++render() : JSX.Element
+}
 ActivityTimeline --> MediaLightbox : "使用"
 CollapsiblePanel --> ParticipantsPanel : "组合"
 ActivityDetailDrawer --> MediaLightbox : "使用"
@@ -260,6 +278,7 @@ ActivityDetailDrawer --> AttachmentGrid : "集成"
 ActivityDetailDrawer --> FieldUpdateContent : "使用"
 ActivityDetailDrawer --> DiagnosticReportContent : "使用"
 ActivityDetailDrawer --> OpRepairReportContent : "使用"
+ActivityDetailDrawer --> TicketCreationEnhancement : "集成"
 ```
 
 **图表来源**
@@ -614,6 +633,127 @@ Note over API,DB : 使用索引优化查询性能
 - [ticket-activities.js:231-232](file://server/service/routes/ticket-activities.js#L231-L232)
 - [tickets.js:1370-1400](file://server/service/routes/tickets.js#L1370-L1400)
 
+## 工单创建活动详情增强
+
+### 工单创建活动识别与处理
+
+**新增** 系统现在能够识别和处理工单创建活动，将其视为特殊的工单创建事件：
+
+```mermaid
+classDiagram
+class TicketCreationActivity {
++activity_type : 'system_event'
++metadata : Object
++event_type : 'creation'
++ticket_type : string
++initial_node : string
++priority : string
++assigned_to : number
++created_at : string
++render() : JSX.Element
+}
+class ActivityDetailDrawer {
++activity : Activity
++onCorrectionRequest : Function
++canCorrectCreation() : boolean
++handleCreationCorrection() : Promise<void>
+}
+class CreationCorrectionRequest {
++activityId : number
++activityType : 'ticket_creation'
++reason : string
++originalContent : string
++metadata : Object
++render() : JSX.Element
+}
+TicketCreationActivity --> ActivityDetailDrawer : "被处理"
+ActivityDetailDrawer --> CreationCorrectionRequest : "生成"
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:1364-1369](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1364-L1369)
+- [TicketDetailComponents.tsx:1416-1427](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1416-L1427)
+- [TicketDetailComponents.tsx:1478-1493](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1478-L1493)
+
+### 工单创建活动权限控制
+
+系统实现了针对工单创建活动的特殊权限控制机制：
+
+```mermaid
+flowchart TD
+Start([尝试更正创建活动]) --> CheckUser{检查用户身份}
+CheckUser --> |Admin| AllowAdmin[允许更正]
+CheckUser --> |Exec| AllowExec[允许更正]
+CheckUser --> |MS Lead| CheckDept{检查部门}
+CheckUser --> |原操作人| AllowOriginal[允许更正]
+CheckDept --> |MS部门Lead| AllowLead[允许更正]
+CheckDept --> |其他部门| Deny[拒绝权限]
+AllowAdmin --> ApplyCorrection[应用更正]
+AllowExec --> ApplyCorrection
+AllowOriginal --> ApplyCorrection
+AllowLead --> ApplyCorrection
+Deny --> End([结束])
+ApplyCorrection --> LogCorrection[记录更正历史]
+LogCorrection --> NotifyActor[通知原操作人]
+NotifyActor --> End
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:1416-1427](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1416-L1427)
+
+### 工单创建活动更正流程
+
+**新增** 工单创建活动的更正流程支持复杂的编辑操作：
+
+```mermaid
+sequenceDiagram
+participant User as 用户
+participant Drawer as 活动详细信息抽屉
+participant ParentComponent as 父组件
+participant API as 修正API
+participant DB as 数据库
+User->>Drawer : 点击更正按钮
+Drawer->>Drawer : 验证权限
+Drawer->>ParentComponent : 触发onCorrectionRequest
+ParentComponent->>ParentComponent : 打开编辑器
+User->>ParentComponent : 修改工单信息
+ParentComponent->>API : 提交更正请求
+API->>DB : 更新工单创建活动
+API->>DB : 记录更正历史
+API-->>ParentComponent : 返回更正结果
+ParentComponent-->>User : 显示成功消息
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:1478-1493](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1478-L1493)
+- [UnifiedTicketDetail.tsx:698-713](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L698-L713)
+
+### 工单创建活动修复脚本
+
+**新增** 系统包含专门的修复脚本，用于处理历史数据中的创建活动问题：
+
+```mermaid
+sequenceDiagram
+participant Script as 修复脚本
+participant DB as 数据库
+Script->>DB : 查找JSON格式的创建活动
+DB-->>Script : 返回创建活动列表
+Script->>DB : 转换为system_event类型
+Script->>DB : 添加event_type : 'creation'
+Script->>DB : 回填缺失的创建活动
+DB-->>Script : 返回修复结果
+Script-->>Script : 输出统计信息
+```
+
+**图表来源**
+- [fix_activity_actors.js:37-92](file://server/scripts/fix_activity_actors.js#L37-L92)
+
+**章节来源**
+- [TicketDetailComponents.tsx:1364-1522](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1364-L1522)
+- [TicketDetailComponents.tsx:1416-1427](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1416-L1427)
+- [TicketDetailComponents.tsx:1478-1493](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1478-L1493)
+- [fix_activity_actors.js:37-92](file://server/scripts/fix_activity_actors.js#L37-L92)
+
 ## 修正功能增强
 
 ### 活动详细信息抽屉
@@ -631,7 +771,10 @@ class ActivityDetailDrawer {
 +correctionReason : string
 +lightboxMedia : Object
 +canCorrectActivity() : boolean
++canCorrectCreation() : boolean
 +handleCorrection() : Promise<void>
++onCorrectionRequest : Function
++onKeyNodeCorrectionRequest : Function
 }
 class CorrectionModal {
 +correctionReason : string
@@ -642,17 +785,26 @@ class CorrectionModal {
 class ActivityCorrectionAPI {
 +corrections : Array
 +correction_reason : string
-+correction_type : string
++new_content : string
 +applyCorrections() : Promise<void>
+}
+class ComplexActivityCorrection {
++activityType : 'op_repair_report' | 'diagnostic_report' | 'ticket_creation'
++reason : string
++originalContent : string
++metadata : Object
++openEditor() : void
 }
 ActivityDetailDrawer --> CorrectionModal : "显示"
 ActivityDetailDrawer --> ActivityCorrectionAPI : "调用"
+ActivityDetailDrawer --> ComplexActivityCorrection : "处理"
 CorrectionModal --> ActivityCorrectionAPI : "提交"
 ```
 
 **图表来源**
 - [TicketDetailComponents.tsx:756-949](file://client/src/components/Workspace/TicketDetailComponents.tsx#L756-L949)
 - [TicketDetailComponents.tsx:1282-1345](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1282-L1345)
+- [TicketDetailComponents.tsx:1364-1369](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1364-L1369)
 
 ### 支持的修正活动类型
 
@@ -665,6 +817,7 @@ CorrectionModal --> ActivityCorrectionAPI : "提交"
 | shipping_info | 发货信息 | 快递单号、承运商、发货地址、物流状态 | 原操作人、Lead、Admin、Exec |
 | comment | 评论 | 评论内容、附件 | 原操作人、Lead、Admin、Exec |
 | internal_note | 内部备注 | 备注内容 | 原操作人、Lead、Admin、Exec |
+| **ticket_creation** | **工单创建活动** | **工单基本信息、创建原因** | **原操作人、MS Lead、Admin、Exec** |
 
 ### 修正权限控制
 
@@ -677,10 +830,15 @@ CheckUser --> |Exec| CheckRole
 CheckUser --> |Lead| CheckLead{检查部门}
 CheckRole --> |Admin/Exec| AllowAdmin[允许修正]
 CheckLead --> |同部门Lead| AllowLead[允许修正]
-CheckLead --> |跨部门Lead| Deny[拒绝权限]
+CheckLead --> |跨部门Lead| CheckActivityType{检查活动类型}
+CheckActivityType --> |工单创建活动| CheckDeptMS{检查是否MS部门}
+CheckActivityType --> |其他活动| Deny[拒绝权限]
+CheckDeptMS --> |MS部门| AllowMS[允许修正]
+CheckDeptMS --> |其他部门| Deny
 AllowOriginal --> ApplyCorrections[应用修正]
 AllowAdmin --> ApplyCorrections
 AllowLead --> ApplyCorrections
+AllowMS --> ApplyCorrections
 Deny --> End([结束])
 ApplyCorrections --> LogCorrection[记录修正历史]
 LogCorrection --> NotifyActor[通知原操作人]
@@ -689,6 +847,7 @@ NotifyActor --> End
 
 **图表来源**
 - [TicketDetailComponents.tsx:782-793](file://client/src/components/Workspace/TicketDetailComponents.tsx#L782-L793)
+- [TicketDetailComponents.tsx:1416-1427](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1416-L1427)
 - [ticket-activities.js:658-682](file://server/service/routes/ticket-activities.js#L658-L682)
 
 ### 修正历史追踪
@@ -703,11 +862,13 @@ participant API as 修正API
 participant DB as 数据库
 participant Actor as 原操作人
 User->>Drawer : 点击更正按钮
-Drawer->>Drawer : 显示修正弹窗
+Drawer->>Drawer : 验证权限
+Drawer->>Drawer : 显示更正弹窗
 User->>Drawer : 输入修正原因
 Drawer->>API : 提交修正请求
 API->>DB : 保存修正历史
 API->>DB : 更新活动元数据
+API->>DB : 记录更正次数
 API->>Actor : 发送通知
 API-->>Drawer : 返回修正结果
 Drawer-->>User : 显示成功消息
@@ -734,17 +895,21 @@ Discussion[讨论与诊断<br/>评论、诊断报告、维修记录]
 SystemEvents[系统变更<br/>状态变更、指派、优先级、字段更新]
 KeyOutputs[关键输出<br/>文档发布、撤回、物流信息]
 Attachments[附件展示<br/>图片、视频、文档预览]
+TicketCreation[工单创建<br/>创建活动详情增强]
 end
 subgraph "分类规则"
 COMMENT_TYPES[评论类型: comment, diagnostic_report, op_repair_report]
 KEY_OUTPUT_TYPES[关键输出: document_published, document_recalled]
 SYSTEM_TYPES[系统事件: status_change, assignment_change, field_update, system_event]
 ATTACHMENT_TYPES[附件类型: image/*, video/*, application/pdf]
+CREATION_TYPES[创建活动: system_event with event_type='creation']
 end
 Discussion --> COMMENT_TYPES
 Discussion --> ATTACHMENT_TYPES
+Discussion --> CREATION_TYPES
 SystemEvents --> SYSTEM_TYPES
 Attachments --> ATTACHMENT_TYPES
+TicketCreation --> CREATION_TYPES
 ```
 
 **图表来源**
@@ -863,6 +1028,40 @@ AttachmentGrid --> AttachmentLayout : "使用"
 **图表来源**
 - [TicketDetailComponents.tsx:2148-2270](file://client/src/components/Workspace/TicketDetailComponents.tsx#L2148-L2270)
 
+### 工单创建活动详情增强
+
+**新增** 工单创建活动的UI增强功能：
+
+```mermaid
+classDiagram
+class TicketCreationDetail {
++ticket_type : string
++initial_node : string
++priority : string
++assigned_to : number
++created_at : string
++render() : JSX.Element
+}
+class CreationDetailDrawer {
++activity : Activity
++onCorrectionRequest : Function
++canCorrectCreation() : boolean
++render() : JSX.Element
+}
+class CreationCorrectionUI {
++formFields : Object
++validation : Function
++submitHandler : Function
++render() : JSX.Element
+}
+CreationDetailDrawer --> TicketCreationDetail : "显示"
+CreationDetailDrawer --> CreationCorrectionUI : "提供编辑"
+```
+
+**图表来源**
+- [TicketDetailComponents.tsx:1561-1586](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1561-L1586)
+- [TicketDetailComponents.tsx:1685-1757](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1685-L1757)
+
 **章节来源**
 - [TicketDetailComponents.tsx:307-547](file://client/src/components/Workspace/TicketDetailComponents.tsx#L307-L547)
 - [uiux.md:5](file://.agent/workflows/uiux.md#L5)
@@ -911,6 +1110,15 @@ Page-->>Page : 渲染完整界面
 - **缓存策略**：缩略图和预览内容使用浏览器缓存机制
 - **智能布局**：根据附件数量动态调整网格布局，优化显示效果
 
+### 工单创建活动优化
+
+**新增** 工单创建活动的性能优化：
+
+- **延迟加载**：创建活动详情在需要时才加载
+- **智能缓存**：创建活动元数据使用智能缓存机制
+- **批量处理**：多个创建活动的更正请求支持批量处理
+- **增量更新**：只更新被修改的工单字段，减少数据库压力
+
 **章节来源**
 - [useCachedTickets.ts:80-102](file://client/src/hooks/useCachedTickets.ts#L80-L102)
 - [UnifiedTicketDetail.tsx:369-392](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L369-L392)
@@ -948,6 +1156,7 @@ Redirect --> Request
 2. **审计日志**：详细记录所有操作历史
 3. **性能指标**：监控API响应时间和渲染性能
 4. **错误追踪**：捕获和报告前端JavaScript错误
+5. **工单创建活动追踪**：监控创建活动的修正历史和权限验证
 
 **章节来源**
 - [UnifiedTicketDetail.tsx:619-644](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L619-L644)
@@ -973,8 +1182,17 @@ Redirect --> Request
 - **查询优化**：高效的附件查询机制提升系统性能
 - **UI/UX改进**：采用macOS26设计风格，优化了时间轴分类和侧滑窗口布局
 - **性能优化**：智能缓存和并行数据获取机制提升用户体验
+- **工单创建活动详情增强**：支持对工单创建活动的更正和编辑
+- **修正功能增强**：支持复杂活动类型的更正请求，包括维修报告、诊断报告和工单创建活动
 
-该系统为Longhorn项目提供了强大的工单管理能力，能够满足复杂业务场景下的工单处理需求。通过持续的优化和扩展，系统将继续为用户提供更好的服务体验。新增的附件管理功能进一步提升了系统的实用性和用户体验，为工单管理提供了更加完善的解决方案。
+**新增功能亮点**：
+- **工单创建活动识别**：系统能够准确识别和处理工单创建活动
+- **特殊权限控制**：为工单创建活动提供专门的权限验证机制
+- **复杂活动更正**：支持通过完整编辑器进行复杂活动类型的更正
+- **历史数据修复**：包含专门的修复脚本处理历史数据中的创建活动问题
+- **增强的UI体验**：为工单创建活动提供专门的详情展示和更正界面
+
+该系统为Longhorn项目提供了强大的工单管理能力，能够满足复杂业务场景下的工单处理需求。通过持续的优化和扩展，系统将继续为用户提供更好的服务体验。新增的附件管理功能和工单创建活动详情增强功能进一步提升了系统的实用性和用户体验，为工单管理提供了更加完善的解决方案。
 
 **更新亮点**：
 - **完整的附件管理系统**：实现了完整的附件生命周期管理，包括显示、预览和下载
@@ -986,3 +1204,5 @@ Redirect --> Request
 - **查询优化**：高效的附件查询机制提升系统性能
 - **UI/UX改进**：采用macOS26设计风格，优化了时间轴分类和侧滑窗口布局
 - **性能优化**：智能缓存和并行数据获取机制提升用户体验
+- **工单创建活动详情增强**：支持对工单创建活动的更正和编辑
+- **修正功能增强**：支持复杂活动类型的更正请求，包括维修报告、诊断报告和工单创建活动

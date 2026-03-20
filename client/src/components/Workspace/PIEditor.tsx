@@ -18,6 +18,7 @@ interface PIEditorProps {
 
 interface PIItem {
     id: string;
+    part_id?: number;       // 关联 parts_master.id
     description: string;
     quantity: number;
     unit_price: number;
@@ -271,6 +272,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                 reportContent.repair_process.parts_replaced.forEach((part: any) => {
                                     newItems.push({
                                         id: `part-${part.id || Date.now() + Math.random()}`,
+                                        part_id: part.part_id,  // 关联 parts_master.id
                                         description: part.part_number ? `${part.name} (${part.part_number})` : part.name,
                                         quantity: part.quantity || 1,
                                         unit_price: part.unit_price || 0,

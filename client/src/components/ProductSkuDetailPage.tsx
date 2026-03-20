@@ -7,6 +7,7 @@ import {
     Edit2, ChevronDown, ChevronUp, AlertCircle, Box,
     X, Save, Plus, MoreHorizontal, Trash2, Power
 } from 'lucide-react';
+import ConfirmModal from './Service/ConfirmModal';
 
 interface ProductSku {
     id: number;
@@ -49,6 +50,12 @@ const ProductSkuDetailPage: React.FC = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
     const moreMenuRef = useRef<HTMLDivElement>(null);
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        type: 'deactivate' | 'delete' | null;
+        reason: string;
+        loading: boolean;
+    }>({ isOpen: false, type: null, reason: '', loading: false });
 
     const fetchSkuDetail = async () => {
         if (!id || !token) return;
@@ -277,18 +284,14 @@ const ProductSkuDetailPage: React.FC = () => {
                                             <Edit2 size={16} color="#FFD700" /> 编辑
                                         </button>
                                         <button
-                                            onClick={async () => {
+                                            onClick={() => {
                                                 setIsMoreMenuOpen(false);
-                                                if (!confirm(`确定要${sku.is_active ? '下架' : '上架'}此SKU吗？`)) return;
-                                                try {
-                                                    await axios.put(`/api/v1/admin/product-skus/${sku.id}`, {
-                                                        ...sku,
-                                                        is_active: !sku.is_active
-                                                    }, { headers: { Authorization: `Bearer ${token}` } });
-                                                    fetchSkuDetail();
-                                                } catch (err: any) {
-                                                    alert(err.response?.data?.error?.message || '操作失败');
-                                                }
+                                                setConfirmModal({
+                                                    isOpen: true,
+                                                    type: 'deactivate',
+                                                    reason: '',
+                                                    loading: false
+                                                });
                                             }}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: 10,
@@ -301,21 +304,18 @@ const ProductSkuDetailPage: React.FC = () => {
                                         </button>
                                         <div style={{ height: 1, background: 'var(--glass-border)', margin: '4px 0' }} />
                                         <button
-                                            onClick={async () => {
+                                            onClick={() => {
                                                 setIsMoreMenuOpen(false);
                                                 if (sku.instance_count > 0) {
                                                     alert('此SKU有关联的设备实例，无法删除');
                                                     return;
                                                 }
-                                                if (!confirm(`确定要删除SKU "${sku.display_name}" 吗？此操作不可撤销。`)) return;
-                                                try {
-                                                    await axios.delete(`/api/v1/admin/product-skus/${sku.id}`, {
-                                                        headers: { Authorization: `Bearer ${token}` }
-                                                    });
-                                                    navigate('/service/product-skus');
-                                                } catch (err: any) {
-                                                    alert(err.response?.data?.error?.message || '删除失败');
-                                                }
+                                                setConfirmModal({
+                                                    isOpen: true,
+                                                    type: 'delete',
+                                                    reason: '',
+                                                    loading: false
+                                                });
                                             }}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: 10,
@@ -823,6 +823,72 @@ const ProductSkuDetailPage: React.FC = () => {
                         </div>
                     </div>
                 </>
+            )}
+
+            {/* Confirm Modal */}
+            {confirmModal.isOpen && sku && (
+                <ConfirmModal
+                    title={confirmModal.type === 'delete' ? '确认删除SKU' : `确认${sku.is_active ? '下架' : '上架'}SKU`}
+                    message={
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <p>
+                                {confirmModal.type === 'delete'
+                                    ? `确定要删除SKU "${sku.display_name}" 吗？此操作不可撤销。`
+                                    : `确定要${sku.is_active ? '下架' : '上架'}SKU "${sku.display_name}" 吗？`
+                                }
+                            </p>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                    {confirmModal.type === 'delete' ? '删除原因 *' : `${sku.is_active ? '下架' : '上架'}原因 *`}
+                                </label>
+                                <textarea
+                                    value={confirmModal.reason}
+                                    onChange={e => setConfirmModal(prev => ({ ...prev, reason: e.target.value }))}
+                                    placeholder={`请输入${confirmModal.type === 'delete' ? '删除' : (sku.is_active ? '下架' : '上架')}原因...`}
+                                    rows={3}
+                                    style={{
+                                        width: '100%', padding: '8px 12px', borderRadius: 6,
+                                        border: '1px solid var(--glass-border)', background: 'var(--glass-bg-hover)',
+                                        color: 'var(--text-main)', fontSize: '0.9rem', resize: 'none'
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    }
+                    confirmText={confirmModal.type === 'delete' ? '确认删除' : '确认'}
+                    cancelText="取消"
+                    isDanger={true}
+                    countdown={5}
+                    loading={confirmModal.loading}
+                    onConfirm={async () => {
+                        if (!confirmModal.reason.trim()) {
+                            alert(`请输入${confirmModal.type === 'delete' ? '删除' : (sku.is_active ? '下架' : '上架')}原因`);
+                            return;
+                        }
+                        setConfirmModal(prev => ({ ...prev, loading: true }));
+                        try {
+                            if (confirmModal.type === 'delete') {
+                                await axios.delete(`/api/v1/admin/product-skus/${sku.id}`, {
+                                    headers: { Authorization: `Bearer ${token}` },
+                                    data: { reason: confirmModal.reason }
+                                });
+                                navigate('/service/product-skus');
+                            } else {
+                                await axios.put(`/api/v1/admin/product-skus/${sku.id}`, {
+                                    ...sku,
+                                    is_active: !sku.is_active,
+                                    reason: confirmModal.reason
+                                }, { headers: { Authorization: `Bearer ${token}` } });
+                                fetchSkuDetail();
+                            }
+                            setConfirmModal({ isOpen: false, type: null, reason: '', loading: false });
+                        } catch (err: any) {
+                            alert(err.response?.data?.error?.message || '操作失败');
+                            setConfirmModal(prev => ({ ...prev, loading: false }));
+                        }
+                    }}
+                    onCancel={() => setConfirmModal({ isOpen: false, type: null, reason: '', loading: false })}
+                />
             )}
         </div>
     );

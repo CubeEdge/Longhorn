@@ -1,8 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Truck, FileText, AlertTriangle, Save, ArrowRight, BadgeDollarSign, Edit3, ChevronRight, Package, Clock, Eye } from 'lucide-react';
+import { X, CheckCircle, Truck, FileText, AlertTriangle, Save, ArrowRight, BadgeDollarSign, Edit3, ChevronRight, Package, Clock, Eye, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 import { CustomDatePicker } from '../UI/CustomDatePicker';
+
+// 配件消耗记录类型
+interface PartConsumption {
+    id: number;
+    part_id: number;
+    part_sku: string;
+    part_name: string;
+    part_category: string;
+    quantity: number;
+    unit_price_cny: number;
+    total_price_cny: number;
+    source_type: 'hq_inventory' | 'dealer_inventory' | 'external_purchase' | 'warranty_free';
+    dealer_name?: string;
+    settlement_status: string;
+    created_at: string;
+}
+
+const sourceTypeLabels: Record<string, { label: string; color: string; icon: string }> = {
+    hq_inventory: { label: '总部库存', color: '#3B82F6', icon: '🏢' },
+    dealer_inventory: { label: '经销商库存', color: '#10B981', icon: '🤝' },
+    external_purchase: { label: '外部采购', color: '#FFD200', icon: '🛒' },
+    warranty_free: { label: '保修免费', color: '#8B5CF6', icon: '🎁' }
+};
 
 interface ClosingHandoverModalProps {
     isOpen: boolean;
@@ -17,7 +40,7 @@ interface ClosingHandoverModalProps {
 export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOpen, onClose, ticket, onSuccess, onOpenRepairReport, onOpenPI, refreshTrigger }) => {
     const { token } = useAuthStore();
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'docs' | 'payment' | 'logistics'>('docs');
+    const [activeTab, setActiveTab] = useState<'docs' | 'payment' | 'parts' | 'logistics'>('docs');
     // 默认发货日期为明天
     const getDefaultShippingDate = () => {
         const tomorrow = new Date();
@@ -52,6 +75,10 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
         hasDraftReport?: boolean; // 是否有草稿报告
     }>({ reportPublished: false, piPublished: false });
     const [loadingDocs, setLoadingDocs] = useState(true);
+
+    // 配件消耗记录状态
+    const [partsConsumptions, setPartsConsumptions] = useState<PartConsumption[]>([]);
+    const [loadingParts, setLoadingParts] = useState(false);
 
     // Initialize from existing final_settlement if available
     useEffect(() => {
@@ -121,6 +148,28 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
         fetchDocs();
     }, [isOpen, ticket.id, token, refreshTrigger]);
 
+    // 加载配件消耗记录
+    useEffect(() => {
+        if (!isOpen) return;
+        const fetchPartsConsumption = async () => {
+            setLoadingParts(true);
+            try {
+                const res = await axios.get(`/api/v1/parts-consumption`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    params: { ticket_id: ticket.id, page_size: 100 }
+                });
+                if (res.data?.success) {
+                    setPartsConsumptions(res.data.data || []);
+                }
+            } catch (err) {
+                console.error('Failed to fetch parts consumption', err);
+            } finally {
+                setLoadingParts(false);
+            }
+        };
+        fetchPartsConsumption();
+    }, [isOpen, ticket.id, token, refreshTrigger]);
+
     if (!isOpen) return null;
 
     // 检测是否为更正模式（工单已经不在 ms_closing 节点）
@@ -188,6 +237,7 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
     const tabs = [
         { id: 'docs', label: '文档检查', icon: <FileText size={16} />, warning: !docsSatisfied },
         { id: 'payment', label: '款项确认', icon: <BadgeDollarSign size={16} />, warning: isPaidTicket && !formData.payment_confirmed },
+        { id: 'parts', label: '配件汇总', icon: <Package size={16} />, warning: false },
         { id: 'logistics', label: '发货指令', icon: <Truck size={16} />, warning: false }
     ];
 
@@ -370,6 +420,107 @@ export const ClosingHandoverModal: React.FC<ClosingHandoverModalProps> = ({ isOp
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#10B981', fontSize: 15, padding: 32, background: 'rgba(16,185,129,0.05)', borderRadius: 12, border: '1px dashed rgba(16,185,129,0.2)' }}>
                                     <CheckCircle size={24} /> 免费单据，无需确认收款
                                 </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'parts' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, animation: 'fadeIn 0.2s ease-out' }}>
+                            <div style={{ fontSize: 14, color: '#aaa', marginBottom: 8 }}>本工单的配件使用情况汇总，数据来源于维修报告。</div>
+
+                            {loadingParts ? (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 40, color: '#888' }}>
+                                    <Loader2 size={20} className="animate-spin" />
+                                    <span>正在加载配件数据...</span>
+                                </div>
+                            ) : partsConsumptions.length === 0 ? (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, color: '#888', fontSize: 14, padding: 40, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px dashed rgba(255,255,255,0.1)' }}>
+                                    <Package size={24} style={{ opacity: 0.5 }} />
+                                    <span>本工单暂无配件使用记录</span>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* 汇总统计 */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                        <div style={{ padding: 16, background: 'rgba(255,210,0,0.05)', borderRadius: 12, border: '1px solid rgba(255,210,0,0.1)' }}>
+                                            <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>使用配件数</div>
+                                            <div style={{ fontSize: 28, fontWeight: 600, color: '#FFD200' }}>
+                                                {partsConsumptions.reduce((sum, p) => sum + p.quantity, 0)} <span style={{ fontSize: 14, fontWeight: 400 }}>件</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ padding: 16, background: 'rgba(16,185,129,0.05)', borderRadius: 12, border: '1px solid rgba(16,185,129,0.1)' }}>
+                                            <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>配件总金额</div>
+                                            <div style={{ fontSize: 28, fontWeight: 600, color: '#10B981' }}>
+                                                ¥{partsConsumptions.reduce((sum, p) => sum + (p.total_price_cny || 0), 0).toLocaleString()}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 配件明细列表 */}
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                                        <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 13, fontWeight: 500, color: '#fff' }}>
+                                            配件明细
+                                        </div>
+                                        <div style={{ maxHeight: 200, overflow: 'auto' }}>
+                                            {partsConsumptions.map((part, idx) => (
+                                                <div key={part.id} style={{ padding: '12px 16px', borderBottom: idx < partsConsumptions.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                    <div style={{ flex: 1 }}>
+                                                        <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>{part.part_name}</div>
+                                                        <div style={{ fontSize: 11, color: '#888', marginTop: 2, fontFamily: 'monospace' }}>{part.part_sku}</div>
+                                                    </div>
+                                                    <div style={{ textAlign: 'center', minWidth: 50 }}>
+                                                        <div style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>x{part.quantity}</div>
+                                                    </div>
+                                                    <div style={{ textAlign: 'right', minWidth: 80 }}>
+                                                        <div style={{ fontSize: 14, color: '#10B981', fontWeight: 500 }}>¥{(part.total_price_cny || 0).toLocaleString()}</div>
+                                                    </div>
+                                                    <div style={{ minWidth: 90 }}>
+                                                        <span style={{ 
+                                                            fontSize: 11, 
+                                                            padding: '3px 8px', 
+                                                            borderRadius: 4, 
+                                                            background: `${sourceTypeLabels[part.source_type]?.color || '#888'}20`,
+                                                            color: sourceTypeLabels[part.source_type]?.color || '#888'
+                                                        }}>
+                                                            {sourceTypeLabels[part.source_type]?.icon} {sourceTypeLabels[part.source_type]?.label || part.source_type}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* 来源统计 */}
+                                    <div style={{ padding: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)' }}>
+                                        <div style={{ fontSize: 12, color: '#888', marginBottom: 10 }}>来源统计</div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                                            {Object.entries(
+                                                partsConsumptions.reduce((acc, p) => {
+                                                    const key = p.source_type || 'unknown';
+                                                    if (!acc[key]) acc[key] = { count: 0, amount: 0 };
+                                                    acc[key].count += p.quantity;
+                                                    acc[key].amount += p.total_price_cny || 0;
+                                                    return acc;
+                                                }, {} as Record<string, { count: number; amount: number }>)
+                                            ).map(([type, stats]) => (
+                                                <div key={type} style={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: 8, 
+                                                    padding: '8px 12px', 
+                                                    background: `${sourceTypeLabels[type]?.color || '#888'}10`,
+                                                    borderRadius: 8,
+                                                    border: `1px solid ${sourceTypeLabels[type]?.color || '#888'}30`
+                                                }}>
+                                                    <span style={{ fontSize: 16 }}>{sourceTypeLabels[type]?.icon}</span>
+                                                    <span style={{ fontSize: 13, color: sourceTypeLabels[type]?.color || '#888' }}>
+                                                        {sourceTypeLabels[type]?.label || type}: {stats.count}件 ¥{stats.amount.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
                     )}

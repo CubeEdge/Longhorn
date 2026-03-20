@@ -6,16 +6,17 @@
  * 深色/浅色模式兼容：全部使用 CSS 变量。
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
     ArrowLeft, Package, Edit2, AlertCircle,
-    Loader2, Layers, DollarSign
+    Loader2, Layers, DollarSign, MoreHorizontal, Trash2, Power
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useLanguage } from '../../i18n/useLanguage';
 import PartsEditModal from './PartsEditModal';
+import ConfirmModal from '../Service/ConfirmModal';
 
 const FAMILY_LABELS: Record<string, { label: string; color: string }> = {
     'A': { label: '在售电影机', color: 'rgba(59,130,246,0.15)' },
@@ -71,6 +72,16 @@ const PartsDetailPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [allModels, setAllModels] = useState<any[]>([]);
+    const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+    const moreMenuRef = useRef<HTMLDivElement>(null);
+
+    // 确认弹窗状态
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        type: 'deactivate' | 'delete' | null;
+        reason: string;
+        loading: boolean;
+    }>({ isOpen: false, type: null, reason: '', loading: false });
 
     const isAdmin = ['Admin', 'Lead', 'Exec'].includes(user?.role || '');
     const isOP = user?.department_code === 'OP';
@@ -99,6 +110,41 @@ const PartsDetailPage: React.FC = () => {
         setLoading(true);
         fetchPart();
     }, [id, token]);
+
+    // 处理确认操作
+    const handleConfirmAction = async () => {
+        if (!part || !confirmModal.type) return;
+        
+        // 检查是否填写了原因
+        if (!confirmModal.reason.trim()) {
+            alert('请填写操作原因');
+            return;
+        }
+        
+        setConfirmModal(prev => ({ ...prev, loading: true }));
+        
+        try {
+            if (confirmModal.type === 'deactivate') {
+                await axios.patch(`/api/v1/parts-master/${part.id}`, {
+                    status: part.status === 'active' ? 'discontinued' : 'active',
+                    reason: confirmModal.reason
+                }, { headers: { Authorization: `Bearer ${token}` } });
+            } else if (confirmModal.type === 'delete') {
+                await axios.delete(`/api/v1/parts-master/${part.id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                    data: { reason: confirmModal.reason }
+                });
+                navigate('/service/parts');
+                return;
+            }
+            
+            setConfirmModal({ isOpen: false, type: null, reason: '', loading: false });
+            fetchPart();
+        } catch (err: any) {
+            alert(err.response?.data?.error?.message || '操作失败');
+            setConfirmModal(prev => ({ ...prev, loading: false }));
+        }
+    };
 
     if (loading) {
         return (
@@ -152,7 +198,8 @@ const PartsDetailPage: React.FC = () => {
                             <span style={{
                                 padding: '2px 10px', borderRadius: 4,
                                 background: 'var(--glass-bg-hover)', fontSize: '0.8rem',
-                                color: 'var(--text-secondary)', fontFamily: 'monospace'
+                                color: 'var(--text-secondary)', fontFamily: 'monospace',
+                                fontVariantNumeric: 'tabular-nums', letterSpacing: '0.02em'
                             }}>
                                 {part.sku}
                             </span>
@@ -176,10 +223,89 @@ const PartsDetailPage: React.FC = () => {
                     </div>
                 </div>
                 {isAdmin && (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn-kine-lowkey" onClick={() => setIsModalOpen(true)}>
-                            <Edit2 size={16} /> 编辑
+                    <div style={{ position: 'relative' }} ref={moreMenuRef}>
+                        <button
+                            onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                            style={{
+                                width: 36, height: 36, borderRadius: '50%',
+                                background: 'var(--glass-bg-hover)', border: '1px solid var(--glass-border)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer', color: 'var(--text-secondary)',
+                                transition: 'all 0.15s'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--text-secondary)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+                        >
+                            <MoreHorizontal size={20} />
                         </button>
+                        {isMoreMenuOpen && (
+                            <>
+                                <div
+                                    style={{ position: 'fixed', inset: 0, zIndex: 99 }}
+                                    onClick={() => setIsMoreMenuOpen(false)}
+                                />
+                                <div style={{
+                                    position: 'absolute', top: '100%', right: 0, marginTop: 8,
+                                    background: 'var(--bg-sidebar)', border: '1px solid var(--glass-border)',
+                                    borderRadius: 12, padding: '8px 0', minWidth: 160, zIndex: 100,
+                                    boxShadow: '0 8px 32px var(--glass-shadow)'
+                                }}>
+                                    <button
+                                        onClick={() => {
+                                            setIsMoreMenuOpen(false);
+                                            setIsModalOpen(true);
+                                        }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 10,
+                                            width: '100%', padding: '10px 16px', background: 'transparent',
+                                            border: 'none', color: 'var(--text-main)', fontSize: '0.9rem',
+                                            cursor: 'pointer', textAlign: 'left'
+                                        }}
+                                    >
+                                        <Edit2 size={16} color="#FFD700" /> 编辑
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsMoreMenuOpen(false);
+                                            setConfirmModal({ 
+                                                isOpen: true, 
+                                                type: 'deactivate', 
+                                                reason: '', 
+                                                loading: false 
+                                            });
+                                        }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 10,
+                                            width: '100%', padding: '10px 16px', background: 'transparent',
+                                            border: 'none', color: part.status === 'active' ? '#EF4444' : '#10B981', fontSize: '0.9rem',
+                                            cursor: 'pointer', textAlign: 'left'
+                                        }}
+                                    >
+                                        <Power size={16} /> {part.status === 'active' ? '停用' : '启用'}
+                                    </button>
+                                    <div style={{ height: 1, background: 'var(--glass-border)', margin: '4px 0' }} />
+                                    <button
+                                        onClick={() => {
+                                            setIsMoreMenuOpen(false);
+                                            setConfirmModal({ 
+                                                isOpen: true, 
+                                                type: 'delete', 
+                                                reason: '', 
+                                                loading: false 
+                                            });
+                                        }}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 10,
+                                            width: '100%', padding: '10px 16px', background: 'transparent',
+                                            border: 'none', color: '#EF4444', fontSize: '0.9rem',
+                                            cursor: 'pointer', textAlign: 'left'
+                                        }}
+                                    >
+                                        <Trash2 size={16} /> 删除
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
             </div>
@@ -325,6 +451,52 @@ const PartsDetailPage: React.FC = () => {
                 onClose={() => setIsModalOpen(false)}
                 onSaved={fetchPart}
             />
+
+            {/* 确认弹窗 - 停用/删除 */}
+            {confirmModal.isOpen && (
+                <ConfirmModal
+                    title={confirmModal.type === 'delete' ? '确认删除配件' : `确认${part?.status === 'active' ? '停用' : '启用'}配件`}
+                    message={
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <p>
+                                {confirmModal.type === 'delete' 
+                                    ? `您确定要删除配件 "${part?.name}" 吗？此操作不可撤销。`
+                                    : `您确定要${part?.status === 'active' ? '停用' : '启用'}配件 "${part?.name}" 吗？`
+                                }
+                            </p>
+                            <div>
+                                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                                    {confirmModal.type === 'delete' ? '删除原因 *' : '操作原因 *'}
+                                </label>
+                                <textarea
+                                    value={confirmModal.reason}
+                                    onChange={e => setConfirmModal(prev => ({ ...prev, reason: e.target.value }))}
+                                    placeholder="请输入原因..."
+                                    rows={3}
+                                    style={{
+                                        width: '100%', padding: 10, background: 'var(--glass-bg-light)',
+                                        border: `1px solid ${!confirmModal.reason.trim() ? '#EF4444' : 'var(--glass-border)'}`,
+                                        borderRadius: 6, color: 'var(--text-main)', fontSize: 13, resize: 'none'
+                                    }}
+                                />
+                                {!confirmModal.reason.trim() && (
+                                    <span style={{ fontSize: 11, color: '#EF4444', marginTop: 4, display: 'block' }}>
+                                        必须填写原因才能继续
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    }
+                    confirmText={confirmModal.type === 'delete' ? '删除' : part?.status === 'active' ? '停用' : '启用'}
+                    cancelText="取消"
+                    isDanger={true}
+                    countdown={5}
+                    onConfirm={handleConfirmAction}
+                    onCancel={() => setConfirmModal({ isOpen: false, type: null, reason: '', loading: false })}
+                    loading={confirmModal.loading}
+                    showCancel={true}
+                />
+            )}
         </div>
     );
 };
@@ -349,7 +521,7 @@ const PriceTag: React.FC<{ currency: string; symbol: string; value?: number }> =
         textAlign: 'center'
     }}>
         <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', marginBottom: 4 }}>{currency}</div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>
+        <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
             {value ? `${symbol}${value.toLocaleString()}` : '—'}
         </div>
     </div>

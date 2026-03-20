@@ -470,7 +470,7 @@ const PartsCatalogPage: React.FC = () => {
                                 >
                                     {/* SKU */}
                                     <td style={{ padding: 16 }}>
-                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace' }}>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
                                             {part.sku}
                                         </div>
                                     </td>
@@ -535,7 +535,7 @@ const PartsCatalogPage: React.FC = () => {
                                     {/* Price USD */}
                                     {!isOP && (
                                         <td style={{ padding: 16, textAlign: 'right' }}>
-                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>
+                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace' }}>
                                                 {part.price_usd ? `$${part.price_usd.toLocaleString()}` : '—'}
                                             </div>
                                         </td>

@@ -152,12 +152,36 @@ module.exports = function (db, authenticate) {
                 }
             }
 
+            // 获取最新的诊断报告数据
+            let diagnosticReport = null;
+            try {
+                const diagnosticActivity = db.prepare(`
+                    SELECT metadata FROM ticket_activities
+                    WHERE ticket_id = ? AND activity_type = 'diagnostic_report'
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                `).get(ticketId);
+                
+                if (diagnosticActivity && diagnosticActivity.metadata) {
+                    const metadata = JSON.parse(diagnosticActivity.metadata);
+                    if (metadata.estimated_parts || metadata.estimated_labor_hours) {
+                        diagnosticReport = {
+                            estimated_parts: metadata.estimated_parts || [],
+                            estimated_labor_hours: metadata.estimated_labor_hours || 0
+                        };
+                    }
+                }
+            } catch (e) {
+                console.error('[Warranty] Failed to fetch diagnostic report:', e);
+            }
+
             res.json({
                 success: true,
                 data: {
                     technical_damage_status: ticket.technical_damage_status,
                     technical_warranty_suggestion: ticket.technical_warranty_suggestion,
-                    warranty_calculation: warrantyCalculation
+                    warranty_calculation: warrantyCalculation,
+                    diagnostic_report: diagnosticReport
                 }
             });
 

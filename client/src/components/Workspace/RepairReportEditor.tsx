@@ -6,6 +6,8 @@ import { useToast } from '../../store/useToast';
 import { exportToPDF } from '../../utils/pdfExport';
 import ConfirmModal from '../Service/ConfirmModal';
 import { CustomDatePicker } from '../UI/CustomDatePicker';
+import { PartsSelector } from './PartsSelector';
+import type { PartUsed } from './PartsSelector';
 
 interface RepairReportEditorProps {
     isOpen: boolean;
@@ -17,14 +19,9 @@ interface RepairReportEditorProps {
     onSuccess: () => void;
 }
 
-interface PartUsed {
-    id: string;
-    name: string;
-    part_number: string;
-    quantity: number;
-    unit_price: number;
-    status: 'new' | 'refurbished';
-}
+// PartUsed interface is imported from PartsSelector
+// Re-export for backward compatibility
+export type { PartUsed } from './PartsSelector';
 
 interface LaborCharge {
     description: string;
@@ -725,48 +722,6 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         });
     };
 
-    const addArrayItem = (path: string, defaultValue: any) => {
-        setReportData((prev: ReportData) => {
-            const newContent = { ...prev.content };
-            const keys = path.split('.');
-            let target: any = newContent;
-            for (let i = 0; i < keys.length - 1; i++) {
-                target = target[keys[i]];
-            }
-            const array = target[keys[keys.length - 1]];
-            target[keys[keys.length - 1]] = [...array, defaultValue];
-            return { ...prev, content: newContent };
-        });
-    };
-
-    const removeArrayItem = (path: string, index: number) => {
-        setReportData((prev: ReportData) => {
-            const newContent = { ...prev.content };
-            const keys = path.split('.');
-            let target: any = newContent;
-            for (let i = 0; i < keys.length - 1; i++) {
-                target = target[keys[i]];
-            }
-            const array = target[keys[keys.length - 1]];
-            target[keys[keys.length - 1]] = array.filter((_: any, i: number) => i !== index);
-            return { ...prev, content: newContent };
-        });
-    };
-
-    const updateArrayItem = (path: string, index: number, value: any) => {
-        setReportData((prev: ReportData) => {
-            const newContent = { ...prev.content };
-            const keys = path.split('.');
-            let target: any = newContent;
-            for (let i = 0; i < keys.length - 1; i++) {
-                target = target[keys[i]];
-            }
-            const array = target[keys[keys.length - 1]];
-            target[keys[keys.length - 1]] = array.map((item: any, i: number) => i === index ? value : item);
-            return { ...prev, content: newContent };
-        });
-    };
-
     const calculateTotals = useCallback(() => {
         const partsTotal = reportData.content.repair_process.parts_replaced.reduce(
             (sum: number, part: PartUsed) => sum + (part.quantity * (part.unit_price || 0)), 0
@@ -1399,91 +1354,22 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 <>
                                     {/* Fee Details - Unified Section */}
                                     <Section title="费用明细" icon={<DollarSign size={16} />}>
-                                        {/* Parts Sub-section */}
+                                        {/* Parts Sub-section - Using PartsSelector */}
                                         <FeeSubSection 
                                             title="更换零件" 
                                             icon={<Package size={14} />}
                                             subtotal={reportData.parts_total}
                                             defaultOpen={true}
                                         >
-                                            {canEdit && (
-                                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-                                                    <button
-                                                        onClick={() => addArrayItem('repair_process.parts_replaced', { id: Date.now().toString(), name: '', part_number: '', quantity: 1, unit_price: 0, status: 'new' })}
-                                                        style={{ padding: '4px 12px', background: '#3B82F6', border: 'none', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                                                    >
-                                                        <Plus size={14} /> 添加零件
-                                                    </button>
-                                                </div>
-                                            )}
-                                            {reportData.content.repair_process.parts_replaced.length > 0 && (
-                                                <div style={{ display: 'flex', gap: 8, marginBottom: 8, padding: '8px 12px', background: 'var(--glass-bg-light)', borderRadius: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
-                                                    <span style={{ flex: 1 }}>零件名称</span>
-                                                    <span style={{ width: 100 }}>零件号</span>
-                                                    <span style={{ width: 50, textAlign: 'center' }}>数量</span>
-                                                    <span style={{ width: 80, textAlign: 'right' }}>单价</span>
-                                                    <span style={{ width: 70 }}>状态</span>
-                                                    <span style={{ width: 80, textAlign: 'right' }}>小计</span>
-                                                    {canEdit && <span style={{ width: 36 }}></span>}
-                                                </div>
-                                            )}
-                                            {reportData.content.repair_process.parts_replaced.map((part: PartUsed, index: number) => (
-                                                <div key={part.id} style={{ display: 'flex', gap: 8, marginBottom: 8, padding: 10, background: 'rgba(255,255,255,0.03)', borderRadius: 6, alignItems: 'center' }}>
-                                                    <input
-                                                        type="text"
-                                                        value={part.name}
-                                                        onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, name: e.target.value })}
-                                                        placeholder="零件名称"
-                                                        disabled={!canEdit}
-                                                        style={{ flex: 1, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        value={part.part_number}
-                                                        onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, part_number: e.target.value })}
-                                                        placeholder="零件号"
-                                                        disabled={!canEdit}
-                                                        style={{ width: 100, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
-                                                    />
-                                                    <input
-                                                        type="number"
-                                                        value={part.quantity}
-                                                        onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, quantity: parseInt(e.target.value) || 1 })}
-                                                        disabled={!canEdit}
-                                                        min={1}
-                                                        style={{ width: 50, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'center' }}
-                                                    />
-                                                    <input
-                                                        type="number"
-                                                        value={part.unit_price || 0}
-                                                        onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, unit_price: parseFloat(e.target.value) || 0 })}
-                                                        disabled={!canEdit}
-                                                        min={0}
-                                                        step={0.01}
-                                                        style={{ width: 80, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
-                                                    />
-                                                    <select
-                                                        value={part.status}
-                                                        onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, status: e.target.value as 'new' | 'refurbished' })}
-                                                        disabled={!canEdit}
-                                                        style={{ width: 70, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12 }}
-                                                    >
-                                                        <option value="new">新件</option>
-                                                        <option value="refurbished">翻新</option>
-                                                    </select>
-                                                    <div style={{ width: 80, textAlign: 'right', color: 'var(--text-main)', fontWeight: 600, fontSize: 13 }}>
-                                                        ¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}
-                                                    </div>
-                                                    {canEdit && (
-                                                        <button onClick={() => removeArrayItem('repair_process.parts_replaced', index)} style={{ padding: 6, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
-                                                            <Trash2 size={14} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            ))}
-                                            {reportData.content.repair_process.parts_replaced.length === 0 && (
-                                                <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-tertiary)', fontSize: 13 }}>暂无零件费用</div>
-                                            )}
+                                            <PartsSelector
+                                                ticketId={ticketId}
+                                                productModel={ticketInfo?.product_name || reportData.content.device_info.product_name}
+                                                selectedParts={reportData.content.repair_process.parts_replaced}
+                                                onPartsChange={(parts) => updateContent('repair_process.parts_replaced', parts)}
+                                                canEdit={canEdit}
+                                                currency={reportData.currency}
+                                                isWarranty={ticketInfo?.warranty_status === 'in_warranty'}
+                                            />
                                         </FeeSubSection>
 
                                         {/* Labor Sub-section */}
