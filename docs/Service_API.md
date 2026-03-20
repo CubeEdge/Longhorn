@@ -12,6 +12,10 @@
 > - **附件查询优化**: 工单详情接口 `/api/v1/tickets/:id` 现在返回所有附件（包括关联到活动的附件），不再限制 `activity_id IS NULL`。
 > - **权限控制**: 附件上传/删除权限：Admin/Exec/MS Lead/工单提交者。
 >
+> **v0.9.9 更新 (2026-03-21)**：
+> - **配件兼容性重构**: `GET /api/v1/parts-master` 返回的 `compatible_models` 现在是基于关联表动态生成的虚字段。
+> - **配件关联管理**: `POST` / `PATCH` 配件接口支持通过 `compatible_models` (ID 数组) 维护与产品型号的多对多关系。
+>
 > **v0.9.7 更新 (2026-03-12)**：
 > - **产品保修注册**: 新增 `/api/v1/products/register-warranty` 端点，支持产品保修注册及基本信息同步更新。
 > - **产品台账管理**: 新增产品台账详情 `/api/v1/admin/products/{id}/detail` 和列表 `/api/v1/admin/products` 端点。
@@ -4464,5 +4468,64 @@ Success (200 OK) or Validation Error (400 if reason missing).
 ### 26.6 获取 PI PDF 预览
 
 **GET** `/api/v1/rma-documents/pi/:id/pdf`
+
+---
+
+## 27. 配件管理 API (Parts Management)
+
+> 用于管理配件主数据及其与产品型号的兼容性关联。
+> 基准路径: `/api/v1/parts-master`
+
+### 27.1 获取配件列表
+
+**GET** `/api/v1/parts-master`
+
+**查询参数**:
+- `page`: 页码 (默认 1)
+- `page_size`: 每页数量 (默认 20)
+- `category`: 分类筛选
+- `search`: 匹配 SKU 或名称
+- `compatible_model`: 过滤兼容特定机型 (支持机型名称或代码)
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "sku": "S1-011-013-01",
+      "name": "SDI模块",
+      "category": "接口",
+      "compatible_models": ["ME8K", "ME6K"], // 针对 UI 展示的虚字段
+      "model_associations": [ // 原始关联数据
+        { "model_id": 1, "model_code": "ME8K", "name_zh": "MAVO Edge 8K" }
+      ]
+    }
+  ]
+}
+```
+
+### 27.2 获取配件详情
+
+**GET** `/api/v1/parts-master/:id`
+
+### 27.3 创建配件
+
+**POST** `/api/v1/parts-master`
+
+**Request Body**:
+```json
+{
+  "sku": "S1-011-013-02",
+  "name": "新接口模块",
+  "category": "接口",
+  "compatible_models": [1, 2] // 产品型号 ID 数组，后端自动维护 product_model_parts 表
+}
+```
+
+### 27.4 更新配件
+
+**PATCH** `/api/v1/parts-master/:id`
 
 ---

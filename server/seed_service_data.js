@@ -200,8 +200,7 @@ try {
             name TEXT,
             category TEXT,
             price_usd REAL,
-            price_cny REAL,
-            compatible_models TEXT
+            price_cny REAL
         )
     `);
 } catch (e) { }

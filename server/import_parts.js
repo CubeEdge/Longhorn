@@ -51,7 +51,7 @@ for (let i = 1; i < lines.length; i++) {
     if (fields.length < 5) continue;
 
     const part = {
-        compatible_models_raw: fields[1],
+        // compatible_models_raw: fields[1], (Removed)
         sku: fields[2],
         material_id: fields[3],
         category: fields[4],
@@ -81,8 +81,8 @@ const transaction = db.transaction((data) => {
     const insertPart = db.prepare(`
         INSERT INTO parts_master (
             sku, name, name_en, name_internal, name_internal_en, category, material_id, 
-            compatible_models, status, created_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            status, created_by, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `);
 
     const insertPrice = db.prepare(`
@@ -102,11 +102,9 @@ const transaction = db.transaction((data) => {
 
     for (const p of data) {
         // 1. 插入主表
-        // 兼容机型处理成 JSON
-        const compatibleList = p.compatible_models_raw.split('/').map(s => s.trim());
         const info = insertPart.run(
             p.sku, p.name, p.name_en, p.name_internal, p.name_internal_en, 
-            p.category, p.material_id, JSON.stringify(compatibleList)
+            p.category, p.material_id
         );
         const partId = info.lastInsertRowid;
 

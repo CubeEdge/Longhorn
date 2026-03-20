@@ -69,9 +69,15 @@ module.exports = function(db, authenticate) {
                 conditions.push('EXISTS (SELECT 1 FROM product_model_parts pmp WHERE pmp.part_id = pm.id AND pmp.product_model_id = ?)');
                 params.push(parseInt(product_model_id));
             } else if (compatible_model) {
-                // 兼容性回退：使用文本匹配
-                conditions.push('pm.compatible_models LIKE ?');
-                params.push(`%${compatible_model}%`);
+                // 改为通过子查询匹配型号名称或代码
+                conditions.push(`EXISTS (
+                    SELECT 1 FROM product_model_parts pmp 
+                    JOIN product_models m ON pmp.product_model_id = m.id 
+                    WHERE pmp.part_id = pm.id 
+                    AND (m.name_zh LIKE ? OR m.name_en LIKE ? OR m.model_code LIKE ?)
+                )`);
+                const pattern = `%${compatible_model}%`;
+                params.push(pattern, pattern, pattern);
             }
 
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -87,7 +93,19 @@ module.exports = function(db, authenticate) {
                     pm.*,
                     sp.price_cny, sp.price_usd, sp.price_eur, sp.cost_cny,
                     u.display_name as created_by_name,
-                    u2.display_name as updated_by_name
+                    u2.display_name as updated_by_name,
+                    (
+                        SELECT json_group_array(json_object(
+                            'model_id', m.id,
+                            'name_zh', m.name_zh,
+                            'name_en', m.name_en,
+                            'model_code', m.model_code,
+                            'product_family', m.product_family
+                        ))
+                        FROM product_model_parts pmp
+                        JOIN product_models m ON pmp.product_model_id = m.id
+                        WHERE pmp.part_id = pm.id
+                    ) as model_associations
                 FROM parts_master pm
                 LEFT JOIN sku_prices sp ON pm.sku = sp.sku
                 LEFT JOIN users u ON pm.created_by = u.id
@@ -101,10 +119,14 @@ module.exports = function(db, authenticate) {
 
             // 解析JSON字段
             const parsedData = data.map(item => {
+                const associations = item.model_associations ? JSON.parse(item.model_associations) : [];
+                const compatible_models = associations.map(m => m.model_code || m.name_zh);
+                
                 const mapped = {
                     ...item,
                     specifications: item.specifications ? JSON.parse(item.specifications) : null,
-                    compatible_models: item.compatible_models ? JSON.parse(item.compatible_models) : []
+                    compatible_models: compatible_models, // Replace with dynamic data
+                    model_associations: associations
                 };
                 if (req.user.department_name === 'OP') {
                     delete mapped.price_cny;
@@ -177,7 +199,7 @@ module.exports = function(db, authenticate) {
             const responseData = {
                 ...part,
                 specifications: part.specifications ? JSON.parse(part.specifications) : null,
-                compatible_models: part.compatible_models ? JSON.parse(part.compatible_models) : [],
+                compatible_models: compatibleModels.map(m => m.model_code || m.model_name),
                 model_bom: compatibleModels
             };
 
@@ -251,9 +273,9 @@ module.exports = function(db, authenticate) {
             const insertPart = db.prepare(`
                 INSERT INTO parts_master (
                     sku, name, name_en, name_internal, name_internal_en, category, material_id, description, specifications,
-                    compatible_models, min_stock_level, reorder_point,
+                    min_stock_level, reorder_point,
                     created_by, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             `);
 
             const insertPrice = db.prepare(`
@@ -268,7 +290,6 @@ module.exports = function(db, authenticate) {
                 const result = insertPart.run(
                     sku, name, name_en || null, name, name_en || null, category, material_id || null, description || null,
                     specifications ? JSON.stringify(specifications) : null,
-                    '[]', // Initially empty, will update below
                     min_stock_level || 5, reorder_point || 10,
                     req.user.id
                 );
@@ -283,8 +304,8 @@ module.exports = function(db, authenticate) {
                 );
 
                 // 处理机型关联
+                // 处理机型关联
                 if (Array.isArray(compatible_models) && compatible_models.length > 0) {
-                    const modelInfos = [];
                     const insertJoin = db.prepare(`
                         INSERT INTO product_model_parts (product_model_id, product_model_name, part_id, part_sku, part_name)
                         VALUES (?, ?, ?, ?, ?)
@@ -294,15 +315,8 @@ module.exports = function(db, authenticate) {
                         const m = db.prepare('SELECT id, name_zh, model_code FROM product_models WHERE id = ?').get(modelId);
                         if (m) {
                             insertJoin.run(m.id, m.name_zh, lastInsertRowid, sku, name);
-                            modelInfos.push(m.model_code || m.name_zh);
                         }
                     }
-
-                    // 更新冗余字段用于搜索
-                    db.prepare('UPDATE parts_master SET compatible_models = ? WHERE id = ?').run(
-                        JSON.stringify(modelInfos),
-                        lastInsertRowid
-                    );
                 }
             })();
 
@@ -413,15 +427,8 @@ module.exports = function(db, authenticate) {
                         const m = db.prepare('SELECT id, name_zh, model_code FROM product_models WHERE id = ?').get(modelId);
                         if (m) {
                             insertJoin.run(m.id, m.name_zh, req.params.id, part.sku, part.name);
-                            modelInfos.push(m.model_code || m.name_zh);
                         }
                     }
-
-                    // 3. 同步更新冗余字段
-                    db.prepare('UPDATE parts_master SET compatible_models = ? WHERE id = ?').run(
-                        JSON.stringify(modelInfos),
-                        req.params.id
-                    );
                 }
             })();
 

@@ -1512,25 +1512,49 @@ customer_voices (原声流)
 
 ---
 
-## 11. 配件目录 (parts_catalog)
+## 11. 配件体系 (Parts Management)
+
+### 11.1 配件主表 (parts_master)
+
+> **v0.9.6 重构**：废弃 `compatible_models` JSON 字段，改为由 `product_model_parts` 中间表维护兼容性。
 
 ```sql
-parts_catalog (配件目录)
+parts_master (配件主表)
 ├── id: SERIAL PRIMARY KEY
-├── sku: VARCHAR(50) UNIQUE NOT NULL
-├── category: VARCHAR(100) -- 产品分类
-├── internal_name_cn: VARCHAR(255)
-├── internal_name_en: VARCHAR(255)
-├── external_name_cn: VARCHAR(255)
-├── external_name_en: VARCHAR(255)
-├── price_cny: DECIMAL(10,2)
-├── price_usd: DECIMAL(10,2)
-├── price_eur: DECIMAL(10,2)
-├── product_family: ENUM('A', 'B', 'C', 'D') -- 产品族群限制
-├── is_active: BOOLEAN DEFAULT true
-├── remarks: TEXT
+├── sku: VARCHAR(50) UNIQUE NOT NULL -- SKU 编码 (如 S1-011-013-01)
+├── name: VARCHAR(255) NOT NULL -- 配件名称 (中文)
+├── name_en: VARCHAR(255) -- 英文名称
+├── name_internal: VARCHAR(255) -- 内部名称
+├── name_external: VARCHAR(255) -- 外部名称
+├── category: VARCHAR(100) -- 分类 (主板/接口/外壳/线缆等)
+├── specifications: JSON -- 规格参数
+├── price_cny: DECIMAL(10,2) -- 人民币价格
+├── price_usd: DECIMAL(10,2) -- 美元价格
+├── price_eur: DECIMAL(10,2) -- 欧元价格
+├── cost_cny: DECIMAL(10,2) -- 成本价 (内部)
+├── status: ENUM('active', 'discontinued', 'pending') -- 状态
+├── min_stock_level: INT -- 最低库存预警
+├── reorder_point: INT -- 补货点
+├── created_by: INT -- 创建人
+├── created_at: TIMESTAMP
+└── updated_at: TIMESTAMP
+```
+
+### 11.2 配件-机型关联表 (product_model_parts)
+
+> **v0.9.6 新增**：实现配件与产品型号的多对多关联，作为兼容性的唯一事实来源（SSOT）。
+
+```sql
+product_model_parts (零件与型号关联/BOM)
+├── id: SERIAL PRIMARY KEY
+├── product_model_id: INT NOT NULL -- 关联 product_models.id
+├── part_id: INT NOT NULL -- 关联 parts_master.id
+├── quantity: INT DEFAULT 1 -- 标准用量
 ├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-└── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+│
+FOREIGN KEY (product_model_id) REFERENCES product_models(id)
+FOREIGN KEY (part_id) REFERENCES parts_master(id)
+UNIQUE KEY (product_model_id, part_id)
 ```
 
 > **数据来源**：完整配件清单见 [Service_Parts_SKU_Pricing.md](./Service_Parts_SKU_Pricing.md)
@@ -1731,6 +1755,7 @@ VALUES (11, 'Members/Cathy', 'Read');
 | 2026-02-25 | v1.5 | 完善 `knowledge_articles` 章节字段与 `knowledge_audit_log` 审计日志 | Jihua | 对应 Phase 3/4 深度优化交付 |
 | 2026-02-28 | **v0.9.0** | **P2 架构升级**：统一 tickets 表、SLA 引擎、活动时间轴、通知系统 | - | **重大更新** |
 | 2026-03-01 | **v0.9.1** | **文件权限优化**：重命名 file_permissions、新增 path_hash、索引优化、级联删除 | - | **性能与安全性提升** |
+| 2026-03-21 | **v0.9.6** | **配件兼容性重构**：废弃 `parts_master.compatible_models`，引入 `product_model_parts` 中间表 | - | **实现 SSOT 架构** |
 
 
 ---
@@ -1774,6 +1799,7 @@ Inventory & Billing:
   accounts (DEALER) → replenishment_requests
   tickets → repair_invoices
   accounts (DEALER) → dealer_settlements
+  product_models ← product_model_parts → parts_master (配件系 SSOT)
 
 Product Evolution:
   product_bugs ← tickets
