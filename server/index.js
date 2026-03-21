@@ -340,6 +340,9 @@ try { db.prepare("ALTER TABLE system_settings ADD COLUMN svc_sla_hours INTEGER D
 
 // Migration for Default Labor Rate Setting
 try { db.prepare("ALTER TABLE system_settings ADD COLUMN default_labor_rate_cny REAL DEFAULT 100").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN default_labor_rate_usd REAL DEFAULT 20").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN default_labor_rate_eur REAL DEFAULT 20").run(); } catch (e) { }
+try { db.prepare("ALTER TABLE system_settings ADD COLUMN currency_conversion_factor REAL DEFAULT 5").run(); } catch (e) { }
 
 // Migration for RMA Shipping Methods (P2 Phase 2)
 try { db.prepare("ALTER TABLE tickets ADD COLUMN shipping_method TEXT DEFAULT 'express'").run(); } catch (e) { }

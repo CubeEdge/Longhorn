@@ -23,7 +23,7 @@ module.exports = function (db, authenticate) {
                        svc_sla_enabled, svc_auto_close_days, svc_sla_hours,
                        show_family_a, show_family_b, show_family_c, show_family_d, show_family_e,
                        enable_product_type_filter, allowed_product_types,
-                       default_labor_rate_cny
+                       default_labor_rate_cny, default_labor_rate_usd, default_labor_rate_eur, currency_conversion_factor
                 FROM system_settings LIMIT 1
             `).get();
 
@@ -36,6 +36,9 @@ module.exports = function (db, authenticate) {
                     notification_refresh_interval: parseInt(settings?.notification_refresh_interval) || 30,
                     require_finance_confirmation: settings?.require_finance_confirmation !== 0,
                     default_labor_rate_cny: parseFloat(settings?.default_labor_rate_cny) || 100,
+                    default_labor_rate_usd: parseFloat(settings?.default_labor_rate_usd) || 20,
+                    default_labor_rate_eur: parseFloat(settings?.default_labor_rate_eur) || 20,
+                    currency_conversion_factor: parseFloat(settings?.currency_conversion_factor) || 5,
                     
                     // SLA Settings
                     inquiry_sla_enabled: settings?.inquiry_sla_enabled !== 0,
@@ -86,13 +89,30 @@ module.exports = function (db, authenticate) {
             if (!isAdmin && !isMSDept) {
                 return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: '\u65e0\u6743\u9650\u4fee\u6539\u5de5\u65f6\u65f6\u85aa' } });
             }
-            const { rate } = req.body;
+            const { rate, rateUsd, rateEur, conversionFactor } = req.body;
             const parsedRate = parseFloat(rate);
-            if (isNaN(parsedRate) || parsedRate < 0) {
-                return res.status(400).json({ success: false, error: { code: 'INVALID_INPUT', message: '\u65e0\u6548\u7684\u65f6\u85aa\u6570\u5024' } });
+            const parsedRateUsd = parseFloat(rateUsd);
+            const parsedRateEur = parseFloat(rateEur);
+            const parsedConversionFactor = parseFloat(conversionFactor);
+            
+            if (isNaN(parsedRate) || parsedRate < 0 || isNaN(parsedRateUsd) || parsedRateUsd < 0 || isNaN(parsedRateEur) || parsedRateEur < 0 || isNaN(parsedConversionFactor) || parsedConversionFactor <= 0) {
+                return res.status(400).json({ success: false, error: { code: 'INVALID_INPUT', message: '\u65e0\u6548\u7684\u65f6\u85aa\u6216\u8f6c\u6362\u7cfb\u6570\u6570\u5024' } });
             }
-            db.prepare('UPDATE system_settings SET default_labor_rate_cny = ? WHERE id = 1').run(parsedRate);
-            res.json({ success: true, data: { default_labor_rate_cny: parsedRate } });
+            db.prepare(`
+                UPDATE system_settings SET 
+                    default_labor_rate_cny = ?,
+                    default_labor_rate_usd = ?,
+                    default_labor_rate_eur = ?,
+                    currency_conversion_factor = ?
+                WHERE id = 1
+            `).run(parsedRate, parsedRateUsd, parsedRateEur, parsedConversionFactor);
+            
+            res.json({ success: true, data: { 
+                default_labor_rate_cny: parsedRate,
+                default_labor_rate_usd: parsedRateUsd,
+                default_labor_rate_eur: parsedRateEur,
+                currency_conversion_factor: parsedConversionFactor
+            } });
         } catch (err) {
             console.error('[System] Labor rate update error:', err);
             res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });

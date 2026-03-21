@@ -362,9 +362,12 @@ module.exports = function(db, authenticate) {
                 const limitedIds = ids.slice(0, 100);
                 const placeholders = limitedIds.map(() => '?').join(',');
                 const idParts = db.prepare(`
-                    SELECT id, name, name_en, name_external_en, sku, category
-                    FROM parts_master
-                    WHERE id IN (${placeholders}) AND is_deleted = 0
+                    SELECT 
+                        pm.id, pm.name, pm.name_en, pm.name_external_en, pm.sku, pm.category,
+                        sp.price_cny, sp.price_usd, sp.price_eur
+                    FROM parts_master pm
+                    LEFT JOIN sku_prices sp ON pm.sku = sp.sku
+                    WHERE pm.id IN (${placeholders}) AND pm.is_deleted = 0
                 `).all(...limitedIds);
                 parts = parts.concat(idParts);
             }
@@ -374,9 +377,12 @@ module.exports = function(db, authenticate) {
                 const limitedSkus = skus.slice(0, 100);
                 const placeholders = limitedSkus.map(() => '?').join(',');
                 const skuParts = db.prepare(`
-                    SELECT id, name, name_en, name_external_en, sku, category
-                    FROM parts_master
-                    WHERE sku IN (${placeholders}) AND is_deleted = 0
+                    SELECT 
+                        pm.id, pm.name, pm.name_en, pm.name_external_en, pm.sku, pm.category,
+                        sp.price_cny, sp.price_usd, sp.price_eur
+                    FROM parts_master pm
+                    LEFT JOIN sku_prices sp ON pm.sku = sp.sku
+                    WHERE pm.sku IN (${placeholders}) AND pm.is_deleted = 0
                 `).all(...limitedSkus);
                 // 去重（如果同时提供了ids和skus）
                 const existingIds = new Set(parts.map(p => p.id));
@@ -392,7 +398,10 @@ module.exports = function(db, authenticate) {
                     name: p.name,
                     name_en: p.name_external_en || p.name_en,  // 优先使用对外英文名
                     sku: p.sku,
-                    category: p.category
+                    category: p.category,
+                    price_cny: p.price_cny,
+                    price_usd: p.price_usd,
+                    price_eur: p.price_eur
                 }))
             });
         } catch (err) {

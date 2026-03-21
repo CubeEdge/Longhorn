@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Save, Send, FileText, Plus, Trash2, Download, FileInput, Settings } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useToast } from '../../store/useToast';
 
 import { exportToPDF } from '../../utils/pdfExport';
 import ConfirmModal from '../Service/ConfirmModal';
@@ -111,7 +112,9 @@ export const PIEditor: React.FC<PIEditorProps> = ({
     isOpen, onClose, ticketId, ticketNumber, piId, onSuccess
 }) => {
     const { token, user } = useAuthStore();
+    const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
+    const [systemSettings, setSystemSettings] = useState<any>(null);
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
@@ -119,10 +122,23 @@ export const PIEditor: React.FC<PIEditorProps> = ({
     const [showPdfSettings, setShowPdfSettings] = useState(false); // PDF设置面板
     // Confirm modal state - 支持多种确认类型
     const [confirmAction, setConfirmAction] = useState<{
-        type: 'recall' | 'import_replace' | 'import_append' | 'import_success' | 'import_empty' | 'no_report' | null;
+        type: 'recall' | 'import_replace' | 'import_append' | 'import_success' | 'import_empty' | 'no_report' | 'custom' | null;
         isOpen: boolean;
         data?: any;
     }>({ type: null, isOpen: false });
+    
+    const confirmModalResultRef = useRef<((value: boolean) => void) | null>(null);
+    const showConfirm = (title: string, message: string, type: 'danger' | 'warning' | 'info' = 'warning', confirmText = '确认', cancelText = '取消') => {
+        return new Promise<boolean>((resolve) => {
+            confirmModalResultRef.current = resolve;
+            setConfirmAction({
+                type: 'custom',
+                isOpen: true,
+                data: { title, message, type, confirmText, cancelText }
+            });
+        });
+    };
+
     // 待导入的项目（用于确认后处理）
     const [pendingImportItems, setPendingImportItems] = useState<PIItem[]>([]);
     const [pendingImportOtherFees, setPendingImportOtherFees] = useState<PIOtherFee[]>([]);
@@ -160,6 +176,13 @@ export const PIEditor: React.FC<PIEditorProps> = ({
     // Load existing PI or initialize from ticket data
     useEffect(() => {
         if (isOpen) {
+            // 加载系统设置（用于获取汇率）
+            axios.get('/api/v1/system/public-settings').then(res => {
+                if (res.data?.success) {
+                    setSystemSettings(res.data.data);
+                }
+            }).catch(() => {});
+
             if (piId) {
                 loadPI();
             } else {
@@ -189,6 +212,58 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                         terms: { ...DEFAULT_CONTENT.terms, ...(incomingData.content?.terms || {}) }
                     }
                 });
+
+                // 同步服务端最新配件外币价格（未发布状态下）
+                if (['draft', 'pending_review', 'rejected', ''].includes(incomingData.status || '')) {
+                    const items = incomingData.content?.items || [];
+                    const skus = items.filter((p: any) => p.part_number).map((p: any) => p.part_number);
+                    if (skus.length > 0) {
+                        try {
+                            const pricesRes = await axios.post(`/api/v1/parts-master/batch`, { skus }, {
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
+                            if (pricesRes.data?.success) {
+                                const priceMap = pricesRes.data.data.reduce((acc: any, part: any) => {
+                                    let targetPrice = part.price_cny;
+                                    if (incomingData.currency === 'USD') targetPrice = part.price_usd;
+                                    else if (incomingData.currency === 'EUR') targetPrice = part.price_eur;
+                                    acc[part.sku] = Number(targetPrice || 0);
+                                    return acc;
+                                }, {});
+
+                                setPIData(prev => {
+                                    const newItems = prev.content.items.map((item: any) => {
+                                        if (item.part_number && priceMap[item.part_number] !== undefined) {
+                                            const newPrice = priceMap[item.part_number];
+                                            return {
+                                                ...item,
+                                                unit_price: newPrice,
+                                                total: Number(item.quantity || 1) * newPrice
+                                            };
+                                        }
+                                        return item;
+                                    });
+
+                                    const itemsSubtotal = newItems.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+                                    const otherFeesTotal = prev.content.other_fees.reduce((sum: number, fee: any) => sum + (Number(fee.amount) || 0), 0);
+                                    const subtotal = itemsSubtotal + otherFeesTotal;
+                                    const taxAmount = subtotal * (Number(prev.tax_rate || 0) / 100);
+                                    const totalAmount = subtotal + taxAmount - Number(prev.discount_amount || 0);
+
+                                    return {
+                                        ...prev,
+                                        content: { ...prev.content, items: newItems },
+                                        subtotal,
+                                        tax_amount: taxAmount,
+                                        total_amount: totalAmount
+                                    };
+                                });
+                            }
+                        } catch (err) {
+                            console.error('Failed to sync latest PI prices on load:', err);
+                        }
+                    }
+                }
             }
         } catch (err) {
             console.error('Failed to load PI:', err);
@@ -516,6 +591,103 @@ export const PIEditor: React.FC<PIEditorProps> = ({
         setImportSourceReport(null);
     };
 
+    const handleCurrencyChange = async (newCurrency: string) => {
+        if (!canEdit || saving || newCurrency === piData.currency) return;
+        if (piId && !['draft', 'rejected', ''].includes(piData.status || '')) return;
+
+        try {
+            const confirmed = await showConfirm(
+                `切换货币单位`,
+                `确定要将计价货币从 ${piData.currency} 切换为 ${newCurrency} 吗？系统将尝试按最新汇率和价目表重新计算所有价格，可能会产生差值。`,
+                'info',
+                '确认切换',
+                '取消'
+            );
+            if (!confirmed) return;
+
+            setSaving(true);
+            const currentCurrency = piData.currency;
+            const factor = systemSettings?.currency_conversion_factor || 5;
+            let multiplier = 1;
+
+            if (currentCurrency === 'CNY' && (newCurrency === 'USD' || newCurrency === 'EUR')) {
+                multiplier = 1 / factor;
+            } else if ((currentCurrency === 'USD' || currentCurrency === 'EUR') && newCurrency === 'CNY') {
+                multiplier = factor;
+            } else if ((currentCurrency === 'USD' && newCurrency === 'EUR') || (currentCurrency === 'EUR' && newCurrency === 'USD')) {
+                multiplier = 1;
+            }
+
+            const newContent = { ...piData.content };
+
+            // 重算备件费用
+            if (newContent.items && newContent.items.length > 0) {
+                const skus = newContent.items.filter(p => p.part_number).map(p => p.part_number);
+
+                if (skus.length > 0) {
+                    const pricesRes = await axios.post(`/api/v1/parts-master/batch`, { skus }, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+
+                    if (pricesRes.data?.success) {
+                        const priceMap = pricesRes.data.data.reduce((acc: any, part: any) => {
+                            let targetPrice = part.price_cny;
+                            if (newCurrency === 'USD') targetPrice = part.price_usd;
+                            else if (newCurrency === 'EUR') targetPrice = part.price_eur;
+                            acc[part.sku] = Number(targetPrice || 0);
+                            return acc;
+                        }, {});
+
+                        newContent.items = newContent.items.map(part => {
+                            if (part.part_number && priceMap[part.part_number] !== undefined) {
+                                const newPrice = priceMap[part.part_number];
+                                return { ...part, unit_price: newPrice, total: Number(part.quantity || 1) * newPrice };
+                            }
+                            return { ...part, unit_price: Number(part.unit_price || 0) * multiplier, total: Number(part.quantity || 1) * Number(part.unit_price || 0) * multiplier };
+                        });
+                    }
+                } else {
+                    newContent.items = newContent.items.map(part => ({
+                        ...part,
+                        unit_price: Number(part.unit_price || 0) * multiplier,
+                        total: Number(part.quantity || 1) * Number(part.unit_price || 0) * multiplier
+                    }));
+                }
+            }
+
+            // 其他费用
+            if (newContent.other_fees && newContent.other_fees.length > 0) {
+                newContent.other_fees = newContent.other_fees.map(fee => ({
+                    ...fee,
+                    amount: Number(fee.amount || 0) * multiplier
+                }));
+            }
+
+            const itemsSubtotal = (newContent.items || []).reduce((sum, item) => sum + (Number(item.total) || 0), 0);
+            const otherFeesTotal = (newContent.other_fees || []).reduce((sum, fee) => sum + (Number(fee.amount) || 0), 0);
+            const subtotal = itemsSubtotal + otherFeesTotal;
+            const discount = Number(piData.discount_amount || 0) * multiplier;
+            const taxAmount = subtotal * (Number(piData.tax_rate || 0) / 100);
+            const total = subtotal + taxAmount - discount;
+
+            setPIData(prev => ({
+                ...prev,
+                currency: newCurrency,
+                content: newContent,
+                subtotal,
+                tax_amount: taxAmount,
+                total_amount: total,
+                discount_amount: discount
+            }));
+
+        } catch (err) {
+            console.error('Failed to change PI currency:', err);
+            showToast('切换币种失败，请检查网络或刷新重试。', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const calculateTotals = (items: PIItem[], otherFees: PIOtherFee[], taxRate: number = 0, discount: number = 0) => {
         const itemsSubtotal = items.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.unit_price || 0)), 0);
         const otherFeesTotal = otherFees.reduce((sum, fee) => sum + (Number(fee.amount) || 0), 0);
@@ -530,7 +702,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
             if (item.id === id) {
                 const updated = { ...item, [field]: value };
                 if (field === 'quantity' || field === 'unit_price') {
-                    updated.total = updated.quantity * updated.unit_price;
+                    updated.total = Number(updated.quantity || 0) * Number(updated.unit_price || 0);
                 }
                 return updated;
             }
@@ -890,7 +1062,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                     style={{ width: 100, padding: 8, background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
                                                 />
                                                 <div style={{ width: 100, padding: 8, textAlign: 'right', color: 'var(--text-main)', fontWeight: 500, fontSize: 13 }}>
-                                                    ¥{Number(item.total || 0).toFixed(2)}
+                                                    {piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(item.total || 0).toFixed(2)}
                                                 </div>
                                                 {canEdit && (
                                                     <button onClick={() => removeItem(item.id)} style={{ padding: 8, background: 'var(--status-red-subtle)', border: 'none', borderRadius: 4, color: 'var(--status-red)', cursor: 'pointer' }}>
@@ -956,7 +1128,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 280, marginLeft: 'auto' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: 13 }}>
                                             <span>小计</span>
-                                            <span>¥{Number(piData.subtotal || 0).toFixed(2)}</span>
+                                            <span>{piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(piData.subtotal || 0).toFixed(2)}</span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
                                             <span style={{ color: 'var(--text-secondary)' }}>税率 (%)</span>
@@ -974,7 +1146,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: 13 }}>
                                             <span>税额</span>
-                                            <span>¥{Number(piData.tax_amount || 0).toFixed(2)}</span>
+                                            <span>{piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(piData.tax_amount || 0).toFixed(2)}</span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
                                             <span style={{ color: 'var(--text-secondary)' }}>优惠金额</span>
@@ -991,8 +1163,20 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                             />
                                         </div>
                                         <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: 13 }}>合计</span>
-                                            <span style={{ color: 'var(--text-main)', fontSize: 16, fontWeight: 600 }}>¥{Number(piData.total_amount || 0).toFixed(2)}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <span style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: 14 }}>合计</span>
+                                                <select
+                                                    value={piData.currency || 'CNY'}
+                                                    onChange={e => handleCurrencyChange(e.target.value)}
+                                                    disabled={!canEdit}
+                                                    style={{ padding: '4px 8px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 12 }}
+                                                >
+                                                    <option value="CNY">CNY</option>
+                                                    <option value="USD">USD</option>
+                                                    <option value="EUR">EUR</option>
+                                                </select>
+                                            </div>
+                                            <span style={{ color: 'var(--text-main)', fontSize: 18, fontWeight: 700 }}>{piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(piData.total_amount || 0).toFixed(2)}</span>
                                         </div>
                                     </div>
                                 </Section>
@@ -1215,7 +1399,6 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                 />
             )}
 
-            {/* No Report Modal */}
             {confirmAction.isOpen && confirmAction.type === 'no_report' && (
                 <ConfirmModal
                     title="无法导入"
@@ -1224,6 +1407,24 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                     showCancel={false}
                     onConfirm={() => setConfirmAction({ type: null, isOpen: false })}
                     onCancel={() => setConfirmAction({ type: null, isOpen: false })}
+                />
+            )}
+
+            {confirmAction.type === 'custom' && confirmAction.isOpen && confirmAction.data && (
+                <ConfirmModal 
+                    title={confirmAction.data.title}
+                    message={confirmAction.data.message}
+                    isDanger={confirmAction.data.type === 'danger'}
+                    confirmText={confirmAction.data.confirmText || '确定'}
+                    cancelText={confirmAction.data.cancelText || '取消'}
+                    onConfirm={() => {
+                        setConfirmAction({ type: null, isOpen: false });
+                        if (confirmModalResultRef.current) confirmModalResultRef.current(true);
+                    }}
+                    onCancel={() => {
+                        setConfirmAction({ type: null, isOpen: false });
+                        if (confirmModalResultRef.current) confirmModalResultRef.current(false);
+                    }}
                 />
             )}
 
@@ -1637,7 +1838,7 @@ const PIPreview: React.FC<{
     };
 
     // 获取配件显示名称（非中文时优先使用英文名称）
-    const getPartDisplayName = (item: PIItem): string => {
+    const getPartDisplayName = (item: PIItem): React.ReactNode => {
         const isNonChinese = language !== 'original' && language !== 'zh-CN';
         
         // 工时条目：使用 description_en
@@ -1650,13 +1851,21 @@ const PIPreview: React.FC<{
             // 优先使用 part_number 字段
             if (item.part_number && partNamesEnBySku[item.part_number]) {
                 const sku = item.part_number;
-                return `Part: ${partNamesEnBySku[sku]} (${sku})`;
+                return (
+                    <span>
+                        Part: {partNamesEnBySku[sku]} <span style={{ fontVariantNumeric: 'tabular-nums' }}>({sku})</span>
+                    </span>
+                );
             }
             // 尝试从 description 中提取 SKU
             const match = item.description.match(/\(([^)]+)\)$/);
             if (match && partNamesEnBySku[match[1]]) {
                 const sku = match[1];
-                return `Part: ${partNamesEnBySku[sku]} (${sku})`;
+                return (
+                    <span>
+                        Part: {partNamesEnBySku[sku]} <span style={{ fontVariantNumeric: 'tabular-nums' }}>({sku})</span>
+                    </span>
+                );
             }
         }
         
@@ -1726,8 +1935,8 @@ const PIPreview: React.FC<{
                                 {getPartDisplayName(item) || `[${t.description} ${index + 1}]`}
                             </td>
                             <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{item.quantity}</td>
-                            <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(item.unit_price || 0).toFixed(2)}</td>
-                            <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(item.total || 0).toFixed(2)}</td>
+                            <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'right' }}>{piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(item.unit_price || 0).toFixed(2)}</td>
+                            <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'right' }}>{piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(item.total || 0).toFixed(2)}</td>
                         </tr>
                     ))}
                     {piData.content.items.length === 0 && (
@@ -1759,7 +1968,7 @@ const PIPreview: React.FC<{
                                         <td style={{ padding: 10, borderBottom: '1px solid #ddd' }}>
                                             {feeDescription || `[费用 ${index + 1}]`}
                                         </td>
-                                        <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(fee.amount || 0).toFixed(2)}</td>
+                                        <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'right' }}>{piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(fee.amount || 0).toFixed(2)}</td>
                                     </tr>
                                 );
                             })}
@@ -1772,21 +1981,21 @@ const PIPreview: React.FC<{
             <div style={{ marginLeft: 'auto', width: 280, marginBottom: 24, fontSize: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eee' }}>
                     <span>{t.subtotal}:</span>
-                    <span>¥{Number(piData.subtotal || 0).toFixed(2)}</span>
+                    <span>{piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(piData.subtotal || 0).toFixed(2)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eee' }}>
                     <span>{t.tax} ({piData.tax_rate}%):</span>
-                    <span>¥{Number(piData.tax_amount || 0).toFixed(2)}</span>
+                    <span>{piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(piData.tax_amount || 0).toFixed(2)}</span>
                 </div>
                 {piData.discount_amount > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #eee', color: '#10B981' }}>
                         <span>{t.discount}:</span>
-                        <span>-¥{Number(piData.discount_amount || 0).toFixed(2)}</span>
+                        <span>-{piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(piData.discount_amount || 0).toFixed(2)}</span>
                     </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: '2px solid #333', fontSize: 14, fontWeight: 700 }}>
                     <span>{t.totalAmount}:</span>
-                    <span>¥{Number(piData.total_amount || 0).toFixed(2)}</span>
+                    <span>{piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(piData.total_amount || 0).toFixed(2)}</span>
                 </div>
             </div>
 

@@ -354,7 +354,7 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
                                             {part.name}
                                         </div>
                                         <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2, display: 'flex', gap: 8 }}>
-                                            <span style={{ fontFamily: 'monospace' }}>{part.sku}</span>
+                                            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{part.sku}</span>
                                             <span>{formatPrice(currency === 'USD' ? part.price_usd : currency === 'EUR' ? part.price_eur : part.price_cny)}</span>
                                             {part.category && <span style={{ opacity: 0.7 }}>{part.category}</span>}
                                         </div>
@@ -422,7 +422,7 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
                                 <Package size={12} />
                                 {part.name}
                                 <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>
-                                    {formatPrice(currency === 'USD' ? part.price_usd : part.price_cny)}
+                                    {formatPrice(currency === 'USD' ? part.price_usd : currency === 'EUR' ? part.price_eur : part.price_cny)}
                                 </span>
                             </button>
                         ))}
@@ -549,7 +549,7 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
                     color: 'var(--text-tertiary)'
                 }}>
                     <span style={{ flex: 1 }}>配件名称</span>
-                    <span style={{ width: 110 }}>配件号</span>
+                    <span style={{ width: 150 }}>配件号</span>
                     <span style={{ width: 50, textAlign: 'center' }}>数量</span>
                     <span style={{ width: 90, textAlign: 'right' }}>单价</span>
                     <span style={{ width: 70 }}>状态</span>
@@ -603,18 +603,18 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
                             onChange={(e) => handleUpdatePart(index, { part_number: e.target.value })}
                             placeholder="SKU"
                             style={{
-                                width: 110,
+                                width: 150,
                                 padding: 8,
                                 background: 'var(--glass-bg-light)',
                                 border: '1px solid var(--glass-border)',
                                 borderRadius: 4,
                                 color: 'var(--text-main)',
                                 fontSize: 13,
-                                fontFamily: 'monospace'
+                                fontVariantNumeric: 'tabular-nums'
                             }}
                         />
                     ) : (
-                        <span style={{ width: 110, fontFamily: 'monospace', fontSize: 12, color: 'var(--text-secondary)' }}>
+                        <span style={{ width: 150, fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--text-secondary)' }}>
                             {part.part_number}
                         </span>
                     )}
