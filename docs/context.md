@@ -35,6 +35,7 @@
 ## 3. 文档索引 (Authority Index)
 
 *   **运维/部署/访问 (必读)**: [OPS.md](/docs/OPS.md)
+*   **数据模型和API**: [Service_DataModel.md](/docs/Service_DataModel.md)和[Service_API.md](/docs/Service_API.md)
 *   **业务需求**: `/docs/Service_PRD.md` / `Service_API.md`/`docs/Service PRD_P2.md`
 *   **开发日志**: `log_dev.md`
 *   **待办规划**: `log_backlog.md`

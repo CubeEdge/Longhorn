@@ -13,6 +13,7 @@
 > - **权限控制**: 附件上传/删除权限：Admin/Exec/MS Lead/工单提交者。
 >
 > **v0.9.10 更新 (2026-03-22)**：
+> - **配件价格 SSOT 重构**: `parts_master` 表中的冗余价格字段（`price_cny/usd/eur`, `cost_cny`）已被物理移除。API 内部逻辑已完全迁移至 `sku_prices` 表。
 > - **配件批量查询**: 新增 `POST /api/v1/parts-master/batch` 端点，支持通过 IDs 或 SKUs 批量查询配件信息，用于预览时获取配件英文名称。
 > - **BOM 配件推荐**: 修复 `GET /api/v1/parts-master/bom` 路由顺序问题，确保产品型号配件推荐功能正常。
 > - **系统设置**: 新增 `GET/POST /api/v1/system/settings` 端点，支持工时时薪等系统级配置。

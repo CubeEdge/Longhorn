@@ -1249,7 +1249,10 @@ parts_consumption (配件消耗记录)
 ├── used_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- 消耗时间
 ├── notes: TEXT -- 备注
 ├── created_by: INT -- 创建人
-└── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+├── is_deleted: BOOLEAN DEFAULT 0 -- 软删除标志
+├── deleted_at: TIMESTAMP -- 删除时间
+└── deleted_by: INT -- 删除人ID
 ```
 
 ---
@@ -1552,10 +1555,6 @@ parts_master (配件主表)
 ├── name_external: VARCHAR(255) -- 外部名称
 ├── category: VARCHAR(100) -- 分类 (主板/接口/外壳/线缆等)
 ├── specifications: JSON -- 规格参数
-├── price_cny: DECIMAL(10,2) -- 人民币价格
-├── price_usd: DECIMAL(10,2) -- 美元价格
-├── price_eur: DECIMAL(10,2) -- 欧元价格
-├── cost_cny: DECIMAL(10,2) -- 成本价 (内部)
 ├── status: ENUM('active', 'discontinued', 'pending') -- 状态
 ├── min_stock_level: INT -- 最低库存预警
 ├── reorder_point: INT -- 补货点
@@ -1579,6 +1578,22 @@ product_model_parts (零件与型号关联/BOM)
 FOREIGN KEY (product_model_id) REFERENCES product_models(id)
 FOREIGN KEY (part_id) REFERENCES parts_master(id)
 UNIQUE KEY (product_model_id, part_id)
+```
+
+### 11.3 通用价格表 (sku_prices)
+
+> **v0.9.6 新增**：作为配件、产品、周边等所有 SKU 的价格事实来源 (SSOT)。
+
+```sql
+sku_prices (SKU 价格表)
+├── id: SERIAL PRIMARY KEY
+├── sku: VARCHAR(50) UNIQUE NOT NULL -- 关联各主表的 SKU 编码
+├── item_type: ENUM('part', 'product', 'accessory') -- 条目类型
+├── price_cny: DECIMAL(10,2) DEFAULT 0 -- 零售价 (CNY)
+├── price_usd: DECIMAL(10,2) DEFAULT 0 -- 零售价 (USD)
+├── price_eur: DECIMAL(10,2) DEFAULT 0 -- 零售价 (EUR)
+├── cost_cny: DECIMAL(10,2) DEFAULT 0 -- 成本价 (CNY)
+└── updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ```
 
 > **数据来源**：完整配件清单见 [Service_Parts_SKU_Pricing.md](./Service_Parts_SKU_Pricing.md)
