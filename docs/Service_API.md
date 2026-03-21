@@ -12,6 +12,11 @@
 > - **附件查询优化**: 工单详情接口 `/api/v1/tickets/:id` 现在返回所有附件（包括关联到活动的附件），不再限制 `activity_id IS NULL`。
 > - **权限控制**: 附件上传/删除权限：Admin/Exec/MS Lead/工单提交者。
 >
+> **v0.9.10 更新 (2026-03-22)**：
+> - **配件批量查询**: 新增 `POST /api/v1/parts-master/batch` 端点，支持通过 IDs 或 SKUs 批量查询配件信息，用于预览时获取配件英文名称。
+> - **BOM 配件推荐**: 修复 `GET /api/v1/parts-master/bom` 路由顺序问题，确保产品型号配件推荐功能正常。
+> - **系统设置**: 新增 `GET/POST /api/v1/system/settings` 端点，支持工时时薪等系统级配置。
+>
 > **v0.9.9 更新 (2026-03-21)**：
 > - **配件兼容性重构**: `GET /api/v1/parts-master` 返回的 `compatible_models` 现在是基于关联表动态生成的虚字段。
 > - **配件关联管理**: `POST` / `PATCH` 配件接口支持通过 `compatible_models` (ID 数组) 维护与产品型号的多对多关系。
@@ -4527,5 +4532,71 @@ Success (200 OK) or Validation Error (400 if reason missing).
 ### 27.4 更新配件
 
 **PATCH** `/api/v1/parts-master/:id`
+
+### 27.5 批量查询配件
+
+**POST** `/api/v1/parts-master/batch`
+
+用于预览时批量查询配件英文名称（支持通过 IDs 或 SKUs 查询）。
+
+**Request Body**:
+```json
+{
+  "ids": [1, 2, 3],           // 可选：配件 ID 数组
+  "skus": ["S2-119-015-01"]   // 可选：SKU 数组（与 ids 至少提供一个）
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 11,
+      "name": "EAGLE 主板",
+      "name_en": "EAGLE HDMI EVF Main Board",
+      "sku": "S2-119-015-01",
+      "category": "主板"
+    }
+  ]
+}
+```
+
+### 27.6 获取 BOM 配件推荐
+
+**GET** `/api/v1/parts-master/bom`
+
+根据产品型号获取推荐的 BOM 配件列表。
+
+**查询参数**:
+- `product_model`: 产品型号名称或代码（如 "EAGLE HDMI e-Viewfinder"）
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 11,
+      "sku": "S2-119-015-01",
+      "name": "EAGLE 主板",
+      "name_en": "EAGLE HDMI EVF Main Board",
+      "category": "主板",
+      "is_common": true,
+      "quantity_per_unit": 1
+    }
+  ],
+  "meta": {
+    "product_model": "EAGLE HDMI e-Viewfinder",
+    "matched_model": {
+      "id": 5,
+      "name_zh": "Kinefinity EAGLE HDMI e-Viewfinder",
+      "name_en": "Kinefinity EAGLE HDMI e-Viewfinder",
+      "model_code": "EAGLE-HDMI"
+    }
+  }
+}
+```
 
 ---

@@ -1,8 +1,14 @@
 # Service 数据模型设计
 
-**版本**: 0.9.4 (Attachment Management Enhancement)
-**最后更新**: 2026-03-15
+**版本**: 0.9.6 (维修报告多语言支持)
+**最后更新**: 2026-03-22
 
+> **v0.9.6 更新 (维修报告多语言支持)**：
+> - **维修报告内容结构**: `op_repair_report.content` 新增 `labor_charges` 和 `other_fees` 数组字段。
+> - **双语字段**: `labor_charges[].description_en` 和 `other_fees[].description_en` 用于非中文预览。
+> - **配件关联**: `parts_replaced[].part_id` 和 `parts_replaced[].part_number` 保留配件关联信息。
+> - **系统设置表**: `system_settings` 表新增 `labor_hourly_rate` 等工时时薪配置。
+>
 > **v0.9.4 更新 (附件管理增强)**：
 > - 完善 `ticket_attachments` 表说明：明确 `activity_id` 可为 NULL（工单级别附件）
 > - 新增 `attachments_count` 字段说明：工单表中的附件计数缓存字段
@@ -1174,11 +1180,29 @@ repair_invoices (维修发票/PI)
 ├── product_model: VARCHAR(255)
 ├── serial_number: VARCHAR(100)
 ├── warranty_status: ENUM('in_warranty', 'out_of_warranty')
-├── content: JSON -- 核心动态内容 (v12.3.171 增强：强制 deep-merge 防御结构)
+├── content: JSON -- 核心动态内容 (v12.3.352 增强：多语言支持与费用明细)
 │   ├── header: { date, seller_info, bank_details }
 │   ├── customer_info: { name, address, contact }
-│   ├── items: [{ description, quantity, unit_price, total }]
+│   ├── device_info: { product_name, product_name_en, serial_number, firmware_version }
+│   ├── repair_process: {
+│   │   ├── parts_replaced: [{ 
+│   │   │   id, part_id, part_number, name, name_en, 
+│   │   │   quantity, unit_price, condition, notes 
+│   │   │ }],
+│   │   └── repair_steps: [...]
+│   │ }
+│   ├── labor_charges: [{ 
+│   │   description, description_en, hours, rate, total 
+│   │ }] -- 工时费用 (v12.3.352: 新增 description_en 支持双语)
+│   ├── other_fees: [{ 
+│   │   id, description, description_en, amount 
+│   │ }] -- 其他费用 (v12.3.352: 新增 description_en 支持双语)
+│   ├── logistics: { shipping_method, shipping_fee, tracking_number }
 │   └── terms: TEXT
+│   └── translations: { -- 多语言翻译缓存
+│       'en-US': { fieldKey: translatedValue },
+│       'ja-JP': { fieldKey: translatedValue }
+│   }
 ├── parts_total: DECIMAL(10,2) -- 所有计算遵循 Number(val || 0).toFixed(2)
 ├── labor_fee: DECIMAL(10,2)
 ├── shipping_fee: DECIMAL(10,2)

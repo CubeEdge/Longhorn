@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Plus, Trash2, Package, Loader2, Sparkles } from 'lucide-react';
+import { Search, Trash2, Package, Loader2, Sparkles } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
 
@@ -158,8 +158,9 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
         }
     }, [headers, productModelId]);
 
-    // 防抖搜索（1个字符就开始搜索）
+    // 防抖搜索（1个字符就开始搜索），搜索词为空时不清空结果（避免闪烁）
     useEffect(() => {
+        if (searchTerm.length < 1) return;
         const timer = setTimeout(() => searchParts(searchTerm), 200);
         return () => clearTimeout(timer);
     }, [searchTerm, searchParts]);
@@ -293,7 +294,7 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
                                         loadCompatibleParts();
                                     }
                                 }}
-                                placeholder="搜索配件SKU或名称..."
+                                placeholder="输入SKU或零件号搜索添加配件..."
                                 style={{
                                     width: '100%',
                                     padding: '10px 12px 10px 36px',
@@ -320,7 +321,7 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
                             )}
                         </div>
 
-                        {/* 搜索结果下拉 - 使用更高的zIndex确保不被遮挡 */}
+                        {/* 搜索结果下拉 - 不透明背景，确保不被层叠 */}
                         {showDropdown && searchResults.length > 0 && (
                             <div style={{
                                 position: 'absolute',
@@ -328,7 +329,7 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
                                 left: 0,
                                 right: 0,
                                 marginTop: 4,
-                                background: 'var(--glass-bg)',
+                                background: 'var(--card-bg)',
                                 border: '1px solid var(--glass-border)',
                                 borderRadius: 8,
                                 maxHeight: 500,  // 增加高度以显示更多
@@ -385,25 +386,7 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
                         </button>
                     )}
 
-                    {/* 手动添加按钮 */}
-                    <button
-                        onClick={() => setShowManualAdd(!showManualAdd)}
-                        style={{
-                            padding: '10px 14px',
-                            background: showManualAdd ? 'rgba(59,130,246,0.2)' : 'var(--glass-bg-light)',
-                            border: `1px solid ${showManualAdd ? 'rgba(59,130,246,0.4)' : 'var(--glass-border)'}`,
-                            borderRadius: 8,
-                            color: showManualAdd ? '#3B82F6' : 'var(--text-secondary)',
-                            fontSize: 12,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
-                        <Plus size={14} /> 手动添加
-                    </button>
+
                 </div>
             )}
 

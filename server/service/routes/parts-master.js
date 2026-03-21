@@ -40,8 +40,7 @@ module.exports = function(db, authenticate) {
                 search,
                 category,
                 status = 'active',
-                compatible_model,
-                product_model_id  // 新增：产品型号ID，用于精确查询兼容配件
+                product_model_id  // 产品型号ID，用于查询兼容配件
             } = req.query;
 
             let conditions = ['pm.is_deleted = 0'];
@@ -63,21 +62,10 @@ module.exports = function(db, authenticate) {
                 params.push(searchPattern, searchPattern, searchPattern);
             }
 
-            // 优先使用 product_model_id 查询兼容配件（通过关联表）
+            // 使用 product_model_id 查询兼容配件（通过 product_model_parts 关联表）
             if (product_model_id) {
-                // 使用 product_model_parts 关联表查询
                 conditions.push('EXISTS (SELECT 1 FROM product_model_parts pmp WHERE pmp.part_id = pm.id AND pmp.product_model_id = ?)');
                 params.push(parseInt(product_model_id));
-            } else if (compatible_model) {
-                // 改为通过子查询匹配型号名称或代码
-                conditions.push(`EXISTS (
-                    SELECT 1 FROM product_model_parts pmp 
-                    JOIN product_models m ON pmp.product_model_id = m.id 
-                    WHERE pmp.part_id = pm.id 
-                    AND (m.name_zh LIKE ? OR m.name_en LIKE ? OR m.model_code LIKE ?)
-                )`);
-                const pattern = `%${compatible_model}%`;
-                params.push(pattern, pattern, pattern);
             }
 
             const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -157,6 +145,124 @@ module.exports = function(db, authenticate) {
     });
 
     // ==========================================
+    // GET /api/v1/parts-master/bom
+    // 根据产品型号获取BOM配件列表（必须在 /:id 之前定义！）
+    // ==========================================
+    router.get('/bom', authenticate, (req, res) => {
+        try {
+            if (!checkPartsViewAccess(req.user)) {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '无权查看配件数据' }
+                });
+            }
+
+            const { product_model } = req.query;
+
+            if (!product_model) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'MISSING_PARAM', message: '缺少 product_model 参数' }
+                });
+            }
+
+            // 1. 查找产品型号ID
+            const model = db.prepare(`
+                SELECT id, name_zh, name_en, model_code 
+                FROM product_models 
+                WHERE name_zh LIKE ? OR name_en LIKE ? OR model_code LIKE ?
+                LIMIT 1
+            `).get(`%${product_model}%`, `%${product_model}%`, `%${product_model}%`);
+
+            if (!model) {
+                return res.json({
+                    success: true,
+                    data: [],
+                    meta: { product_model, matched_model: null }
+                });
+            }
+
+            // 2. 查询该型号关联的常用配件
+            const bomParts = db.prepare(`
+                SELECT 
+                    pmp.id as bom_id,
+                    pmp.is_common,
+                    pmp.quantity_per_unit,
+                    pmp.priority,
+                    pmp.notes as bom_notes,
+                    pm.id,
+                    pm.sku,
+                    pm.name,
+                    pm.name_en,
+                    pm.category,
+                    sp.price_cny,
+                    sp.price_usd,
+                    sp.price_eur
+                FROM product_model_parts pmp
+                JOIN parts_master pm ON pmp.part_id = pm.id
+                LEFT JOIN sku_prices sp ON pm.sku = sp.sku
+                WHERE pmp.product_model_id = ? AND pm.is_deleted = 0 AND pm.status = 'active'
+                ORDER BY pmp.priority ASC, pmp.is_common DESC, pm.category
+            `).all(model.id);
+
+            const parsedData = bomParts.map(item => {
+                if (req.user.department_name === 'OP') {
+                    delete item.price_cny;
+                    delete item.price_usd;
+                    delete item.price_eur;
+                }
+                return item;
+            });
+
+            res.json({
+                success: true,
+                data: parsedData,
+                meta: {
+                    product_model,
+                    matched_model: model ? {
+                        id: model.id,
+                        name_zh: model.name_zh,
+                        name_en: model.name_en,
+                        model_code: model.model_code
+                    } : null,
+                    source: 'product_model_parts'
+                }
+            });
+        } catch (err) {
+            console.error('[Parts Master] BOM query error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    // ==========================================
+    // GET /api/v1/parts-master/categories/list
+    // 获取配件分类列表（必须在 /:id 之前定义！）
+    // ==========================================
+    router.get('/categories/list', authenticate, (req, res) => {
+        try {
+            const categories = db.prepare(`
+                SELECT DISTINCT category FROM parts_master 
+                WHERE is_deleted = 0 AND status = 'active'
+                ORDER BY category
+            `).all();
+
+            res.json({
+                success: true,
+                data: categories.map(c => c.category)
+            });
+        } catch (err) {
+            console.error('[Parts Master] Categories error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    // ==========================================
     // GET /api/v1/parts-master/:id
     // 获取配件详情
     // ==========================================
@@ -216,6 +322,81 @@ module.exports = function(db, authenticate) {
             });
         } catch (err) {
             console.error('[Parts Master] Get error:', err);
+            res.status(500).json({
+                success: false,
+                error: { code: 'SERVER_ERROR', message: err.message }
+            });
+        }
+    });
+
+    // ==========================================
+    // POST /api/v1/parts-master/batch
+    // 批量获取配件信息（支持 ids 或 skus 查询，用于预览时查询英文名称）
+    // ==========================================
+    router.post('/batch', authenticate, (req, res) => {
+        try {
+            if (!checkPartsViewAccess(req.user)) {
+                return res.status(403).json({
+                    success: false,
+                    error: { code: 'FORBIDDEN', message: '无权查看配件数据' }
+                });
+            }
+
+            const { ids, skus } = req.body;
+            
+            // 支持通过 ids 或 skus 查询
+            const hasIds = Array.isArray(ids) && ids.length > 0;
+            const hasSkus = Array.isArray(skus) && skus.length > 0;
+            
+            if (!hasIds && !hasSkus) {
+                return res.status(400).json({
+                    success: false,
+                    error: { code: 'BAD_REQUEST', message: 'ids 或 skus 必须提供其一' }
+                });
+            }
+
+            let parts = [];
+            
+            // 通过 ID 查询
+            if (hasIds) {
+                const limitedIds = ids.slice(0, 100);
+                const placeholders = limitedIds.map(() => '?').join(',');
+                const idParts = db.prepare(`
+                    SELECT id, name, name_en, name_external_en, sku, category
+                    FROM parts_master
+                    WHERE id IN (${placeholders}) AND is_deleted = 0
+                `).all(...limitedIds);
+                parts = parts.concat(idParts);
+            }
+            
+            // 通过 SKU 查询
+            if (hasSkus) {
+                const limitedSkus = skus.slice(0, 100);
+                const placeholders = limitedSkus.map(() => '?').join(',');
+                const skuParts = db.prepare(`
+                    SELECT id, name, name_en, name_external_en, sku, category
+                    FROM parts_master
+                    WHERE sku IN (${placeholders}) AND is_deleted = 0
+                `).all(...limitedSkus);
+                // 去重（如果同时提供了ids和skus）
+                const existingIds = new Set(parts.map(p => p.id));
+                skuParts.forEach(p => {
+                    if (!existingIds.has(p.id)) parts.push(p);
+                });
+            }
+
+            res.json({
+                success: true,
+                data: parts.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    name_en: p.name_external_en || p.name_en,  // 优先使用对外英文名
+                    sku: p.sku,
+                    category: p.category
+                }))
+            });
+        } catch (err) {
+            console.error('[Parts Master] Batch get error:', err);
             res.status(500).json({
                 success: false,
                 error: { code: 'SERVER_ERROR', message: err.message }
@@ -363,14 +544,14 @@ module.exports = function(db, authenticate) {
 
             const partFields = [
                 'name', 'name_en', 'name_internal', 'name_internal_en', 'category', 'description', 
-                'specifications', 'compatible_models', 'min_stock_level', 'reorder_point', 'status', 'material_id'
+                'specifications', 'min_stock_level', 'reorder_point', 'status', 'material_id'
             ];
             const priceFields = ['price_cny', 'price_usd', 'price_eur', 'cost_cny'];
 
             partFields.forEach(field => {
                 if (req.body[field] !== undefined) {
                     partUpdates.push(`${field} = ?`);
-                    if (field === 'specifications' || field === 'compatible_models') {
+                    if (field === 'specifications') {
                         partParams.push(JSON.stringify(req.body[field]));
                     } else {
                         partParams.push(req.body[field]);
@@ -478,151 +659,6 @@ module.exports = function(db, authenticate) {
             });
         } catch (err) {
             console.error('[Parts Master] Delete error:', err);
-            res.status(500).json({
-                success: false,
-                error: { code: 'SERVER_ERROR', message: err.message }
-            });
-        }
-    });
-
-    // ==========================================
-    // GET /api/v1/parts-master/bom
-    // 根据产品型号获取BOM推荐配件
-    // ==========================================
-    router.get('/bom', authenticate, (req, res) => {
-        try {
-            if (!checkPartsViewAccess(req.user)) {
-                return res.status(403).json({
-                    success: false,
-                    error: { code: 'FORBIDDEN', message: '无权查看配件数据' }
-                });
-            }
-
-            const { product_model } = req.query;
-
-            if (!product_model) {
-                return res.status(400).json({
-                    success: false,
-                    error: { code: 'MISSING_PARAM', message: '缺少 product_model 参数' }
-                });
-            }
-
-            // 1. 查找产品型号ID
-            const model = db.prepare(`
-                SELECT id, name_zh, name_en, model_code 
-                FROM product_models 
-                WHERE name_zh LIKE ? OR name_en LIKE ? OR model_code LIKE ?
-                LIMIT 1
-            `).get(`%${product_model}%`, `%${product_model}%`, `%${product_model}%`);
-
-            if (!model) {
-                // 没找到型号，返回空但成功
-                return res.json({
-                    success: true,
-                    data: [],
-                    meta: { product_model, matched_model: null }
-                });
-            }
-
-            // 2. 查询该型号关联的常用配件
-            const bomParts = db.prepare(`
-                SELECT 
-                    pmp.id as bom_id,
-                    pmp.is_common,
-                    pmp.quantity_per_unit,
-                    pmp.priority,
-                    pmp.notes as bom_notes,
-                    pm.id,
-                    pm.sku,
-                    pm.name,
-                    pm.name_en,
-                    pm.category,
-                    sp.price_cny,
-                    sp.price_usd,
-                    sp.price_eur
-                FROM product_model_parts pmp
-                JOIN parts_master pm ON pmp.part_id = pm.id
-                LEFT JOIN sku_prices sp ON pm.sku = sp.sku
-                WHERE pmp.product_model_id = ? AND pm.is_deleted = 0 AND pm.status = 'active'
-                ORDER BY pmp.priority ASC, pmp.is_common DESC, pm.category
-            `).all(model.id);
-
-            // 3. 如果BOM表没有数据，尝试从 compatible_models 字段模糊匹配
-            let fallbackParts = [];
-            if (bomParts.length === 0) {
-                fallbackParts = db.prepare(`
-                    SELECT 
-                        pm.id,
-                        pm.sku,
-                        pm.name,
-                        pm.name_en,
-                        pm.category,
-                        sp.price_cny,
-                        sp.price_usd,
-                        sp.price_eur
-                    FROM parts_master pm
-                    LEFT JOIN sku_prices sp ON pm.sku = sp.sku
-                    WHERE pm.is_deleted = 0 
-                    AND pm.status = 'active'
-                    AND pm.compatible_models LIKE ?
-                    ORDER BY pm.category, pm.sku
-                    LIMIT 20
-                `).all(`%${model.model_code || model.name_zh}%`);
-            }
-
-            const resultParts = bomParts.length > 0 ? bomParts : fallbackParts;
-
-            // OP部门隐藏价格
-            const parsedData = resultParts.map(item => {
-                if (req.user.department_name === 'OP') {
-                    delete item.price_cny;
-                    delete item.price_usd;
-                    delete item.price_eur;
-                }
-                return item;
-            });
-
-            res.json({
-                success: true,
-                data: parsedData,
-                meta: {
-                    product_model,
-                    matched_model: model ? {
-                        id: model.id,
-                        name_zh: model.name_zh,
-                        name_en: model.name_en,
-                        model_code: model.model_code
-                    } : null,
-                    source: bomParts.length > 0 ? 'bom_table' : 'compatible_models'
-                }
-            });
-        } catch (err) {
-            console.error('[Parts Master] BOM query error:', err);
-            res.status(500).json({
-                success: false,
-                error: { code: 'SERVER_ERROR', message: err.message }
-            });
-        }
-    });
-
-    // ==========================================
-    // GET /api/v1/parts-master/categories/list
-    // 获取配件分类列表
-    // ==========================================
-    router.get('/categories/list', authenticate, (req, res) => {
-        try {
-            const categories = db.prepare(`
-                SELECT DISTINCT category FROM parts_master 
-                WHERE is_deleted = 0 AND status = 'active'
-                ORDER BY category
-            `).all();
-
-            res.json({
-                success: true,
-                data: categories.map(c => c.category)
-            });
-        } catch (err) {
-            console.error('[Parts Master] Categories error:', err);
             res.status(500).json({
                 success: false,
                 error: { code: 'SERVER_ERROR', message: err.message }

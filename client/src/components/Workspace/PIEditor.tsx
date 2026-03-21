@@ -19,7 +19,9 @@ interface PIEditorProps {
 interface PIItem {
     id: string;
     part_id?: number;       // 关联 parts_master.id
+    part_number?: string;   // SKU（用于查询英文名称）
     description: string;
+    description_en?: string; // 英文描述
     quantity: number;
     unit_price: number;
     total: number;
@@ -28,6 +30,7 @@ interface PIItem {
 interface PIOtherFee {
     id: string;
     description: string;
+    description_en?: string; // 英文描述
     amount: number;
 }
 
@@ -378,7 +381,10 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                 reportContent.repair_process.parts_replaced.forEach((part: any) => {
                     newItems.push({
                         id: `part-${Date.now()}-${Math.random()}`,
+                        part_id: part.part_id,
+                        part_number: part.part_number,  // 保存 SKU 用于查询英文名
                         description: `零件: ${part.name}${part.part_number ? ` (${part.part_number})` : ''}`,
+                        description_en: part.part_number ? undefined : undefined,  // 配件英文名通过 SKU 查询
                         quantity: part.quantity || 1,
                         unit_price: part.unit_price || 0,
                         total: (part.quantity || 1) * (part.unit_price || 0)
@@ -392,6 +398,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                     newItems.push({
                         id: `labor-${Date.now()}-${idx}`,
                         description: `工时: ${labor.description || '维修工时'}`,
+                        description_en: labor.description_en ? `Labor: ${labor.description_en}` : undefined,
                         quantity: labor.hours || 1,
                         unit_price: labor.rate || 0,
                         total: labor.total || (labor.hours || 1) * (labor.rate || 0)
@@ -405,6 +412,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                     newOtherFees.push({
                         id: `fee-${Date.now()}-${idx}`,
                         description: fee.description || '其他费用',
+                        description_en: fee.description_en,
                         amount: fee.amount || 0
                     });
                 });
@@ -488,9 +496,13 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                 const res = await axios.post('/api/v1/rma-documents/pi', payload, {
                     headers: { Authorization: `Bearer ${token}` }
                 });
-                // 刷新以获取新创建的 PI ID
+                // 更新本地 PI 数据，不关闭窗口
                 if (res.data.data?.id) {
-                    onSuccess();
+                    setPIData(prev => ({
+                        ...prev,
+                        id: res.data.data.id,
+                        pi_number: res.data.data.pi_number || prev.pi_number
+                    }));
                 }
             }
         } catch (err) {
@@ -837,11 +849,11 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                 <button
                                                     onClick={importFromRepairReport}
                                                     disabled={importing}
-                                                    style={{ padding: '4px 12px', background: 'var(--accent-blue-subtle)', border: '1px solid var(--accent-blue-border)', borderRadius: 4, color: 'var(--status-blue)', fontSize: 12, cursor: importing ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                                                    style={{ padding: '4px 12px', background: '#FFD200', border: 'none', borderRadius: 4, color: '#000', fontSize: 12, cursor: importing ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}
                                                 >
                                                     <FileInput size={14} /> {importing ? '导入中...' : '从维修报告导入'}
                                                 </button>
-                                                <button onClick={addItem} style={{ padding: '4px 12px', background: 'var(--status-blue)', border: 'none', borderRadius: 4, color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <button onClick={addItem} style={{ padding: '4px 12px', background: '#FFD200', border: 'none', borderRadius: 4, color: '#000', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
                                                     <Plus size={14} /> 添加
                                                 </button>
                                             </>
@@ -898,7 +910,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                 {/* Other Fees */}
                                 <Section title="其他费用" action={
                                     canEdit && (
-                                        <button onClick={addOtherFee} style={{ padding: '4px 12px', background: 'var(--status-blue)', border: 'none', borderRadius: 4, color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <button onClick={addOtherFee} style={{ padding: '4px 12px', background: '#FFD200', border: 'none', borderRadius: 4, color: '#000', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
                                             <Plus size={14} /> 添加
                                         </button>
                                     )
@@ -1378,6 +1390,8 @@ const PREVIEW_LABELS: Record<string, Record<string, string>> = {
         unitPrice: '单价',
         total: '合计',
         noItems: '无项目',
+        otherFees: '其他费用',
+        amount: '金额',
         subtotal: '小计',
         tax: '税额',
         discount: '优惠',
@@ -1411,6 +1425,8 @@ const PREVIEW_LABELS: Record<string, Record<string, string>> = {
         unitPrice: '单价',
         total: '合计',
         noItems: '无项目',
+        otherFees: '其他费用',
+        amount: '金额',
         subtotal: '小计',
         tax: '税额',
         discount: '优惠',
@@ -1444,6 +1460,8 @@ const PREVIEW_LABELS: Record<string, Record<string, string>> = {
         unitPrice: 'Unit Price',
         total: 'Total',
         noItems: 'No items',
+        otherFees: 'Other Fees',
+        amount: 'Amount',
         subtotal: 'Subtotal',
         tax: 'Tax',
         discount: 'Discount',
@@ -1477,6 +1495,8 @@ const PREVIEW_LABELS: Record<string, Record<string, string>> = {
         unitPrice: '単価',
         total: '合計',
         noItems: '項目なし',
+        otherFees: 'その他の費用',
+        amount: '金額',
         subtotal: '小計',
         tax: '税額',
         discount: '割引',
@@ -1549,6 +1569,50 @@ const PIPreview: React.FC<{
     // 获取UI标签
     const t = PREVIEW_LABELS[language] || PREVIEW_LABELS['original'];
 
+    // 配件英文名称缓存（通过 SKU 索引，用于非中文预览）
+    const [partNamesEnBySku, setPartNamesEnBySku] = useState<Record<string, string>>({});
+    const { token } = useAuthStore();
+
+    // 非中文预览时，通过 SKU 查询配件英文名称
+    useEffect(() => {
+        if (language === 'zh-CN' || language === 'original') return;
+        
+        // 收集所有 SKU（从 part_number 字段或从 description 中提取）
+        const skus: string[] = [];
+        piData.content.items.forEach(item => {
+            if (item.part_number) {
+                skus.push(item.part_number);
+            } else if (item.description.startsWith('零件:')) {
+                // 从 description 中提取 SKU，如 "零件: EAGLE 主板 (S2-119-015-01)"
+                const match = item.description.match(/\(([^)]+)\)$/);
+                if (match) skus.push(match[1]);
+            }
+        });
+        
+        if (skus.length === 0) return;
+
+        // 通过 SKU 查询配件英文名称
+        const fetchPartNames = async () => {
+            try {
+                const res = await axios.post('/api/v1/parts-master/batch', { skus }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.data?.success) {
+                    const nameMap: Record<string, string> = {};
+                    res.data.data.forEach((part: any) => {
+                        if (part.sku && part.name_en) {
+                            nameMap[part.sku] = part.name_en;
+                        }
+                    });
+                    setPartNamesEnBySku(nameMap);
+                }
+            } catch (err) {
+                // 静默失败
+            }
+        };
+        fetchPartNames();
+    }, [piData.content.items, language, token]);
+
     // 获取翻译内容（PI预览不显示未翻译标记）
     const getTranslatedContent = (fieldKey: string, originalValue: string): string => {
         if (!originalValue || language === 'original' || language === 'zh-CN') {
@@ -1570,6 +1634,33 @@ const PIPreview: React.FC<{
             return product_name_en;
         }
         return product_name || '-';
+    };
+
+    // 获取配件显示名称（非中文时优先使用英文名称）
+    const getPartDisplayName = (item: PIItem): string => {
+        const isNonChinese = language !== 'original' && language !== 'zh-CN';
+        
+        // 工时条目：使用 description_en
+        if (item.description.startsWith('工时:') && isNonChinese && item.description_en) {
+            return item.description_en;
+        }
+        
+        // 零件条目：通过 SKU 查找英文名称
+        if (item.description.startsWith('零件:') && isNonChinese) {
+            // 优先使用 part_number 字段
+            if (item.part_number && partNamesEnBySku[item.part_number]) {
+                const sku = item.part_number;
+                return `Part: ${partNamesEnBySku[sku]} (${sku})`;
+            }
+            // 尝试从 description 中提取 SKU
+            const match = item.description.match(/\(([^)]+)\)$/);
+            if (match && partNamesEnBySku[match[1]]) {
+                const sku = match[1];
+                return `Part: ${partNamesEnBySku[sku]} (${sku})`;
+            }
+        }
+        
+        return item.description;
     };
 
     return (
@@ -1632,7 +1723,7 @@ const PIPreview: React.FC<{
                     {piData.content.items.map((item, index) => (
                         <tr key={item.id}>
                             <td style={{ padding: 10, borderBottom: '1px solid #ddd' }}>
-                                {renderTranslatedContent(`items.${item.id}.description`, item.description) || `[${t.description} ${index + 1}]`}
+                                {getPartDisplayName(item) || `[${t.description} ${index + 1}]`}
                             </td>
                             <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{item.quantity}</td>
                             <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(item.unit_price || 0).toFixed(2)}</td>
@@ -1646,6 +1737,36 @@ const PIPreview: React.FC<{
                     )}
                 </tbody>
             </table>
+
+            {/* Other Fees Table */}
+            {piData.content.other_fees.length > 0 && (
+                <>
+                    <h3 style={{ fontSize: 13, color: '#333', marginBottom: 12 }}>{t.otherFees}</h3>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24, fontSize: 13 }}>
+                        <thead>
+                            <tr style={{ background: '#f5f5f5' }}>
+                                <th style={{ padding: 10, textAlign: 'left', borderBottom: '2px solid #333', fontSize: 12 }}>{t.description}</th>
+                                <th style={{ padding: 10, textAlign: 'right', borderBottom: '2px solid #333', fontSize: 12, width: 120 }}>{t.amount}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {piData.content.other_fees.map((fee, index) => {
+                                // 非中文时优先使用 description_en
+                                const isNonChinese = language !== 'original' && language !== 'zh-CN';
+                                const feeDescription = (isNonChinese && fee.description_en) ? fee.description_en : fee.description;
+                                return (
+                                    <tr key={fee.id}>
+                                        <td style={{ padding: 10, borderBottom: '1px solid #ddd' }}>
+                                            {feeDescription || `[费用 ${index + 1}]`}
+                                        </td>
+                                        <td style={{ padding: 10, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(fee.amount || 0).toFixed(2)}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </>
+            )}
 
             {/* Totals */}
             <div style={{ marginLeft: 'auto', width: 280, marginBottom: 24, fontSize: 13 }}>

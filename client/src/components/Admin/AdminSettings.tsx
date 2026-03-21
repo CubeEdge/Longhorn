@@ -44,6 +44,7 @@ interface SystemSettings {
     secondary_backup_retention_days: number;
     // RMA Workflow Settings
     require_finance_confirmation?: boolean; // RMA过保工单是否需要财务确认
+    default_labor_rate_cny?: number; // 维修工时默认时薪（人民币）
 
     // SLA Settings
     inquiry_sla_enabled?: boolean;
@@ -161,7 +162,11 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, hideTabBar = 
 
     const [loading, setLoading] = useState(!cachedSettings);
     const [saving, setSaving] = useState(false);
+    const [laborRateInput, setLaborRateInput] = useState<number>(100);
     const { showToast } = useToast();
+    // 权限：是否可编辑工时时薪（系统管理员 或 MS/市场部门）
+    const isMSDept = (user?.department_name || '').toLowerCase().includes('ms') || (user?.department_name || '').includes('市场');
+    const canEditLaborRate = isSuperAdmin || isMSDept;
     const [backingUpPrimary, setBackingUpPrimary] = useState(false);
     const [backingUpSecondary, setBackingUpSecondary] = useState(false);
     const [showApiKey, setShowApiKey] = useState(false);
@@ -234,6 +239,9 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, hideTabBar = 
             ]);
             setSettings(settingsRes.data.data.settings);
             setProviders(settingsRes.data.data.providers || []);
+            // 同步工时时薪输入
+            setLaborRateInput(parseFloat(settingsRes.data.data.settings?.default_labor_rate_cny) || 100);
+
 
             // Update cache
             cachedSettings = settingsRes.data.data.settings;
@@ -324,6 +332,32 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, hideTabBar = 
         } finally {
             setSaving(false);
         }
+    };
+
+    // 保存工时时薪（独立端点，支持管理员+MS部门）- 防抖实时保存
+    const saveLaborRate = async (value: number) => {
+        if (!canEditLaborRate) return;
+        try {
+            await axios.put('/api/v1/system/labor-rate', { rate: value }, { headers: { Authorization: `Bearer ${token}` } });
+        } catch (err: any) {
+            showToast(err?.response?.data?.error?.message || '保存失败', 'error');
+        }
+    };
+
+    // 防抖定时器引用
+    const laborRateTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // 处理时薪输入变化（带防抖自动保存）
+    const handleLaborRateChange = (value: number) => {
+        setLaborRateInput(value);
+        // 清除之前的定时器
+        if (laborRateTimerRef.current) {
+            clearTimeout(laborRateTimerRef.current);
+        }
+        // 500ms 后自动保存
+        laborRateTimerRef.current = setTimeout(() => {
+            saveLaborRate(value);
+        }, 500);
     };
 
     const addProvider = () => {
@@ -1365,6 +1399,33 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ initialTab, hideTabBar = 
                                                     onChange={v => setSettings({ ...settings, require_finance_confirmation: v })} 
                                                     activeColor="#FFD700" 
                                                 />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 维修工时时薪设置 */}
+                                    {canEditLaborRate && (
+                                        <div style={{ background: 'var(--glass-bg-light)', borderRadius: 12, border: '1px solid var(--glass-border)', overflow: 'hidden', marginTop: 16 }}>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', padding: '12px 20px', borderBottom: '1px solid var(--glass-border)', background: 'rgba(5, 150, 105, 0.04)' }}>
+                                                维修工时时薪
+                                            </div>
+                                            <div className="setting-card" style={{ border: 'none', borderRadius: 0, padding: '16px 20px', minHeight: 'auto' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <div className="setting-label">默认时薪（人民币 / 小时）</div>
+                                                    <div className="setting-desc">维修报告中工时费的默认时薪基准。新建工时条目时会自动填入此値。仅管理员和 MS/市场部门可修改。</div>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>￥</span>
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        step={10}
+                                                        value={laborRateInput}
+                                                        onChange={e => handleLaborRateChange(Math.max(0, parseFloat(e.target.value) || 0))}
+                                                        className="text-input"
+                                                        style={{ width: 100, padding: '6px 10px', fontSize: '0.9rem', textAlign: 'right' }}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     )}

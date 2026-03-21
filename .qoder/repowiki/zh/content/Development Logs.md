@@ -20,6 +20,7 @@
 - [client/src/components/Workspace/WorkspaceComponents.tsx](file://client/src/components/Workspace/WorkspaceComponents.tsx)
 - [client/src/components/Workspace/TicketDetailComponents.tsx](file://client/src/components/Workspace/TicketDetailComponents.tsx)
 - [client/src/components/Workspace/UnifiedTicketDetail.tsx](file://client/src/components/Workspace/UnifiedTicketDetail.tsx)
+- [client/src/components/Workspace/MSReviewPanel.tsx](file://client/src/components/Workspace/MSReviewPanel.tsx)
 - [client/src/components/Tickets/SlaComponents.tsx](file://client/src/components/Tickets/SlaComponents.tsx)
 - [server/service/sla_service.js](file://server/service/sla_service.js)
 - [server/service/warranty_service.js](file://server/service/warranty_service.js)
@@ -32,12 +33,10 @@
 
 ## 更新摘要
 **所做更改**
-- 新增统一工单系统开发进度跟踪，包含完整的开发会话日志和任务 backlog
-- 添加复杂工单演示报告，展示统一工单系统的实际应用场景
-- 更新架构图以反映 P2 架构升级后的统一工单系统
-- 增强前端组件分析，重点介绍 Workspace 组件群和统一工单详情页
-- 完善依赖关系分析，突出 SLA 引擎和通知系统的重要性
-- 新增三层次架构实施的日志记录和开发过程跟踪
+- 新增MSReviewPanel增强功能的开发记录，反映统一工单系统持续改进过程
+- 更新MSReviewPanel组件功能，包括配件搜索、费用编辑和诊断报告集成
+- 增强统一工单系统的商务审核流程，支持更灵活的配件管理和费用控制
+- 完善MSReviewPanel与SubmitDiagnosticModal的兼容性配置
 
 ## 目录
 1. [简介](#简介)
@@ -45,19 +44,20 @@
 3. [核心组件](#核心组件)
 4. [架构总览](#架构总览)
 5. [详细组件分析](#详细组件分析)
-6. [统一工单系统开发进度](#统一工单系统开发进度)
-7. [复杂工单演示报告](#复杂工单演示报告)
-8. [三层次架构实施跟踪](#三层次架构实施跟踪)
-9. [依赖关系分析](#依赖关系分析)
-10. [性能考量](#性能考量)
-11. [故障排查指南](#故障排查指南)
-12. [结论](#结论)
-13. [附录](#附录)
+6. [MSReviewPanel增强功能](#msreviewpanel增强功能)
+7. [统一工单系统开发进度](#统一工单系统开发进度)
+8. [复杂工单演示报告](#复杂工单演示报告)
+9. [三层次架构实施跟踪](#三层次架构实施跟踪)
+10. [依赖关系分析](#依赖关系分析)
+11. [性能考量](#性能考量)
+12. [故障排查指南](#故障排查指南)
+13. [结论](#结论)
+14. [附录](#附录)
 
 ## 简介
 本文件是对 Longhorn 项目的开发日志与项目结构的系统化梳理与可视化呈现。文档以"开发日志"为核心线索，结合统一工单系统的开发进度、复杂工单演示报告以及 Prompt 日志、部署脚本与多端实现，帮助读者快速理解项目在前端、后端与移动端的演进脉络、关键变更与工程实践。
 
-**更新** 新增统一工单系统的完整开发进度跟踪，包含从 P2 架构升级到复杂工单演示的全过程记录。特别关注三层次架构实施的日志记录和开发过程跟踪，涵盖系统架构升级、组件重构、权限管理、协作机制等多个维度的详细实施过程。
+**更新** 新增MSReviewPanel增强功能的开发记录，反映统一工单系统在商务审核环节的持续改进过程。特别关注MSReviewPanel组件在配件搜索、费用编辑和诊断报告集成方面的功能增强，以及与SubmitDiagnosticModal的兼容性配置。
 
 ## 项目结构
 Longhorn 是一个前后端分离的现代化知识与工单管理平台，包含：
@@ -75,6 +75,7 @@ FE_ClientReadme["client/README.md"]
 FE_Workspace["WorkspaceComponents.tsx<br/>统一工单工作区"]
 FE_TicketDetail["TicketDetailComponents.tsx<br/>工单详情增强"]
 FE_UnifiedDetail["UnifiedTicketDetail.tsx<br/>统一工单详情"]
+FE_MSReviewPanel["MSReviewPanel.tsx<br/>商务审核面板"]
 FE_SLA["SlaComponents.tsx<br/>SLA状态组件"]
 end
 subgraph "后端 (Node.js/Express)"
@@ -149,7 +150,7 @@ ServiceDataModel --> ServiceAPI
 - 部署脚本：支持快速与全量两种部署模式，自动化构建与 PM2 重载
 - 文档与日志：统一工单系统开发日志、任务 backlog、复杂工单演示报告与 Prompt 日志记录每次迭代的技术产出与版本演进
 
-**更新** 新增统一工单系统核心组件，包括 Workspace 组件群、TicketDetailComponents 和 SLA 状态组件。特别关注三层次架构的实施，包括系统架构层、业务逻辑层和数据访问层的详细实现。
+**更新** 新增MSReviewPanel组件，作为统一工单系统商务审核环节的核心组件，提供配件搜索、费用编辑和诊断报告集成等功能。特别关注MSReviewPanel与SubmitDiagnosticModal的兼容性配置，以及与UnifiedTicketDetail的深度集成。
 
 **章节来源**
 - [client/src/main.tsx:1-12](file://client/src/main.tsx#L1-L12)
@@ -168,43 +169,46 @@ B["main.tsx<br/>应用入口"]
 C["WorkspaceComponents.tsx<br/>统一工单工作区"]
 D["TicketDetailComponents.tsx<br/>工单详情增强"]
 E["UnifiedTicketDetail.tsx<br/>统一工单详情"]
-F["SlaComponents.tsx<br/>SLA状态组件"]
+F["MSReviewPanel.tsx<br/>商务审核面板"]
+G["SlaComponents.tsx<br/>SLA状态组件"]
 end
 subgraph "后端"
-G["index.js<br/>服务与中间件"]
-H["files/routes.js<br/>文件路由模块"]
-I["sla_service.js<br/>SLA引擎"]
-J["warranty_service.js<br/>保修引擎"]
-K["backup_service.js<br/>备份服务"]
-L["seed_complex_tickets.js<br/>复杂工单预置"]
+H["index.js<br/>服务与中间件"]
+I["files/routes.js<br/>文件路由模块"]
+J["sla_service.js<br/>SLA引擎"]
+K["warranty_service.js<br/>保修引擎"]
+L["backup_service.js<br/>备份服务"]
+M["seed_complex_tickets.js<br/>复杂工单预置"]
 end
 subgraph "移动端"
-M["SwiftUI Views<br/>文件浏览与缓存"]
-N["Services<br/>网络与缓存"]
+N["SwiftUI Views<br/>文件浏览与缓存"]
+O["Services<br/>网络与缓存"]
 end
 subgraph "部署"
-O["deploy.sh<br/>构建与同步"]
-P["数据库迁移<br/>统一工单架构"]
-Q["三层次架构<br/>系统架构层"]
-R["业务逻辑层<br/>统一工单引擎"]
-S["数据访问层<br/>权限与协作"]
+P["deploy.sh<br/>构建与同步"]
+Q["数据库迁移<br/>统一工单架构"]
+R["三层次架构<br/>系统架构层"]
+S["业务逻辑层<br/>统一工单引擎"]
+T["数据访问层<br/>权限与协作"]
 end
-A --> G
+A --> H
 B --> A
-C --> G
-D --> G
-E --> G
-F --> I
-G --> H
-G --> I
+C --> H
+D --> H
+E --> H
+F --> E
 G --> J
-G --> K
-M --> N
-N --> G
-O --> G
-P --> G
-Q --> R
+H --> I
+H --> J
+H --> K
+H --> L
+M --> H
+N --> O
+O --> H
+P --> H
+Q --> H
 R --> S
+S --> T
 ```
 
 **图表来源**
@@ -213,6 +217,7 @@ R --> S
 - [client/src/components/Workspace/WorkspaceComponents.tsx](file://client/src/components/Workspace/WorkspaceComponents.tsx)
 - [client/src/components/Workspace/TicketDetailComponents.tsx](file://client/src/components/Workspace/TicketDetailComponents.tsx)
 - [client/src/components/Workspace/UnifiedTicketDetail.tsx](file://client/src/components/Workspace/UnifiedTicketDetail.tsx)
+- [client/src/components/Workspace/MSReviewPanel.tsx](file://client/src/components/Workspace/MSReviewPanel.tsx)
 - [client/src/components/Tickets/SlaComponents.tsx](file://client/src/components/Tickets/SlaComponents.tsx)
 - [server/index.js:1-120](file://server/index.js#L1-L120)
 - [scripts/deploy.sh:1-167](file://scripts/deploy.sh#L1-L167)
@@ -305,11 +310,82 @@ ReloadPM2 --> End(["部署完成"])
 - Prompt 日志：记录用户提示与 Agent 回应，体现功能演进与修复路径
 - 示例：品牌化对齐、UI/UX 精修、知识库导入优化、搜索召回增强、状态持久化与导航修复、备份系统实现等
 
-**更新** 新增统一工单系统开发日志，涵盖 P2 架构升级、Workspace 重构、复杂工单演示等内容。特别记录三层次架构实施过程中的关键节点和里程碑。
+**更新** 新增MSReviewPanel增强功能的开发记录，涵盖配件搜索、费用编辑、诊断报告集成等关键特性。特别记录MSReviewPanel与SubmitDiagnosticModal的兼容性配置，以及在统一工单系统中的集成过程。
 
 **章节来源**
-- [docs/log_dev.md:1-1908](file://docs/log_dev.md#L1-L1908)
+- [docs/log_dev.md:1-1942](file://docs/log_dev.md#L1-L1942)
 - [docs/log_prompt.md:1-2503](file://docs/log_prompt.md#L1-L2503)
+
+## MSReviewPanel增强功能
+
+### MSReviewPanel组件架构
+MSReviewPanel是统一工单系统商务审核环节的核心组件，提供完整的配件管理、费用控制和诊断报告集成功能。
+
+```mermaid
+graph TB
+subgraph "MSReviewPanel组件"
+A["MSReviewPanel.tsx<br/>主组件"]
+B["WarrantyCalculation<br/>保修计算结果"]
+C["TechnicalAssessment<br/>技术评估"]
+D["MS Decision<br/>商务判定"]
+E["Parts Management<br/>配件管理"]
+F["Other Fees<br/>其他费用"]
+G["Cost Estimation<br/>费用估算"]
+end
+subgraph "数据流"
+H["fetchWarrantyData<br/>获取保修数据"]
+I["fetchExistingMSReview<br/>获取现有审核"]
+J["searchParts<br/>配件搜索"]
+K["addOtherFee<br/>添加费用"]
+L["handleSubmit<br/>提交审核"]
+end
+A --> B
+A --> C
+A --> D
+A --> E
+A --> F
+A --> G
+H --> B
+I --> D
+J --> E
+K --> F
+L --> D
+```
+
+**图表来源**
+- [client/src/components/Workspace/MSReviewPanel.tsx:62-120](file://client/src/components/Workspace/MSReviewPanel.tsx#L62-L120)
+
+### 配件搜索与兼容性管理
+- **兼容配件加载**：配件搜索框聚焦时自动加载当前产品型号的兼容配件列表
+- **搜索范围限定**：支持按产品型号ID限定搜索范围，确保配件兼容性
+- **回退机制**：当兼容配件无结果时自动回退到全量配件搜索
+
+**章节来源**
+- [client/src/components/Workspace/MSReviewPanel.tsx:224-284](file://client/src/components/Workspace/MSReviewPanel.tsx#L224-L284)
+
+### 费用编辑功能
+- **运费检测费**：支持添加运费、检测费等其他费用项
+- **费用说明**：将"物流费用"改为"其他费用"，支持自定义费用说明
+- **费用计算**：实时计算MS添加配件和费用的小计金额
+
+**章节来源**
+- [client/src/components/Workspace/MSReviewPanel.tsx:314-335](file://client/src/components/Workspace/MSReviewPanel.tsx#L314-L335)
+
+### 诊断报告集成
+- **配件导入**：从诊断报告导入预估配件和工时预估
+- **数据绑定**：自动填充诊断报告中的配件清单和工时信息
+- **导入验证**：检查数组长度和数字类型确保数据有效性
+
+**章节来源**
+- [client/src/components/Workspace/MSReviewPanel.tsx:167-181](file://client/src/components/Workspace/MSReviewPanel.tsx#L167-L181)
+
+### 与SubmitDiagnosticModal的兼容性
+- **配件范围限定**：SubmitDiagnosticModal配件搜索范围限定为兼容配件
+- **下拉列表优化**：下拉列表高度增加至400px提升用户体验
+- **数据一致性**：确保两个组件使用相同的配件搜索逻辑
+
+**章节来源**
+- [docs/log_dev.md:3-8](file://docs/log_dev.md#L3-L8)
 
 ## 统一工单系统开发进度
 
@@ -466,7 +542,7 @@ I --> L
 - 后端 package.json 管理 Express、SQLite、Multer、Sharp、OpenAI 等依赖
 - 版本号：根版本 v1.5.34，前端 v12.1.78，后端 v1.5.51
 
-**更新** 新增统一工单系统相关依赖，包括 SLA 引擎、保修计算引擎和复杂工单预置脚本。特别关注三层次架构实施中的依赖关系变化。
+**更新** 新增MSReviewPanel相关依赖，包括配件搜索API、费用管理组件和诊断报告集成。特别关注MSReviewPanel与SubmitDiagnosticModal的兼容性配置依赖。
 
 ```mermaid
 graph LR
@@ -479,12 +555,17 @@ BE --> Warranty["warranty_service.js<br/>保修引擎"]
 BE --> ComplexTickets["seed_complex_tickets.js<br/>复杂工单预置"]
 BE --> FilesRoutes["files/routes.js<br/>文件路由模块"]
 BE --> Middleware["middleware/permission.js<br/>权限中间件"]
+Client --> MSReviewPanel["MSReviewPanel.tsx<br/>商务审核面板"]
+Client --> UnifiedTicketDetail["UnifiedTicketDetail.tsx<br/>统一工单详情"]
+Client --> SubmitDiagnosticModal["SubmitDiagnosticModal.tsx<br/>诊断报告模态框"]
 ```
 
 **图表来源**
 - [package.json:1-18](file://package.json#L1-L18)
 - [client/package.json:1-63](file://client/package.json#L1-L63)
 - [server/package.json:1-41](file://server/package.json#L1-L41)
+- [client/src/components/Workspace/MSReviewPanel.tsx](file://client/src/components/Workspace/MSReviewPanel.tsx)
+- [client/src/components/Workspace/UnifiedTicketDetail.tsx](file://client/src/components/Workspace/UnifiedTicketDetail.tsx)
 - [server/service/sla_service.js](file://server/service/sla_service.js)
 - [server/service/warranty_service.js](file://server/service/warranty_service.js)
 - [server/scripts/seed_complex_tickets.js](file://server/scripts/seed_complex_tickets.js)
@@ -503,6 +584,7 @@ BE --> Middleware["middleware/permission.js<br/>权限中间件"]
 - 部署效率：快速模式本地构建、远端同步与 PM2 重载，显著缩短上线时间
 - 统一工单系统：SLA 引擎优化、数据迁移验证、权限场景测试提升系统稳定性
 - 三层次架构：系统架构层的统一设计减少重复代码，业务逻辑层的模块化提高可维护性
+- MSReviewPanel：配件搜索的防抖机制、费用计算的实时更新、诊断报告的数据绑定优化
 
 ## 故障排查指南
 - 部署失败
@@ -521,6 +603,10 @@ BE --> Middleware["middleware/permission.js<br/>权限中间件"]
   - 现象：SLA 超时、工单状态异常、权限验证失败
   - 排查：检查 SLA 引擎配置、数据迁移脚本、权限中间件
   - 参考：sla_service.js、权限中间件与数据库迁移脚本
+- MSReviewPanel功能异常
+  - 现象：配件搜索无结果、费用计算错误、诊断报告导入失败
+  - 排查：检查配件API接口、费用计算逻辑、诊断报告数据格式
+  - 参考：MSReviewPanel组件实现与相关API接口
 - 三层次架构问题
   - 现象：系统架构层数据不一致、业务逻辑层性能下降、数据访问层权限错误
   - 排查：检查三层之间的接口契约、数据一致性、权限控制
@@ -533,14 +619,15 @@ BE --> Middleware["middleware/permission.js<br/>权限中间件"]
 - [server/index.js:1-120](file://server/index.js#L1-L120)
 
 ## 结论
-本开发日志系统梳理了 Longhorn 在前端、后端与移动端的关键演进路径，涵盖 UI/UX 优化、知识库导入与搜索增强、状态持久化与导航修复、备份系统实现与部署自动化等重要里程碑。**更新** 新增统一工单系统的完整开发进度跟踪，包括 P2 架构升级、Workspace 组件重构、SLA 引擎实现和复杂工单演示预置。特别关注三层次架构实施的日志记录和开发过程跟踪，形成从系统架构层到业务逻辑层再到数据访问层的完整实施路径。
+本开发日志系统梳理了 Longhorn 在前端、后端与移动端的关键演进路径，涵盖 UI/UX 优化、知识库导入与搜索增强、状态持久化与导航修复、备份系统实现与部署自动化等重要里程碑。**更新** 新增MSReviewPanel增强功能的开发记录，反映统一工单系统在商务审核环节的持续改进过程。特别关注MSReviewPanel组件在配件搜索、费用编辑和诊断报告集成方面的功能增强，以及与SubmitDiagnosticModal的兼容性配置。
 
-通过文档与脚本的协同，项目形成了可追溯、可复现、可快速上线的工程化体系。三层次架构的实施为系统的可扩展性和可维护性奠定了坚实基础，统一工单系统的开发为后续的功能扩展提供了清晰的架构指导。
+通过文档与脚本的协同，项目形成了可追溯、可复现、可快速上线的工程化体系。三层次架构的实施为系统的可扩展性和可维护性奠定了坚实基础，统一工单系统的开发为后续的功能扩展提供了清晰的架构指导。MSReviewPanel的增强功能进一步完善了商务审核流程，提升了系统的实用性和用户体验。
 
 ## 附录
 - 项目文档集合：PRD、部署手册、快速上线参考、远程开发指南
 - 版本与脚本：根级与子项目版本号、统一部署与构建脚本
 - 统一工单系统文档：开发日志、任务 backlog、复杂工单演示报告
+- MSReviewPanel组件文档：配件管理、费用控制、诊断报告集成
 - 三层次架构文档：系统架构设计、业务逻辑实现、数据访问层规范
 
 **章节来源**
@@ -548,7 +635,7 @@ BE --> Middleware["middleware/permission.js<br/>权限中间件"]
 - [package.json:1-18](file://package.json#L1-L18)
 - [client/package.json:1-63](file://client/package.json#L1-L63)
 - [server/package.json:1-41](file://server/package.json#L1-L41)
-- [docs/log_dev.md:1-1908](file://docs/log_dev.md#L1-L1908)
+- [docs/log_dev.md:1-1942](file://docs/log_dev.md#L1-L1942)
 - [docs/log_backlog.md:1-218](file://docs/log_backlog.md#L1-L218)
 - [docs/demo_tickets_report.md:1-156](file://docs/demo_tickets_report.md#L1-L156)
 - [docs/Service_API.md:1-200](file://docs/Service_API.md#L1-L200)

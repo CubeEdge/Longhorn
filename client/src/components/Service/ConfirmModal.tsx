@@ -52,8 +52,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
         }}>
             <div style={{
-                background: 'var(--bg-secondary)', width: 400, borderRadius: 12,
-                boxShadow: '0 20px 40px var(--glass-shadow-lg)',
+                background: 'var(--card-bg)', width: 400, borderRadius: 12,
+                boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
                 border: '1px solid var(--glass-border)'
             }}>
                 <div style={{

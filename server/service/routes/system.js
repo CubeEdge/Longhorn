@@ -22,7 +22,8 @@ module.exports = function (db, authenticate) {
                        rma_sla_enabled, rma_auto_close_days, rma_sla_hours,
                        svc_sla_enabled, svc_auto_close_days, svc_sla_hours,
                        show_family_a, show_family_b, show_family_c, show_family_d, show_family_e,
-                       enable_product_type_filter, allowed_product_types
+                       enable_product_type_filter, allowed_product_types,
+                       default_labor_rate_cny
                 FROM system_settings LIMIT 1
             `).get();
 
@@ -34,6 +35,7 @@ module.exports = function (db, authenticate) {
                     show_daily_word: Boolean(settings?.show_daily_word),
                     notification_refresh_interval: parseInt(settings?.notification_refresh_interval) || 30,
                     require_finance_confirmation: settings?.require_finance_confirmation !== 0,
+                    default_labor_rate_cny: parseFloat(settings?.default_labor_rate_cny) || 100,
                     
                     // SLA Settings
                     inquiry_sla_enabled: settings?.inquiry_sla_enabled !== 0,
@@ -58,7 +60,7 @@ module.exports = function (db, authenticate) {
                             E: settings?.show_family_e !== 0
                         },
                         enable_type_filter: settings?.enable_product_type_filter !== 0,
-                        allowed_types: (settings?.allowed_product_types || '电影机,摄像机,电子寻像器,寻像器,套装').split(',')
+                        allowed_types: (settings?.allowed_product_types || '\u7535\u5f71\u673a,\u6444\u50cf\u673a,\u7535\u5b50\u5bfb\u50cf\u5668,\u5bfb\u50cf\u5668,\u5957\u88c5').split(',')
                     }
                 }
             });
@@ -68,6 +70,32 @@ module.exports = function (db, authenticate) {
                 success: false,
                 error: { code: 'SERVER_ERROR', message: err.message }
             });
+        }
+    });
+
+    /**
+     * PUT /api/v1/system/labor-rate
+     * Update default labor rate (accessible to admins and MS/Market dept users)
+     */
+    router.put('/labor-rate', authenticate, (req, res) => {
+        try {
+            const userRole = req.user?.role || '';
+            const userDept = (req.user?.department_name || '').toLowerCase();
+            const isAdmin = userRole === 'Admin' || userRole === 'Exec';
+            const isMSDept = userDept.includes('ms') || userDept.includes('\u5e02\u573a');
+            if (!isAdmin && !isMSDept) {
+                return res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: '\u65e0\u6743\u9650\u4fee\u6539\u5de5\u65f6\u65f6\u85aa' } });
+            }
+            const { rate } = req.body;
+            const parsedRate = parseFloat(rate);
+            if (isNaN(parsedRate) || parsedRate < 0) {
+                return res.status(400).json({ success: false, error: { code: 'INVALID_INPUT', message: '\u65e0\u6548\u7684\u65f6\u85aa\u6570\u5024' } });
+            }
+            db.prepare('UPDATE system_settings SET default_labor_rate_cny = ? WHERE id = 1').run(parsedRate);
+            res.json({ success: true, data: { default_labor_rate_cny: parsedRate } });
+        } catch (err) {
+            console.error('[System] Labor rate update error:', err);
+            res.status(500).json({ success: false, error: { code: 'SERVER_ERROR', message: err.message } });
         }
     });
 

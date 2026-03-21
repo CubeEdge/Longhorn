@@ -394,10 +394,10 @@ export const SubmitDiagnosticModal: React.FC<SubmitDiagnosticModalProps> = ({
                         {estimatedParts.length > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                 {estimatedParts.map(p => (
-                                    <div key={p.part_id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: 8 }}>
+                                    <div key={p.part_id} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--glass-bg-light)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--glass-border)' }}>
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ fontSize: 12, color: '#eee' }}>{p.name}</div>
-                                            <div style={{ fontSize: 10, color: '#666' }}>{p.sku}</div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-main)' }}>{p.name}</div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.sku}</div>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                             <span style={{ fontSize: 11, color: '#888' }}>x</span>

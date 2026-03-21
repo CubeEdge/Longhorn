@@ -18,18 +18,10 @@
 
 ## 更新摘要
 **变更内容**
-- 集成通知中心系统，提供完整的通知管理和提醒功能
-- 新增参与者协作机制，支持工单成员邀请、转交和权限管理
-- 增强活动时间轴功能，支持关键节点检测和可视化标识
-- 完善三种工单类型的统一管理体验，提供一致的界面和交互
-- 优化审计化修正功能，实现强制审计字段变更时的修正理由输入
-- 改进序列号状态驱动工作流，优化智能场景识别和一键修正功能
-- 增强附件管理功能，支持更好的文件拖拽上传和预览体验
-- 优化布局设计，提升用户体验和界面一致性
-- **新增** 支持新的定价架构和产品信息显示，包括产品SKU、分类和族群管理
-- **新增** 增强的保修信息管理，支持产品入库后的保修注册和计算
-- **新增** 序列号状态驱动的智能场景识别，支持四种业务场景的自动处理
-- **更新** UnifiedTicketDetail 组件的工单详情展示增强，包括更好的序列号状态显示和一键修正功能
+- UnifiedTicketDetail 组件在工单信息显示效果方面进行了微更新，改善了序列号状态显示和一键修正功能的用户体验
+- 增强了工单基本信息卡片的布局和视觉层次，优化了产品型号、序列号和保修状态的展示效果
+- 改进了序列号状态检测机制的响应速度和准确性，提升了智能场景识别的用户体验
+- 优化了一键修正功能的触发条件和界面反馈，使用户能够更直观地理解和使用该功能
 
 ## 目录
 1. [简介](#简介)
@@ -58,7 +50,7 @@
 
 统一工单详情是 Longhorn 工单管理系统中的核心功能模块，为所有类型的工单（RMA、服务、咨询）提供统一的详情展示界面。该模块实现了 macOS26 风格的双栏布局设计，左侧为主信息区，右侧为协作者和客户上下文区，支持完整的工单生命周期管理和审计功能。
 
-**更新** UnifiedTicketDetail 组件的增强包括更好的工单详情展示，特别是在序列号状态显示和一键修正功能方面。新增的序列号状态检测机制能够智能识别四种业务场景（已入库+已注册保修、已入库+未注册保修、未入库、SN 输入错误），并提供相应的操作按钮和界面响应。增强的保修状态显示包括在保/过保状态的颜色标识和剩余天数显示，以及针对不同场景的交互按钮（注册保修、产品入库）。
+**更新** UnifiedTicketDetail 组件的微更新主要集中在工单信息显示效果的优化上，特别是在序列号状态显示和一键修正功能方面。新增的序列号状态检测机制能够智能识别四种业务场景（已入库+已注册保修、已入库+未注册保修、未入库、SN 输入错误），并提供相应的操作按钮和界面响应。增强的保修状态显示包括在保/过保状态的颜色标识和剩余天数显示，以及针对不同场景的交互按钮（注册保修、产品入库）。
 
 新增的通知中心系统为用户提供了完整的通知管理和提醒功能，包括实时通知推送、分类标识和已读管理。参与者协作机制支持工单成员的邀请、转交和权限管理，增强了团队协作效率。活动时间轴功能得到显著增强，支持关键节点检测和可视化标识，提供更直观的工作流状态展示。三种工单类型的统一管理体验得到完善，提供一致的界面和交互体验。审计化修正功能的改进实现了强制审计字段变更时的修正理由输入，确保所有核心数据变更都有明确的审计记录。序列号状态驱动工作流的优化显著提升了系统的智能化水平，能够根据序列号的实际状态自动识别业务场景并提供相应的操作建议。
 
@@ -123,7 +115,7 @@ B --> V
 
 **图表来源**
 - [UnifiedTicketDetailPage.tsx:1-38](file://client/src/components/Service/UnifiedTicketDetailPage.tsx#L1-L38)
-- [UnifiedTicketDetail.tsx:1-3538](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L1-L3538)
+- [UnifiedTicketDetail.tsx:1-3542](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L1-L3542)
 - [TicketDetailComponents.tsx:1-2516](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1-L2516)
 - [AttachmentZone.tsx:1-108](file://client/src/components/Service/AttachmentZone.tsx#L1-L108)
 - [AuditReasonModal.tsx:1-339](file://client/src/components/Service/AuditReasonModal.tsx#L1-L339)
@@ -134,7 +126,7 @@ B --> V
 
 **章节来源**
 - [UnifiedTicketDetailPage.tsx:1-38](file://client/src/components/Service/UnifiedTicketDetailPage.tsx#L1-L38)
-- [UnifiedTicketDetail.tsx:1-3538](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L1-L3538)
+- [UnifiedTicketDetail.tsx:1-3542](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L1-L3542)
 - [TicketDetailComponents.tsx:1-2516](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1-L2516)
 - [AttachmentZone.tsx:1-108](file://client/src/components/Service/AttachmentZone.tsx#L1-L108)
 - [AuditReasonModal.tsx:1-339](file://client/src/components/Service/AuditReasonModal.tsx#L1-L339)
@@ -234,7 +226,7 @@ class Participant {
 21. **更新** **增强的工单详情展示**: 更好的序列号状态显示和一键修正功能
 
 **章节来源**
-- [UnifiedTicketDetail.tsx:174-3538](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L174-L3538)
+- [UnifiedTicketDetail.tsx:174-3542](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L174-L3542)
 
 ## 架构概览
 
@@ -332,7 +324,7 @@ B --> MM
 ```
 
 **图表来源**
-- [UnifiedTicketDetail.tsx:174-3538](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L174-L3538)
+- [UnifiedTicketDetail.tsx:174-3542](file://client/src/components/Workspace/UnifiedTicketDetail.tsx#L174-L3542)
 - [TicketDetailComponents.tsx:1-2516](file://client/src/components/Workspace/TicketDetailComponents.tsx#L1-L2516)
 - [AttachmentZone.tsx:1-108](file://client/src/components/Service/AttachmentZone.tsx#L1-L108)
 - [AuditReasonModal.tsx:1-339](file://client/src/components/Service/AuditReasonModal.tsx#L1-L339)
@@ -1581,7 +1573,7 @@ S --> AI[TicketInfoCard]
 
 统一工单详情模块是 Longhorn 工单管理系统的重要组成部分，通过精心设计的架构和丰富的功能特性，为用户提供了完整的工单管理体验。该模块不仅实现了统一的界面风格和交互体验，更重要的是建立了一套完善的权限控制和审计机制，确保了工单处理过程的透明性和可追溯性。
 
-**更新** UnifiedTicketDetail 组件的增强显著提升了工单详情展示的质量，特别是在序列号状态显示和一键修正功能方面。新增的序列号状态检测机制能够智能识别四种业务场景（已入库+已注册保修、已入库+未注册保修、未入库、SN 输入错误），并提供相应的操作按钮和界面响应。增强的保修状态显示包括在保/过保状态的颜色标识和剩余天数显示，以及针对不同场景的交互按钮（注册保修、产品入库）。一键修正功能的改进使得用户能够更便捷地修正序列号等核心字段，系统会自动检测风险字段并要求填写修正理由。
+**更新** UnifiedTicketDetail 组件的微更新显著提升了工单详情展示的质量，特别是在序列号状态显示和一键修正功能方面。新增的序列号状态检测机制能够智能识别四种业务场景（已入库+已注册保修、已入库+未注册保修、未入库、SN 输入错误），并提供相应的操作按钮和界面响应。增强的保修状态显示包括在保/过保状态的颜色标识和剩余天数显示，以及针对不同场景的交互按钮（注册保修、产品入库）。一键修正功能的改进使得用户能够更便捷地修正序列号等核心字段，系统会自动检测风险字段并要求填写修正理由。
 
 新增的通知中心系统显著提升了用户的协作效率，提供了实时的通知管理和提醒功能，包括分类标识、已读管理和自动跳转等特性。参与者协作机制的引入使得团队协作更加便捷，支持成员邀请、转交和权限管理等功能。活动时间轴功能的增强提供了更直观的工作流状态展示，关键节点检测和可视化标识让用户能够快速了解工单进展。三种工单类型的统一管理体验得到了完善，提供了一致的界面和交互体验。审计化修正功能的改进实现了强制审计字段变更时的修正理由输入，确保所有核心数据变更都有明确的审计记录。序列号状态驱动工作流的优化显著提升了系统的智能化水平，能够根据序列号的实际状态自动识别业务场景并提供相应的操作建议。
 

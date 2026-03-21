@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
-import { FileText, Plus, Trash2, Stethoscope, Wrench, X, Save, CheckCircle, Loader2, RefreshCw } from 'lucide-react';
+import { FileText, Trash2, Stethoscope, Wrench, X, Save, CheckCircle, Loader2, RefreshCw, Search, Package } from 'lucide-react';
+import ConfirmModal from '../Service/ConfirmModal';
 
 interface OpRepairReportEditorProps {
     isOpen: boolean;
@@ -36,6 +37,7 @@ const DEFAULT_CONTENT = {
     repair_process: {
         actions_taken: '',
         parts_replaced: [],
+        labor_hours: 0,
         testing_results: ''
     },
     // Keep empty definitions for DB compliance
@@ -80,6 +82,21 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
         shipping_total: 0,
         version: 1
     });
+
+    // 配件搜索状态
+    const [partSearchTerm, setPartSearchTerm] = useState('');
+    const [partOptions, setPartOptions] = useState<Array<{id: number; name: string; sku: string; price_cny: number}>>([]);
+    const [isSearchingParts, setIsSearchingParts] = useState(false);
+    const [showPartDropdown, setShowPartDropdown] = useState(false);
+
+    // 诊断报告数据（用于一键导入）
+    const [diagnosticData, setDiagnosticData] = useState<{
+        estimated_parts: Array<{part_id: number; name: string; sku: string; quantity: number; price: number}>;
+        estimated_labor_hours: number;
+    } | null>(null);
+
+    // 诊断报告一键导入确认弹窗
+    const [showDiagnosticImportConfirm, setShowDiagnosticImportConfirm] = useState(false);
 
     // 更正功能状态
     const [showCorrectionConfirm, setShowCorrectionConfirm] = useState(false);
@@ -127,6 +144,18 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
         }
     }, [isOpen, ticketId]);
 
+    // 点击外部关闭配件下拉框
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest('.part-search-container')) {
+                setShowPartDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const fetchTicketInfo = async () => {
         try {
             const res = await axios.get(`/api/v1/tickets/${ticketId}`, {
@@ -150,6 +179,27 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
             });
             const opReportActivity = activitiesRes.data.data?.[0];
 
+            // 加载诊断报告数据（用于显示预估配件和工时）
+            const ticketRes = await axios.get(`/api/v1/tickets/${ticketId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const ticket = ticketRes.data?.data;
+            const activities = ticketRes.data?.activities || [];
+            const diagnosticActivity = activities.find((a: any) => a.activity_type === 'diagnostic_report');
+            
+            // 提取诊断报告数据用于一键导入
+            const diagnosticMetadata = diagnosticActivity?.metadata 
+                ? (typeof diagnosticActivity.metadata === 'string'
+                    ? JSON.parse(diagnosticActivity.metadata) : diagnosticActivity.metadata)
+                : null;
+            
+            if (diagnosticMetadata?.estimated_parts || diagnosticMetadata?.estimated_labor_hours) {
+                setDiagnosticData({
+                    estimated_parts: diagnosticMetadata.estimated_parts || [],
+                    estimated_labor_hours: diagnosticMetadata.estimated_labor_hours || 0
+                });
+            }
+            
             if (opReportActivity) {
                 // If it exists, populate our form
                 setActivityId(opReportActivity.id);
@@ -165,19 +215,21 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                 }
             } else {
                 // If not, fetch diagnostic info to initialize from scratch
-                const res = await axios.get(`/api/v1/tickets/${ticketId}`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                if (res.data.success) {
-                    const ticket = res.data.data;
-                    const activities = res.data.activities || [];
-                    const diagnosticActivity = activities.find((a: any) => a.activity_type === 'diagnostic_report');
-                    let diagnosticMetadata = null;
+                if (ticket) {
+                    const diagnosticMetadata = diagnosticActivity?.metadata 
+                        ? (typeof diagnosticActivity.metadata === 'string'
+                            ? JSON.parse(diagnosticActivity.metadata) : diagnosticActivity.metadata)
+                        : null;
 
-                    if (diagnosticActivity?.metadata) {
-                        diagnosticMetadata = typeof diagnosticActivity.metadata === 'string'
-                            ? JSON.parse(diagnosticActivity.metadata) : diagnosticActivity.metadata;
-                    }
+                    // 从诊断报告导入预估配件
+                    const importedParts = diagnosticMetadata?.estimated_parts?.map((p: any) => ({
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                        name: p.name,
+                        part_number: p.sku,
+                        quantity: p.quantity,
+                        status: 'new',
+                        price: p.price
+                    })) || [];
 
                     setReportData((prev: any) => ({
                         ...prev,
@@ -204,6 +256,8 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                             },
                             repair_process: {
                                 ...prev.content.repair_process,
+                                parts_replaced: importedParts,
+                                labor_hours: diagnosticMetadata?.estimated_labor_hours || 0,
                                 actions_taken: diagnosticMetadata?.repair_advice 
                                     ? diagnosticMetadata.repair_advice 
                                     : (Array.isArray(diagnosticMetadata?.actions_taken) 
@@ -235,48 +289,109 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
         });
     };
 
-    const addArrayItem = (path: string, defaultValue: any) => {
+    // 配件搜索函数
+    const searchParts = useCallback(async (term: string) => {
+        if (!term || term.length < 1) {
+            setPartOptions([]);
+            return;
+        }
+        setIsSearchingParts(true);
+        try {
+            const res = await axios.get('/api/v1/parts-master', {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { search: term, status: 'active', page_size: 50, product_model_id: ticketInfo?.product_model_id }
+            });
+            if (res.data?.success) {
+                setPartOptions(res.data.data);
+                setShowPartDropdown(true);
+            }
+        } catch (err) {
+            console.error('Failed to search parts:', err);
+        } finally {
+            setIsSearchingParts(false);
+        }
+    }, [token, ticketInfo?.product_model_id]);
+
+    // 加载兼容配件
+    const loadCompatibleParts = useCallback(async () => {
+        if (!ticketInfo?.product_model_id) return;
+        setIsSearchingParts(true);
+        try {
+            const res = await axios.get('/api/v1/parts-master', {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { status: 'active', page_size: 50, product_model_id: ticketInfo.product_model_id }
+            });
+            if (res.data?.success) {
+                setPartOptions(res.data.data);
+                setShowPartDropdown(true);
+            }
+        } catch (err) {
+            console.error('Failed to load compatible parts:', err);
+        } finally {
+            setIsSearchingParts(false);
+        }
+    }, [token, ticketInfo?.product_model_id]);
+
+    // 添加配件到维修记录
+    const addPartToRepair = (part: {id: number; name: string; sku: string; price_cny: number}) => {
+        if (isReadOnly) return;
+        const newPart = {
+            id: Date.now().toString(),
+            name: part.name,
+            part_number: part.sku,
+            quantity: 1,
+            status: 'new',
+            price: part.price_cny
+        };
+        setReportData((prev: any) => ({
+            ...prev,
+            content: {
+                ...prev.content,
+                repair_process: {
+                    ...prev.content.repair_process,
+                    parts_replaced: [...prev.content.repair_process.parts_replaced, newPart]
+                }
+            }
+        }));
+        setPartSearchTerm('');
+        setPartOptions([]);
+        setShowPartDropdown(false);
+    };
+
+    // 更新配件数量
+    const updatePartQuantity = (index: number, quantity: number) => {
         if (isReadOnly) return;
         setReportData((prev: any) => {
-            const newContent = { ...prev.content };
-            const keys = path.split('.');
-            let target: any = newContent;
-            for (let i = 0; i < keys.length - 1; i++) {
-                target = target[keys[i]];
-            }
-            const array = target[keys[keys.length - 1]];
-            target[keys[keys.length - 1]] = [...array, defaultValue];
-            return { ...prev, content: newContent };
+            const newParts = [...prev.content.repair_process.parts_replaced];
+            newParts[index] = { ...newParts[index], quantity };
+            return {
+                ...prev,
+                content: {
+                    ...prev.content,
+                    repair_process: {
+                        ...prev.content.repair_process,
+                        parts_replaced: newParts
+                    }
+                }
+            };
         });
     };
 
-    const removeArrayItem = (path: string, index: number) => {
+    // 删除配件
+    const removePart = (index: number) => {
         if (isReadOnly) return;
         setReportData((prev: any) => {
-            const newContent = { ...prev.content };
-            const keys = path.split('.');
-            let target: any = newContent;
-            for (let i = 0; i < keys.length - 1; i++) {
-                target = target[keys[i]];
-            }
-            const array = target[keys[keys.length - 1]];
-            target[keys[keys.length - 1]] = array.filter((_: any, i: number) => i !== index);
-            return { ...prev, content: newContent };
-        });
-    };
-
-    const updateArrayItem = (path: string, index: number, value: any) => {
-        if (isReadOnly) return;
-        setReportData((prev: any) => {
-            const newContent = { ...prev.content };
-            const keys = path.split('.');
-            let target: any = newContent;
-            for (let i = 0; i < keys.length - 1; i++) {
-                target = target[keys[i]];
-            }
-            const array = target[keys[keys.length - 1]];
-            target[keys[keys.length - 1]] = array.map((item: any, i: number) => i === index ? value : item);
-            return { ...prev, content: newContent };
+            const newParts = prev.content.repair_process.parts_replaced.filter((_: any, i: number) => i !== index);
+            return {
+                ...prev,
+                content: {
+                    ...prev.content,
+                    repair_process: {
+                        ...prev.content.repair_process,
+                        parts_replaced: newParts
+                    }
+                }
+            };
         });
     };
 
@@ -306,7 +421,11 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                 }
             }
             setLastSaved(new Date());
-            onSuccess();
+            // 自动保存不触发 onSuccess，避免父组件重新渲染导致弹窗闪烁
+            if (!silent) {
+                onSuccess();
+                onClose(); // 手动保存后关闭窗口
+            }
         } catch (err: any) {
             console.error("Save Report Error:", err);
             const errMsg = err.response?.data?.error?.message || err.response?.data?.error || err.message || '保存失败';
@@ -562,64 +681,122 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
                                         placeholder="详细记录执行的维修动作，每行一个操作..."
                                     />
 
-                                    {/* Parts Used */}
-                                    <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                            <label style={{ fontSize: 13, color: 'var(--text-secondary)' }}>更换零件</label>
-                                            {!isReadOnly && (
+                                    {/* 维修配件与工时管理 - 类似诊断报告的交互方式 */}
+                                    <div style={{ 
+                                        marginBottom: 16, padding: 16, 
+                                        background: 'rgba(59, 130, 246, 0.05)', borderRadius: 12, border: '1px solid rgba(59, 130, 246, 0.1)'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#3B82F6', fontWeight: 600 }}>
+                                                <Package size={14} /> 维修配件与工时
+                                            </div>
+                                            {/* 一键导入按钮 - 有诊断数据且非只读时显示 */}
+                                            {!isReadOnly && diagnosticData && (diagnosticData.estimated_parts.length > 0 || diagnosticData.estimated_labor_hours > 0) && (
                                                 <button
-                                                    onClick={() => addArrayItem('repair_process.parts_replaced', { id: Date.now().toString(), name: '', part_number: '', quantity: 1, status: 'new' })}
+                                                    onClick={() => setShowDiagnosticImportConfirm(true)}
                                                     style={{
-                                                        padding: '4px 12px', background: 'var(--accent-gold-subtle)', border: '1px solid var(--glass-border-accent)',
-                                                        borderRadius: 6, color: 'var(--accent-gold)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600
+                                                        padding: '4px 10px', background: '#3B82F6', border: 'none',
+                                                        borderRadius: 4, color: '#fff', fontSize: 11, cursor: 'pointer',
+                                                        display: 'flex', alignItems: 'center', gap: 4
                                                     }}
                                                 >
-                                                    <Plus size={14} /> 添加备件
+                                                    <RefreshCw size={12} /> 从诊断报告导入
                                                 </button>
                                             )}
                                         </div>
-                                        {reportData.content.repair_process.parts_replaced.map((part: any, index: number) => (
-                                            <div key={part.id || index} style={{ display: 'flex', gap: 8, marginBottom: 6, padding: 8, background: 'var(--glass-bg-light)', borderRadius: 6, border: '1px solid var(--glass-border)' }}>
-                                                <input
-                                                    type="text"
-                                                    value={part.name}
-                                                    onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, name: e.target.value })}
-                                                    placeholder="零件名称"
-                                                    disabled={isReadOnly}
-                                                    style={{ flex: 1, padding: '8px 10px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 13 }}
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={part.part_number}
-                                                    onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, part_number: e.target.value })}
-                                                    placeholder="零件号"
-                                                    disabled={isReadOnly}
-                                                    style={{ width: 120, padding: '8px 10px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 13 }}
-                                                />
+
+                                        {/* 工时和配件搜索 */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 16, marginBottom: 16 }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6 }}>维修工时 (小时)</label>
                                                 <input
                                                     type="number"
-                                                    value={part.quantity}
-                                                    onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, quantity: parseInt(e.target.value) || 1 })}
-                                                    placeholder="数量"
+                                                    step="0.5"
+                                                    min="0"
+                                                    value={reportData.content.repair_process.labor_hours || 0}
+                                                    onChange={e => updateContent('repair_process.labor_hours', parseFloat(e.target.value) || 0)}
                                                     disabled={isReadOnly}
-                                                    style={{ width: 60, padding: '8px 10px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 13, textAlign: 'center' }}
+                                                    style={{ width: '100%', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 14 }}
                                                 />
-                                                <select
-                                                    value={part.status}
-                                                    onChange={e => updateArrayItem('repair_process.parts_replaced', index, { ...part, status: e.target.value as 'new' | 'refurbished' })}
-                                                    disabled={isReadOnly}
-                                                    style={{ width: 80, padding: '8px 10px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 13, outline: 'none' }}
-                                                >
-                                                    <option value="new">新件</option>
-                                                    <option value="refurbished">翻新件</option>
-                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6 }}>
+                                                    添加维修配件 {ticketInfo?.product_name && <span style={{ color: '#3B82F6' }}>(兼容 {ticketInfo.product_name})</span>}
+                                                </label>
                                                 {!isReadOnly && (
-                                                    <button onClick={() => removeArrayItem('repair_process.parts_replaced', index)} style={{ padding: '0 10px', background: 'var(--status-red-subtle)', border: 'none', borderRadius: 6, color: 'var(--status-red)', cursor: 'pointer' }}>
-                                                        <Trash2 size={14} />
-                                                    </button>
+                                                    <div className="part-search-container" style={{ position: 'relative' }}>
+                                                        <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                                                        {isSearchingParts && <Loader2 size={14} className="animate-spin" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#3B82F6' }} />}
+                                                        <input
+                                                            type="text"
+                                                            placeholder="点击查看兼容配件，或输入搜索..."
+                                                            value={partSearchTerm}
+                                                            onChange={e => {
+                                                                setPartSearchTerm(e.target.value);
+                                                                searchParts(e.target.value);
+                                                            }}
+                                                            onFocus={() => {
+                                                                if (partSearchTerm.length >= 1 && partOptions.length > 0) {
+                                                                    setShowPartDropdown(true);
+                                                                } else if (ticketInfo?.product_model_id) {
+                                                                    loadCompatibleParts();
+                                                                }
+                                                            }}
+                                                            style={{ width: '100%', padding: '8px 12px 8px 32px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 6, color: 'var(--text-main)', fontSize: 13 }}
+                                                        />
+                                                        {showPartDropdown && partOptions.length > 0 && (
+                                                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--modal-bg)', border: '1px solid var(--glass-border)', borderRadius: 8, marginTop: 4, zIndex: 100, maxHeight: 400, overflowY: 'auto', boxShadow: '0 10px 20px rgba(0,0,0,0.5)' }}>
+                                                                {partOptions.map(p => (
+                                                                    <div
+                                                                        key={p.id}
+                                                                        onClick={() => addPartToRepair(p)}
+                                                                        style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                                                        onMouseEnter={e => e.currentTarget.style.background = 'var(--glass-bg-hover)'}
+                                                                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                                    >
+                                                                        <div>
+                                                                            <div style={{ fontSize: 12, color: 'var(--text-main)' }}>{p.name}</div>
+                                                                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{p.sku}</div>
+                                                                        </div>
+                                                                        <div style={{ fontSize: 11, color: '#3B82F6' }}>¥{p.price_cny}</div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
-                                        ))}
+                                        </div>
+
+                                        {/* 已选配件列表 */}
+                                        {reportData.content.repair_process.parts_replaced.length > 0 && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                {reportData.content.repair_process.parts_replaced.map((part: any, index: number) => (
+                                                    <div key={part.id || index} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--glass-bg-light)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--glass-border)' }}>
+                                                        <div style={{ flex: 1 }}>
+                                                            <div style={{ fontSize: 12, color: 'var(--text-main)' }}>{part.name}</div>
+                                                            <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>{part.part_number}</div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                            <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>x</span>
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                value={part.quantity}
+                                                                onChange={e => updatePartQuantity(index, parseInt(e.target.value) || 1)}
+                                                                disabled={isReadOnly}
+                                                                style={{ width: 44, padding: '2px 4px', background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 4, color: 'var(--text-main)', textAlign: 'center', fontSize: 12 }}
+                                                            />
+                                                        </div>
+                                                        {!isReadOnly && (
+                                                            <button onClick={() => removePart(index)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}>
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <TextArea
@@ -688,6 +865,38 @@ export const OpRepairReportEditor: React.FC<OpRepairReportEditorProps> = ({
             </div>
 
             {/* 更正确认弹窗 */}
+            {showDiagnosticImportConfirm && diagnosticData && (
+                <ConfirmModal
+                    title="从诊断报告导入"
+                    message={`将从诊断报告导入预估零件（${diagnosticData.estimated_parts.length} 项）和工时（${diagnosticData.estimated_labor_hours} 小时），覆盖当前维修记录中的更换零件和工时数据。\n\n确认导入？`}
+                    confirmText="确认导入"
+                    cancelText="取消"
+                    isDanger={false}
+                    onConfirm={() => {
+                        const importedParts = diagnosticData.estimated_parts.map(p => ({
+                            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                            name: p.name,
+                            part_number: p.sku,
+                            quantity: p.quantity,
+                            status: 'new',
+                            price: p.price
+                        }));
+                        setReportData((prev: any) => ({
+                            ...prev,
+                            content: {
+                                ...prev.content,
+                                repair_process: {
+                                    ...prev.content.repair_process,
+                                    parts_replaced: importedParts,
+                                    labor_hours: diagnosticData.estimated_labor_hours
+                                }
+                            }
+                        }));
+                        setShowDiagnosticImportConfirm(false);
+                    }}
+                    onCancel={() => setShowDiagnosticImportConfirm(false)}
+                />
+            )}
             {showCorrectionConfirm && (
                 <div style={{
                     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,

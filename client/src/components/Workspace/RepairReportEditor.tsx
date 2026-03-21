@@ -25,6 +25,7 @@ export type { PartUsed } from './PartsSelector';
 
 interface LaborCharge {
     description: string;
+    description_en?: string;    // 英文描述（用于非中文预览）
     hours: number;
     rate: number;
     total: number;
@@ -33,6 +34,7 @@ interface LaborCharge {
 interface OtherFee {
     id: string;
     description: string;
+    description_en?: string;    // 英文描述（用于非中文预览）
     amount: number;
 }
 
@@ -154,6 +156,13 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [importingFromRepair, setImportingFromRepair] = useState(false);
+    // 缓存的 op_repair_report 数据，用于一键导入按鈕
+    const [cachedOpRepairData, setCachedOpRepairData] = useState<any>(null);
+    // 默认工时时薪（从系统设置获取）
+    const [defaultLaborRate, setDefaultLaborRate] = useState<number>(100);
+    // 一键导入确认弹窗状态
+    const [showImportConfirm, setShowImportConfirm] = useState(false);
     const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
     const [ticketInfo, setTicketInfo] = useState<any>(null);
     
@@ -411,6 +420,12 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         if (isOpen) {
             fetchTicketInfo();
             fetchMSUsers();
+            // 获取系统默认工时时薪
+            axios.get('/api/v1/system/public-settings').then(res => {
+                if (res.data?.success && res.data.data?.default_labor_rate_cny) {
+                    setDefaultLaborRate(parseFloat(res.data.data.default_labor_rate_cny) || 100);
+                }
+            }).catch(() => {});
             if (localReportId) {
                 loadReport();
             } else {
@@ -496,6 +511,52 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                         warranty_terms: { ...DEFAULT_CONTENT.warranty_terms, ...(incomingData.content?.warranty_terms || {}) }
                     }
                 }));
+
+                // 同步最新的 op_repair_report 配件数据（确保维修记录的最新配件能被导入）
+                try {
+                    const ticketRes = await axios.get(`/api/v1/tickets/${ticketId}`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const allActivities = ticketRes.data?.activities || [];
+                    const opRepairActivity = allActivities.find((a: any) => a.activity_type === 'op_repair_report');
+                    if (opRepairActivity?.metadata) {
+                        const opData = typeof opRepairActivity.metadata === 'string'
+                            ? JSON.parse(opRepairActivity.metadata) : opRepairActivity.metadata;
+                        setCachedOpRepairData(opData); // 缓存用于一键导入按鈕
+                        const rp = opData.repair_process;
+                        if (rp) {
+                            setReportData(prev => {
+                                const newContent = { ...prev.content };
+                                if (rp.parts_replaced && rp.parts_replaced.length > 0) {
+                                    newContent.repair_process = {
+                                        ...newContent.repair_process,
+                                        parts_replaced: rp.parts_replaced.map((part: any) => ({
+                                            id: part.id || Date.now().toString() + Math.random(),
+                                            part_id: part.part_id,
+                                            name: part.name || '',
+                                            part_number: part.part_number || '',
+                                            quantity: part.quantity || 1,
+                                            unit_price: part.price || part.unit_price || 0,
+                                            status: part.status || 'new',
+                                            source_type: 'hq_inventory'
+                                        }))
+                                    };
+                                }
+                                if (rp.labor_hours && rp.labor_hours > 0 && prev.content.labor_charges.length === 0) {
+                                    newContent.labor_charges = [{
+                                        description: '维修工时',
+                                        hours: rp.labor_hours,
+                                        rate: 0,
+                                        total: 0
+                                    }];
+                                }
+                                return { ...prev, content: newContent };
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to sync op_repair_report parts:', e);
+                }
             }
         } catch (err) {
             console.error('Failed to load report:', err);
@@ -646,6 +707,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                         const opRepairData = typeof opRepairActivity.metadata === 'string'
                             ? JSON.parse(opRepairActivity.metadata)
                             : opRepairActivity.metadata;
+                        setCachedOpRepairData(opRepairData); // 缓存用于一键导入按鈕
                         
                         setReportData((prev: ReportData) => {
                             const newContent = { ...prev.content };
@@ -663,12 +725,23 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 if (rp.parts_replaced && rp.parts_replaced.length > 0) {
                                     newContent.repair_process.parts_replaced = rp.parts_replaced.map((part: any) => ({
                                         id: part.id || Date.now().toString() + Math.random(),
+                                        part_id: part.part_id,
                                         name: part.name || '',
                                         part_number: part.part_number || '',
                                         quantity: part.quantity || 1,
-                                        unit_price: part.unit_price || 0,  // 正式报告需要价格
+                                        unit_price: part.price || part.unit_price || 0,  // 正式报告需要价格
                                         status: part.status || 'new'
                                     }));
+                                }
+                                
+                                // Import labor_hours 为 labor_charges
+                                if (rp.labor_hours && rp.labor_hours > 0) {
+                                    newContent.labor_charges = [{
+                                        description: '维修工时',
+                                        hours: rp.labor_hours,
+                                        rate: 0,
+                                        total: 0
+                                    }];
                                 }
                                 
                                 // Import testing_results
@@ -757,11 +830,65 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         calculateTotals();
     }, [reportData.content.repair_process.parts_replaced, reportData.content.labor_charges, reportData.content.other_fees, reportData.tax_rate, reportData.discount_amount]);
 
+    // 一键导入维修记录的配件和工时，覆盖当前数据
+    const importFromRepairRecord = useCallback(async () => {
+        setImportingFromRepair(true);
+        try {
+            // 使用缓存数据，或重新请求
+            let opData = cachedOpRepairData;
+            if (!opData) {
+                const res = await axios.get(`/api/v1/tickets/${ticketId}`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const acts = res.data?.activities || [];
+                const act = acts.find((a: any) => a.activity_type === 'op_repair_report');
+                if (act?.metadata) {
+                    opData = typeof act.metadata === 'string' ? JSON.parse(act.metadata) : act.metadata;
+                    setCachedOpRepairData(opData);
+                }
+            }
+            if (!opData) { alert('未找到维修记录数据'); return; }
+            const rp = opData.repair_process;
+            setReportData(prev => {
+                const newContent = { ...prev.content };
+                if (rp?.parts_replaced && rp.parts_replaced.length > 0) {
+                    newContent.repair_process = {
+                        ...newContent.repair_process,
+                        parts_replaced: rp.parts_replaced.map((part: any) => ({
+                            id: part.id || Date.now().toString() + Math.random(),
+                            part_id: part.part_id,
+                            name: part.name || '',
+                            part_number: part.part_number || '',
+                            quantity: part.quantity || 1,
+                            unit_price: part.price || part.unit_price || 0,
+                            status: part.status || 'new',
+                            source_type: 'hq_inventory'
+                        }))
+                    };
+                }
+                if (rp?.labor_hours && rp.labor_hours > 0) {
+                    const rate = prev.content.labor_charges?.[0]?.rate || defaultLaborRate;
+                    newContent.labor_charges = [{
+                        description: '维修工时',
+                        hours: rp.labor_hours,
+                        rate: rate,
+                        total: rate * rp.labor_hours
+                    }];
+                }
+                return { ...prev, content: newContent };
+            });
+        } catch (e) {
+            console.error('importFromRepairRecord error:', e);
+        } finally {
+            setImportingFromRepair(false);
+        }
+    }, [cachedOpRepairData, ticketId, token]);
+
     const addLaborCharge = () => {
         const newCharge: LaborCharge = {
             description: '',
             hours: 0,
-            rate: 0,
+            rate: defaultLaborRate,  // 使用系统默认时薪
             total: 0
         };
         updateContent('labor_charges', [...reportData.content.labor_charges, newCharge]);
@@ -1354,6 +1481,31 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 <>
                                     {/* Fee Details - Unified Section */}
                                     <Section title="费用明细" icon={<DollarSign size={16} />}>
+                                        {/* 一键导入维修记录按鈕 */}
+                                        {canEdit && cachedOpRepairData && (
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                                                <button
+                                                    onClick={() => setShowImportConfirm(true)}
+                                                    disabled={importingFromRepair}
+                                                    style={{
+                                                        padding: '4px 12px',
+                                                        background: '#FFD200',
+                                                        border: 'none',
+                                                        borderRadius: 4,
+                                                        color: '#000',
+                                                        fontSize: 12,
+                                                        cursor: importingFromRepair ? 'wait' : 'pointer',
+                                                        display: 'flex', alignItems: 'center', gap: 6,
+                                                        fontWeight: 500
+                                                    }}
+                                                >
+                                                    {importingFromRepair
+                                                        ? <>导入中...</>
+                                                        : <>↺ 从维修记录导入（覆盖）</>
+                                                    }
+                                                </button>
+                                            </div>
+                                        )}
                                         {/* Parts Sub-section - Using PartsSelector */}
                                         <FeeSubSection 
                                             title="更换零件" 
@@ -1384,7 +1536,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
                                                     <button
                                                         onClick={addLaborCharge}
-                                                        style={{ padding: '4px 12px', background: '#3B82F6', border: 'none', borderRadius: 4, color: 'var(--text-main)', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                                                        style={{ padding: '4px 12px', background: '#FFD200', border: 'none', borderRadius: 4, color: '#000', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}
                                                     >
                                                         <Plus size={14} /> 添加工时
                                                     </button>
@@ -1400,36 +1552,47 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                 </div>
                                             )}
                                             {reportData.content.labor_charges.map((charge: LaborCharge, index: number) => (
-                                                <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8, padding: 10, background: 'rgba(255,255,255,0.03)', borderRadius: 6, alignItems: 'center' }}>
-                                                    <input
-                                                        type="text"
-                                                        value={charge.description}
-                                                        onChange={e => updateLaborCharge(index, 'description', e.target.value)}
-                                                        placeholder="工作内容描述"
-                                                        disabled={!canEdit}
-                                                        style={{ flex: 1, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
-                                                    />
-                                                    <input
-                                                        type="number"
-                                                        value={charge.hours}
-                                                        onChange={e => updateLaborCharge(index, 'hours', parseFloat(e.target.value) || 0)}
-                                                        disabled={!canEdit}
-                                                        style={{ width: 70, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'center' }}
-                                                    />
-                                                    <input
-                                                        type="number"
-                                                        value={charge.rate}
-                                                        onChange={e => updateLaborCharge(index, 'rate', parseFloat(e.target.value) || 0)}
-                                                        disabled={!canEdit}
-                                                        style={{ width: 80, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
-                                                    />
-                                                    <div style={{ width: 80, textAlign: 'right', color: 'var(--text-main)', fontWeight: 600, fontSize: 13 }}>
-                                                        ¥{Number(charge.total || 0).toFixed(2)}
+                                                <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8, padding: 10, background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
+                                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                                        <input
+                                                            type="text"
+                                                            value={charge.description}
+                                                            onChange={e => updateLaborCharge(index, 'description', e.target.value)}
+                                                            placeholder="工作内容描述"
+                                                            disabled={!canEdit}
+                                                            style={{ flex: 1, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            value={charge.hours}
+                                                            onChange={e => updateLaborCharge(index, 'hours', parseFloat(e.target.value) || 0)}
+                                                            disabled={!canEdit}
+                                                            style={{ width: 70, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'center' }}
+                                                        />
+                                                        <input
+                                                            type="number"
+                                                            value={charge.rate}
+                                                            onChange={e => updateLaborCharge(index, 'rate', parseFloat(e.target.value) || 0)}
+                                                            disabled={!canEdit}
+                                                            style={{ width: 80, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
+                                                        />
+                                                        <div style={{ width: 80, textAlign: 'right', color: 'var(--text-main)', fontWeight: 600, fontSize: 13 }}>
+                                                            ¥{Number(charge.total || 0).toFixed(2)}
+                                                        </div>
+                                                        {canEdit && (
+                                                            <button onClick={() => removeLaborCharge(index)} style={{ padding: 6, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                     {canEdit && (
-                                                        <button onClick={() => removeLaborCharge(index)} style={{ padding: 6, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
-                                                            <Trash2 size={14} />
-                                                        </button>
+                                                        <input
+                                                            type="text"
+                                                            value={charge.description_en || ''}
+                                                            onChange={e => updateLaborCharge(index, 'description_en', e.target.value)}
+                                                            placeholder="English description (for non-Chinese preview)"
+                                                            style={{ padding: '5px 8px', background: 'var(--glass-bg-light)', border: '1px dashed var(--glass-border)', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 11, marginLeft: 0 }}
+                                                        />
                                                     )}
                                                 </div>
                                             ))}
@@ -1447,46 +1610,59 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                         >
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                                 {reportData.content.other_fees.map((fee, index) => (
-                                                    <div key={fee.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
-                                                        <div style={{ flex: 1 }}>
-                                                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>费用说明</label>
-                                                            <input
-                                                                type="text"
-                                                                value={fee.description}
-                                                                onChange={e => updateOtherFee(index, 'description', e.target.value)}
-                                                                disabled={!canEdit}
-                                                                placeholder="如：运费、包装费、检测费..."
-                                                                style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
-                                                            />
-                                                        </div>
-                                                        <div style={{ width: 120 }}>
-                                                            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>费用金额</label>
-                                                            <input
-                                                                type="number"
-                                                                value={fee.amount}
-                                                                onChange={e => updateOtherFee(index, 'amount', parseFloat(e.target.value) || 0)}
-                                                                disabled={!canEdit}
-                                                                style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
-                                                            />
+                                                    <div key={fee.id} style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 0', borderBottom: '1px solid var(--glass-border)' }}>
+                                                        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                                                            <div style={{ flex: 1 }}>
+                                                                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>费用说明</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={fee.description}
+                                                                    onChange={e => updateOtherFee(index, 'description', e.target.value)}
+                                                                    disabled={!canEdit}
+                                                                    placeholder="如：运费、包装费、检测费..."
+                                                                    style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                                />
+                                                            </div>
+                                                            <div style={{ width: 120 }}>
+                                                                <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>费用金额</label>
+                                                                <input
+                                                                    type="number"
+                                                                    value={fee.amount}
+                                                                    onChange={e => updateOtherFee(index, 'amount', parseFloat(e.target.value) || 0)}
+                                                                    disabled={!canEdit}
+                                                                    style={{ width: '100%', padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13 }}
+                                                                />
+                                                            </div>
+                                                            {canEdit && (
+                                                                <button
+                                                                    onClick={() => removeOtherFee(index)}
+                                                                    style={{ padding: 8, background: 'var(--status-red-subtle)', border: 'none', borderRadius: 4, color: 'var(--status-red)', cursor: 'pointer', marginBottom: 0 }}
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                         {canEdit && (
-                                                            <button
-                                                                onClick={() => removeOtherFee(index)}
-                                                                style={{ padding: 8, background: 'var(--status-red-subtle)', border: 'none', borderRadius: 4, color: 'var(--status-red)', cursor: 'pointer', marginBottom: 0 }}
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
+                                                            <input
+                                                                type="text"
+                                                                value={fee.description_en || ''}
+                                                                onChange={e => updateOtherFee(index, 'description_en', e.target.value)}
+                                                                placeholder="English description (for non-Chinese preview)"
+                                                                style={{ padding: '5px 8px', background: 'var(--glass-bg-light)', border: '1px dashed var(--glass-border)', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 11 }}
+                                                            />
                                                         )}
                                                     </div>
                                                 ))}
-                                                {canEdit && (
+                                            {canEdit && (
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
                                                     <button
                                                         onClick={addOtherFee}
-                                                        style={{ padding: '8px 12px', background: 'var(--glass-bg-light)', border: '1px dashed var(--glass-border)', borderRadius: 4, color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                                                        style={{ padding: '4px 12px', background: '#FFD200', border: 'none', borderRadius: 4, color: '#000', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}
                                                     >
                                                         <Plus size={14} /> 添加费用
                                                     </button>
-                                                )}
+                                                </div>
+                                            )}
                                                 {reportData.content.other_fees.length === 0 && (
                                                     <div style={{ textAlign: 'center', padding: 16, color: 'var(--text-tertiary)', fontSize: 13 }}>暂无其他费用</div>
                                                 )}
@@ -1738,6 +1914,19 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                         onConfirm={recallReport}
                         onCancel={() => setConfirmAction({ type: null, isOpen: false })}
                         loading={submitting}
+                    />
+                )}
+
+                {/* 从维修记录导入确认弹窗 */}
+                {showImportConfirm && (
+                    <ConfirmModal
+                        title="从维修记录导入"
+                        message={`将从维修记录导入更换零件和工时数据，覆盖当前的费用明细中的‘更换零件’和‘工时费用’。\n\n确认覆盖？`}
+                        confirmText="确认导入"
+                        cancelText="取消"
+                        isDanger={false}
+                        onConfirm={() => { setShowImportConfirm(false); importFromRepairRecord(); }}
+                        onCancel={() => setShowImportConfirm(false)}
                     />
                 )}
 
@@ -2317,6 +2506,42 @@ const ReportPreview = React.forwardRef<HTMLDivElement, {
     // 获取UI标签
     const t = PREVIEW_LABELS[language] || PREVIEW_LABELS['original'];
 
+    // 配件英文名称缓存（通过 SKU 索引，用于非中文预览）
+    const [partNamesEnBySku, setPartNamesEnBySku] = useState<Record<string, string>>({});
+    const { token } = useAuthStore();
+
+    // 非中文预览时，通过 SKU 查询配件英文名称
+    useEffect(() => {
+        if (language === 'zh-CN' || language === 'original') return;
+        
+        const skus = reportData.content.repair_process.parts_replaced
+            .map(p => p.part_number)
+            .filter(sku => sku && sku.trim());
+        
+        if (skus.length === 0) return;
+
+        // 通过 SKU 查询配件英文名称
+        const fetchPartNames = async () => {
+            try {
+                const res = await axios.post('/api/v1/parts-master/batch', { skus }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                if (res.data?.success) {
+                    const nameMap: Record<string, string> = {};
+                    res.data.data.forEach((part: any) => {
+                        if (part.sku && part.name_en) {
+                            nameMap[part.sku] = part.name_en;
+                        }
+                    });
+                    setPartNamesEnBySku(nameMap);
+                }
+            } catch (err) {
+                // 静默失败，使用中文名称
+            }
+        };
+        fetchPartNames();
+    }, [reportData.content.repair_process.parts_replaced, language, token]);
+
     // 获取翻译内容（带待翻译标记）
     const getTranslatedContent = (fieldKey: string, originalValue: string): { text: string; isPending: boolean } => {
         if (!originalValue || language === 'original' || language === 'zh-CN') {
@@ -2525,33 +2750,51 @@ const ReportPreview = React.forwardRef<HTMLDivElement, {
                             </tr>
                         </thead>
                         <tbody>
-                            {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => (
-                                <tr key={`part-${i}`}>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.part}: {part.name}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{part.part_number || '-'}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{part.quantity}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(part.unit_price || 0).toFixed(2)}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}</td>
-                                </tr>
-                            ))}
-                            {reportData.content.labor_charges.map((charge: LaborCharge, i: number) => (
-                                <tr key={`labor-${i}`}>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.labor}: {charge.description}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{charge.hours}{language === 'en-US' ? 'hrs' : language === 'de-DE' ? 'Std' : language === 'ja-JP' ? '時間' : '小时'}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>1</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(charge.rate || 0).toFixed(2)}/{language === 'en-US' ? 'hr' : language === 'de-DE' ? 'Std' : language === 'ja-JP' ? '時間' : '小时'}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>¥{Number(charge.total || 0).toFixed(2)}</td>
-                                </tr>
-                            ))}
-                            {reportData.content.other_fees.map((fee: OtherFee, i: number) => (
-                                <tr key={`fee-${i}`}>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.other}: {fee.description || (language === 'zh-CN' || language === 'original' ? '未命名费用' : 'Unnamed Fee')}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>-</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>1</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>-</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>¥{Number(fee.amount || 0).toFixed(2)}</td>
-                                </tr>
-                            ))}
+                            {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => {
+                                // 非中文/原文时，通过 SKU 查找英文名称
+                                const displayName = (language !== 'zh-CN' && language !== 'original' && part.part_number && partNamesEnBySku[part.part_number])
+                                    ? partNamesEnBySku[part.part_number]
+                                    : part.name;
+                                return (
+                                    <tr key={`part-${i}`}>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.part}: {displayName}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontSize: 11 }}>{part.part_number || '-'}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{part.quantity}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(part.unit_price || 0).toFixed(2)}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>¥{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}</td>
+                                    </tr>
+                                );
+                            })}
+                            {reportData.content.labor_charges.map((charge: LaborCharge, i: number) => {
+                                const isNonChinese = language !== 'zh-CN' && language !== 'original';
+                                const laborDesc = isNonChinese
+                                    ? (charge.description_en || charge.description)
+                                    : charge.description;
+                                return (
+                                    <tr key={`labor-${i}`}>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.labor}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{laborDesc}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{charge.hours}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(charge.rate || 0).toFixed(2)}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>¥{Number(charge.total || 0).toFixed(2)}</td>
+                                    </tr>
+                                );
+                            })}
+                            {reportData.content.other_fees.map((fee: OtherFee, i: number) => {
+                                const isNonChinese = language !== 'zh-CN' && language !== 'original';
+                                const feeDesc = isNonChinese
+                                    ? (fee.description_en || fee.description || 'Unnamed Fee')
+                                    : (fee.description || '未命名费用');
+                                return (
+                                    <tr key={`fee-${i}`}>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.other}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{feeDesc}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>1</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>¥{Number(fee.amount || 0).toFixed(2)}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>¥{Number(fee.amount || 0).toFixed(2)}</td>
+                                    </tr>
+                                );
+                            })}
                             {reportData.content.repair_process.parts_replaced.length === 0 && 
                              reportData.content.labor_charges.length === 0 && 
                              reportData.content.other_fees.length === 0 && (

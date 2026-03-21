@@ -17,7 +17,7 @@
 
 ## 更新摘要
 **变更内容**
-- 重大架构改进：维修报告编辑器组件从约350行扩展到2924行，新增了AI智能翻译系统、多语言支持、PDF导出增强、费用计算系统和权限控制功能
+- 重大架构改进：维修报告编辑器组件从约350行扩展到2925行，新增了AI智能翻译系统、多语言支持、PDF导出增强、费用计算系统和权限控制功能
 - 新增AI智能翻译系统，支持英文、日文、德文的实时翻译和缓存
 - 增强的费用计算系统，支持零件、工时、其他费用的详细管理
 - 改进的报告预览功能，支持多语言实时预览
@@ -48,7 +48,7 @@
 
 维修报告编辑器组件是长horn服务管理系统中的核心功能模块，用于创建、编辑和管理RMA（退货授权）维修报告文档。该组件提供了完整的维修报告生命周期管理，包括数据录入、实时计算、状态管理和PDF导出等功能。
 
-**更新** 维修报告编辑器组件经过大规模重构和增强，从原来的约350行扩展到2924行，新增了多项编辑能力和用户体验改进。新的组件提供了更直观的Textarea输入系统、增强的AI翻译功能、改进的费用计算系统、更完善的权限控制和**全新的配件选择工作流**。
+**更新** 维修报告编辑器组件经过大规模重构和增强，从原来的约350行扩展到2925行，新增了多项编辑能力和用户体验改进。新的组件提供了更直观的Textarea输入系统、增强的AI翻译功能、改进的费用计算系统、更完善的权限控制和**全新的配件选择工作流**。
 
 该组件支持两种工作模式：
 - **MS模式**：市场/服务部门专用，提供完整的编辑功能和编制人选择
@@ -118,15 +118,15 @@ RR --> PP
 ```
 
 **图表来源**
-- [RepairReportEditor.tsx:1-2924](file://client/src/components/Workspace/RepairReportEditor.tsx#L1-L2924)
-- [PartsSelector.tsx:1-740](file://client/src/components/Workspace/PartsSelector.tsx#L1-L740)
+- [RepairReportEditor.tsx:1-2925](file://client/src/components/Workspace/RepairReportEditor.tsx#L1-L2925)
+- [PartsSelector.tsx:1-754](file://client/src/components/Workspace/PartsSelector.tsx#L1-L754)
 - [OpRepairReportEditor.tsx:1-778](file://client/src/components/Workspace/OpRepairReportEditor.tsx#L1-L778)
 - [parts-master.js:1-621](file://server/service/routes/parts-master.js#L1-L621)
 - [rma-documents.js:1-1690](file://server/service/routes/rma-documents.js#L1-L1690)
 
 **章节来源**
-- [RepairReportEditor.tsx:1-2924](file://client/src/components/Workspace/RepairReportEditor.tsx#L1-L2924)
-- [PartsSelector.tsx:1-740](file://client/src/components/Workspace/PartsSelector.tsx#L1-L740)
+- [RepairReportEditor.tsx:1-2925](file://client/src/components/Workspace/RepairReportEditor.tsx#L1-L2925)
+- [PartsSelector.tsx:1-754](file://client/src/components/Workspace/PartsSelector.tsx#L1-L754)
 - [OpRepairReportEditor.tsx:1-778](file://client/src/components/Workspace/OpRepairReportEditor.tsx#L1-L778)
 - [parts-master.js:1-621](file://server/service/routes/parts-master.js#L1-L621)
 - [rma-documents.js:1-1690](file://server/service/routes/rma-documents.js#L1-L1690)
@@ -1657,9 +1657,9 @@ DD --> A
    - 弹窗懒加载
 
 9. **配件选择器渲染优化**
-   - 搜索结果虚拟化
-   - BOM推荐懒加载
-   - 手动添加表单优化
+    - 搜索结果虚拟化
+    - BOM推荐懒加载
+    - 手动添加表单优化
 
 10. **配件列表渲染优化**
     - 部件行状态缓存

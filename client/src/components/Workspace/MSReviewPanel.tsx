@@ -89,7 +89,10 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
     // 从诊断报告导入的配件和工时预估
     const [diagnosisParts, setDiagnosisParts] = useState<Array<{part_id: number; name: string; sku: string; quantity: number; price: number}>>([]);
     const [diagnosisLaborHours, setDiagnosisLaborHours] = useState<number>(0);
-    const [hasImportedFromDiagnosis, setHasImportedFromDiagnosis] = useState(false);
+
+    // OP 维修记录的实际配件和工时（用于 ms_closing 阶段展示）
+    const [repairParts, setRepairParts] = useState<Array<{name: string; part_number: string; quantity: number; price?: number}>>([]);
+    const [repairLaborHours, setRepairLaborHours] = useState<number>(0);
 
     // MS 配件编辑状态
     const [msParts, setMsParts] = useState<Array<{part_id: number; name: string; sku: string; quantity: number; price: number}>>([]);
@@ -105,12 +108,39 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
         if (isOpen && ticketId) {
             fetchWarrantyData();
             fetchExistingMSReview();  // 预加载已保存的商务审核数据
+            fetchRepairReport();  // 加载 OP 维修记录实际数据
         }
         // 面板关闭时重置加载标志
         if (!isOpen) {
             setHasLoadedExisting(false);
         }
     }, [isOpen, ticketId]);
+
+    // 加载 OP 维修记录实际配件和工时
+    const fetchRepairReport = async () => {
+        try {
+            const res = await axios.get(`/api/v1/tickets/${ticketId}/activities`, {
+                params: { activity_type: 'op_repair_report' },
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const repairActivity = res.data.data?.[0];
+            if (repairActivity?.metadata) {
+                const meta = typeof repairActivity.metadata === 'string'
+                    ? JSON.parse(repairActivity.metadata) : repairActivity.metadata;
+                const rp = meta?.repair_process;
+                if (rp) {
+                    if (Array.isArray(rp.parts_replaced) && rp.parts_replaced.length > 0) {
+                        setRepairParts(rp.parts_replaced);
+                    }
+                    if (typeof rp.labor_hours === 'number' && rp.labor_hours > 0) {
+                        setRepairLaborHours(rp.labor_hours);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Failed to fetch repair report:', err);
+        }
+    };
 
     // Auto-calculate warranty when panel opens and no calculation exists
     useEffect(() => {
@@ -779,8 +809,7 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                 <div style={{ marginBottom: 16, padding: 12, background: 'var(--glass-bg)', borderRadius: 8, border: '1px solid var(--glass-border)' }}>
                                     <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <span style={{ color: '#3B82F6' }}>从诊断报告导入</span>
-                                        <span>|</span>
-                                        <span>可修改或添加其他费用</span>
+                                        
                                     </div>
                                     
                                     {/* 配件列表 */}
@@ -839,48 +868,48 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                     </div>
                                 </div>
                             )}
-
-                            {/* 手动输入预估费用范围 */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 6 }}>
-                                        预估最低费用 (¥)
-                                        {msDecision && !isChargeRequired(msDecision) && <span style={{ color: '#666', marginLeft: 4 }}>(可选)</span>}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={estimatedMin}
-                                        onChange={e => setEstimatedMin(e.target.value)}
-                                        placeholder={msDecision && !isChargeRequired(msDecision) ? '保内免费' : '0.00'}
-                                        style={{
-                                            width: '100%', padding: 10, background: 'var(--glass-bg-light)',
-                                            border: `1px solid ${msDecision && isChargeRequired(msDecision) && !estimatedMin ? 'rgba(239,68,68,0.5)' : 'var(--glass-border)'}`, 
-                                            borderRadius: 6, color: 'var(--text-main)',
-                                            fontSize: 14, outline: 'none'
-                                        }}
-                                    />
+                            
+                            {/* OP 维修记录的实际配件和工时 */}
+                            {(repairParts.length > 0 || repairLaborHours > 0) && (
+                                <div style={{ marginBottom: 16, padding: 12, background: 'rgba(34, 197, 94, 0.05)', borderRadius: 8, border: '1px solid rgba(34, 197, 94, 0.15)' }}>
+                                    <div style={{ fontSize: 12, color: '#22C55E', marginBottom: 8, fontWeight: 600 }}>维修记录（实际）</div>
+                                                                
+                                    {repairParts.length > 0 && (
+                                        <div style={{ marginBottom: 8 }}>
+                                            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 6 }}>实际更换配件 ({repairParts.length}项)</div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                {repairParts.map((part, idx) => (
+                                                    <div key={idx} style={{
+                                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                        padding: '8px 10px', background: 'var(--glass-bg-light)', borderRadius: 6, fontSize: 13
+                                                    }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <span style={{ color: 'var(--text-main)' }}>{part.name}</span>
+                                                            <span style={{ color: 'var(--text-tertiary)', fontSize: 11, fontFamily: 'monospace' }}>{part.part_number}</span>
+                                                            <span style={{ color: 'var(--text-tertiary)', fontSize: 11, padding: '1px 6px', background: 'var(--glass-bg-hover)', borderRadius: 4 }}>x{part.quantity}</span>
+                                                        </div>
+                                                        {part.price && (
+                                                            <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>¥{(part.price * part.quantity).toLocaleString()}</span>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                            
+                                    {repairLaborHours > 0 && (
+                                        <div style={{
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                            padding: '8px 10px', background: 'var(--glass-bg-light)', borderRadius: 6, fontSize: 13
+                                        }}>
+                                            <span style={{ color: 'var(--text-main)' }}>实际工时</span>
+                                            <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>{repairLaborHours} 小时</span>
+                                        </div>
+                                    )}
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: 12, color: '#666', marginBottom: 6 }}>
-                                        预估最高费用 (¥)
-                                        {msDecision && !isChargeRequired(msDecision) && <span style={{ color: '#666', marginLeft: 4 }}>(可选)</span>}
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={estimatedMax}
-                                        onChange={e => setEstimatedMax(e.target.value)}
-                                        placeholder={msDecision && !isChargeRequired(msDecision) ? '保内免费' : '0.00'}
-                                        style={{
-                                            width: '100%', padding: 10, background: 'var(--glass-bg-light)',
-                                            border: `1px solid ${msDecision && isChargeRequired(msDecision) && !estimatedMax ? 'rgba(239,68,68,0.5)' : 'var(--glass-border)'}`, 
-                                            borderRadius: 6, color: 'var(--text-main)',
-                                            fontSize: 14, outline: 'none'
-                                        }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* MS 配件编辑区域 */}
+                            )}
+                            
+                            {/* MS 配件编辑 */}
                             <div style={{ marginBottom: 16, padding: 12, background: 'var(--glass-bg)', borderRadius: 8, border: '1px solid var(--glass-border)' }}>
                                 <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Package size={14} style={{ color: '#F59E0B' }} />
@@ -1034,31 +1063,31 @@ export const MSReviewPanel: React.FC<MSReviewPanelProps> = ({ isOpen, onClose, t
                                 )}
                             </div>
 
-                            {/* 快捷填充按钮 - 从诊断报告导入 */}
-                            {(diagnosisParts.length > 0 || diagnosisLaborHours > 0) && (
-                                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                                    <button
-                                        onClick={() => {
-                                            const partsTotal = diagnosisParts.reduce((sum, p) => sum + p.price * p.quantity, 0);
-                                            const laborTotal = diagnosisLaborHours * 200; // 假设每小时200元
-                                            const total = partsTotal + laborTotal;
-                                            setEstimatedMin(String(Math.round(total * 0.9))); // 最低九折
-                                            setEstimatedMax(String(Math.round(total * 1.1))); // 最高一成溢价
-                                            setHasImportedFromDiagnosis(true);
-                                        }}
-                                        style={{
-                                            padding: '8px 14px', background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
-                                            borderRadius: 6, color: '#3B82F6', fontSize: 12, cursor: 'pointer',
-                                            display: 'flex', alignItems: 'center', gap: 6
-                                        }}
-                                    >
-                                        使用诊断预估填充费用范围
-                                    </button>
-                                    {hasImportedFromDiagnosis && (
-                                        <span style={{ fontSize: 12, color: '#10B981', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <CheckCircle size={14} /> 已导入
+                            {/* 总计预估费用 */}
+                            {(diagnosisParts.length > 0 || diagnosisLaborHours > 0 || msParts.length > 0 || otherFees.length > 0) && (
+                                <div style={{ 
+                                    marginBottom: 16, padding: 14, 
+                                    background: 'linear-gradient(135deg, rgba(16,185,129,0.1), rgba(59,130,246,0.1))', 
+                                    borderRadius: 10, 
+                                    border: '1px solid rgba(16,185,129,0.3)'
+                                }}>
+                                    <div style={{ 
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        fontSize: 15, fontWeight: 700
+                                    }}>
+                                        <span style={{ color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <DollarSign size={18} style={{ color: '#10B981' }} />
+                                            预估费用总计
                                         </span>
-                                    )}
+                                        <span style={{ color: '#10B981', fontSize: 18 }}>
+                                            ¥{(
+                                                diagnosisParts.reduce((sum, p) => sum + p.price * p.quantity, 0) + 
+                                                (diagnosisLaborHours * 200) +
+                                                msPartsTotal + 
+                                                otherFeesTotal
+                                            ).toLocaleString()}
+                                        </span>
+                                    </div>
                                 </div>
                             )}
 
