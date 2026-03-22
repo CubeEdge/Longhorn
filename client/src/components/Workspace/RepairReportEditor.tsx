@@ -642,9 +642,12 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                     }
                 }));
 
-                // 同步最新的 op_repair_report 配件数据（确保维修记录的最新配件能被导入）
-                try {
-                    const ticketRes = await axios.get(`/api/v1/tickets/${ticketId}`, {
+                const isPublishedFlag = incomingData.status === 'published' || incomingData.status === 'approved';
+
+                // 同步最新的 op_repair_report 配件数据（如果未发布或处于草稿阶段）
+                if (!isPublishedFlag && ['draft', 'pending_review', 'rejected', ''].includes(incomingData.status || '')) {
+                    try {
+                        const ticketRes = await axios.get(`/api/v1/tickets/${ticketId}`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });
                     const allActivities = ticketRes.data?.activities || [];
@@ -688,10 +691,10 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                 } catch (e) {
                     console.error('Failed to sync op_repair_report parts:', e);
                 }
+                }
 
                 // ★ 最后一步：同步服务端最新配件货币价格（未发布状态下，确保草稿准确）
                 // 关键修复：已发布状态直接读取 content 快照，不再同步，实现“财务锁定”
-                const isPublishedFlag = incomingData.status === 'published' || incomingData.status === 'approved';
                 if (!isPublishedFlag && ['draft', 'pending_review', 'rejected', ''].includes(incomingData.status || '')) {
                     try {
                         // 收集所有配件的 SKU（part_number）
@@ -1134,45 +1137,9 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         // Auto-save is now enabled for both new and existing reports
         if (!silent) setSaving(true);
         try {
-            // 在保存/发布前，如果是草稿状态，强制校准一遍 SKU 价格（防止烧录错误数值）
-            // 关键修复：已发布或审批通过的报告不再重复校准，实现“价格锁定”
+            // 直接保存当前的内容状态，不进行额外的校准
+            // （价格的准确性由 executeCurrencyChange 和 handleSelectPart 保障，防止保存时错误覆盖）
             let currentContent = { ...reportData.content };
-            const isUnpublished = ['draft', 'rejected', ''].includes(reportData.status || '');
-            if (isUnpublished) {
-                const skus = currentContent.repair_process.parts_replaced
-                                .filter(p => p.part_number)
-                                .map(p => p.part_number);
-                if (skus.length > 0) {
-                    const pricesRes = await axios.post(`/api/v1/parts-master/batch`, { skus }, {
-                        headers: { Authorization: `Bearer ${token}` }
-                    });
-                    if (pricesRes.data?.success) {
-                        const priceMap = pricesRes.data.data.reduce((acc: any, part: any) => {
-                            let targetPrice = part.price_cny;
-                            if (reportData.currency === 'USD') targetPrice = part.price_usd;
-                            else if (reportData.currency === 'EUR') targetPrice = part.price_eur;
-                            acc[part.sku] = Number(targetPrice || 0);
-                            return acc;
-                        }, {});
-
-                        currentContent.repair_process.parts_replaced = currentContent.repair_process.parts_replaced.map(part => {
-                            if (part.part_number && priceMap[part.part_number] !== undefined) {
-                                const newPrice = priceMap[part.part_number];
-                                return { ...part, unit_price: newPrice, total: Number(part.quantity || 1) * newPrice };
-                            }
-                            return part;
-                        });
-                        
-                        // 同步更新状态，以便 UI 保持一致
-                        setReportData(prev => ({ 
-                            ...prev, 
-                            content: currentContent,
-                            parts_total: totals.partsTotal, // 顺便同步合计
-                            total_cost: totals.total
-                        }));
-                    }
-                }
-            }
 
             // 使用最新的 currentContent 计算合计，避免依赖异步的 state
             const partsTotal = currentContent.repair_process.parts_replaced.reduce((sum: number, p: any) => sum + (Number(p.total) || 0), 0);
