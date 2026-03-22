@@ -91,9 +91,10 @@ module.exports = function (db, authenticate) {
                         part_sku = ?,
                         quantity = ?,
                         unit_price = ?,
-                        total_price = ?,
+                        total_amount = ?,
                         currency = ?,
                         condition_type = ?,
+                        source_type = ?,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
                 `).run(
@@ -105,6 +106,7 @@ module.exports = function (db, authenticate) {
                     unitPrice * quantity,
                     currency || 'CNY',
                     part.status || 'new',
+                    part.source_type || 'hq_inventory',
                     existing.id
                 );
             } else {
@@ -112,10 +114,10 @@ module.exports = function (db, authenticate) {
                 db.prepare(`
                     INSERT INTO parts_consumption (
                         ticket_id, part_id, part_name, part_sku, quantity,
-                        unit_price, total_price, currency, condition_type,
+                        unit_price, total_amount, currency, condition_type,
                         source_type, source_ref_id, source_document_id,
                         settlement_status, created_by, created_by_name
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'repair_report', ?, ?, 'pending', ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
                 `).run(
                     ticketId,
                     part.part_id || null,
@@ -126,6 +128,7 @@ module.exports = function (db, authenticate) {
                     unitPrice * quantity,
                     currency || 'CNY',
                     part.status || 'new',
+                    part.source_type || 'hq_inventory',
                     sourceRefId,
                     reportId,
                     userId,

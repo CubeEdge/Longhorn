@@ -1238,8 +1238,8 @@ parts_consumption (配件消耗记录)
 ├── quantity: INT DEFAULT 1 -- 消耗数量
 ├── unit_price: DECIMAL(10,2) -- 结算单价
 ├── currency: VARCHAR(10) DEFAULT 'CNY' -- 结算币种
-├── total_amount: DECIMAL(10,2) -- 结算总金额 (重要：并非 total_price_cny)
-├── source_type: VARCHAR(50) DEFAULT 'hq_inventory' -- 来源库存 (hq_inventory/dealer_inventory)
+├── total_amount: DECIMAL(10,2) -- 结算总金额 (计算结果：quantity * unit_price)
+├── source_type: VARCHAR(50) DEFAULT 'hq_inventory' -- 来源库存 (hq_inventory, dealer_inventory, external_purchase, warranty_free)
 ├── dealer_id: INT -- 经销商 ID (若为经销商维修)
 ├── dealer_name: VARCHAR(255) -- 经销商名称 (冗余)
 ├── settlement_status: ENUM('pending', 'settled') DEFAULT 'pending' -- 结算状态
@@ -1248,8 +1248,15 @@ parts_consumption (配件消耗记录)
 ├── used_by_name: VARCHAR(255) -- 录入人姓名 (冗余)
 ├── used_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- 消耗时间
 ├── notes: TEXT -- 备注
-├── created_by: INT -- 创建人
+├── // 同步与追溯字段 (RMA 专用)
+├── source_ref_id: VARCHAR(100) -- 来源引用 ID (如前端零件行临时 ID)
+├── source_document_id: INT -- 来源文档 ID (如 repair_reports.id)
+├── condition_type: ENUM('new', 'refurbished', 'faulty') DEFAULT 'new' -- 配件状态
+├── // 审计
+├── created_by: INT -- 创建人 ID
+├── created_by_name: VARCHAR(255) -- 创建人姓名 (冗余)
 ├── created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+├── updated_at: TIMESTAMP -- 更新时间
 ├── is_deleted: BOOLEAN DEFAULT 0 -- 软删除标志
 ├── deleted_at: TIMESTAMP -- 删除时间
 └── deleted_by: INT -- 删除人ID

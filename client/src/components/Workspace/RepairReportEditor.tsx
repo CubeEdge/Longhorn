@@ -1681,7 +1681,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                             {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => (
                                                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
                                                     <span style={{ flex: 1, color: 'var(--text-main)', fontSize: 13 }}>{part.name}</span>
-                                                    {part.part_number && <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontFamily: 'monospace' }}>{part.part_number}</span>}
+                                                    {part.part_number && <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{part.part_number}</span>}
                                                     <span style={{ color: 'var(--text-main)', fontSize: 12, fontWeight: 500 }}>x{part.quantity}</span>
                                                     <span style={{ color: 'var(--text-secondary)', fontSize: 11, padding: '2px 6px', background: 'var(--glass-border)', borderRadius: 4 }}>{part.status === 'new' ? '新件' : '翻新'}</span>
                                                 </div>

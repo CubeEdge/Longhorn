@@ -17,6 +17,8 @@
 > - **配件批量查询**: 新增 `POST /api/v1/parts-master/batch` 端点，支持通过 IDs 或 SKUs 批量查询配件信息，用于预览时获取配件英文名称。
 > - **BOM 配件推荐**: 修复 `GET /api/v1/parts-master/bom` 路由顺序问题，确保产品型号配件推荐功能正常。
 > - **系统设置**: 新增 `GET/POST /api/v1/system/settings` 端点，支持工时时薪等系统级配置。
+> - **配件消耗重构**: 修正了 `syncPartsConsumption` 中的来源属性（`source_type`）脱节问题，避免由 `parts_consumption` 缺省引发的 500 约束断言报错。
+> - **PI 预览增量**: 于形式发票 (PI) 预览面板新增德文 (`de-DE`) 选项集成及对应的界面商业术语库支撑。
 >
 > **v0.9.9 更新 (2026-03-21)**：
 > - **配件兼容性重构**: `GET /api/v1/parts-master` 返回的 `compatible_models` 现在是基于关联表动态生成的虚字段。

@@ -148,7 +148,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
     const [pdfSettings, setPdfSettings] = useState({
         format: 'a4' as 'a4' | 'letter',
         orientation: 'portrait' as 'portrait' | 'landscape',
-        language: 'original' as 'original' | 'zh-CN' | 'en-US' | 'ja-JP',
+        language: 'original' as 'original' | 'zh-CN' | 'en-US' | 'ja-JP' | 'de-DE',
         showHeader: true,
         showFooter: true,
         headerText: 'Kinefinity',
@@ -168,7 +168,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
     });
 
     // 预览语言设置（独立于PDF设置，用于实时预览）
-    const [previewLanguage, setPreviewLanguage] = useState<'original' | 'zh-CN' | 'en-US' | 'ja-JP'>('original');
+    const [previewLanguage, setPreviewLanguage] = useState<'original' | 'zh-CN' | 'en-US' | 'ja-JP' | 'de-DE'>('original');
 
     // Translations state - 存储各字段的翻译
     const [translations] = useState<Record<string, Record<string, any>>>({});
@@ -1177,6 +1177,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                                                 </select>
                                             </div>
                                             <span style={{ color: 'var(--text-main)', fontSize: 18, fontWeight: 700 }}>{piData.currency === 'USD' ? '$' : piData.currency === 'EUR' ? '€' : '¥'}{Number(piData.total_amount || 0).toFixed(2)}</span>
+
                                         </div>
                                     </div>
                                 </Section>
@@ -1484,7 +1485,7 @@ export const PIEditor: React.FC<PIEditorProps> = ({
                         <div style={{ marginBottom: 16 }}>
                             <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>语言</label>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                {[{ value: 'original', label: '原文' }, { value: 'zh-CN', label: '中文' }, { value: 'en-US', label: 'English' }, { value: 'ja-JP', label: '日本語' }].map(opt => (
+                                {[{ value: 'original', label: '原文' }, { value: 'zh-CN', label: '中文' }, { value: 'en-US', label: 'English' }, { value: 'ja-JP', label: '日本語' }, { value: 'de-DE', label: 'Deutsch' }].map(opt => (
                                     <button
                                         key={opt.value}
                                         onClick={() => setPdfSettings(prev => ({ ...prev, language: opt.value as any }))}
@@ -1711,19 +1712,55 @@ const PREVIEW_LABELS: Record<string, Record<string, string>> = {
         footer: 'この文書はコンピューターで生成されています。署名は不要です。',
         company: 'KINEFINITY INC.',
         pendingTranslation: '[翻訳待ち]'
+    },
+    'de-DE': {
+        title: 'Proforma-Rechnung',
+        subtitle: '',
+        piNumber: 'PI-Nummer',
+        date: 'Datum',
+        validUntil: 'Gültig bis',
+        billTo: 'Rechnungsadresse',
+        customerName: 'Kundenname',
+        address: 'Adresse',
+        contact: 'Kontakt',
+        email: 'E-Mail',
+        deviceInfo: 'Geräteinformationen',
+        product: 'Produkt',
+        serialNumber: 'Seriennummer',
+        description: 'Beschreibung',
+        qty: 'Menge',
+        unitPrice: 'Einzelpreis',
+        total: 'Gesamt',
+        noItems: 'Keine Artikel',
+        otherFees: 'Sonstige Gebühren',
+        amount: 'Betrag',
+        subtotal: 'Zwischensumme',
+        tax: 'Steuer',
+        discount: 'Rabatt',
+        totalAmount: 'Gesamtbetrag',
+        terms: 'Bedingungen',
+        paymentTerms: 'Zahlungsbedingungen',
+        deliveryTerms: 'Lieferbedingungen',
+        validity: 'Gültigkeit',
+        validDays: 'Diese PI ist {days} Tage gültig',
+        notes: 'Anmerkungen',
+        footer: 'Dieses Dokument wurde computergeneriert und benötigt keine Unterschrift.',
+        company: 'KINEFINITY INC.',
+        pendingTranslation: '[Übersetzung ausstehend]'
     }
 };
 
 // 语言切换按钮组件
 const LanguageSwitcher: React.FC<{
     currentLanguage: string;
-    onLanguageChange: (lang: 'original' | 'zh-CN' | 'en-US' | 'ja-JP') => void;
+    onLanguageChange: (lang: 'original' | 'zh-CN' | 'en-US' | 'ja-JP' | 'de-DE') => void;
 }> = ({ currentLanguage, onLanguageChange }) => {
     const languages = [
         { value: 'original', label: '原文' },
         { value: 'zh-CN', label: '中文' },
         { value: 'en-US', label: 'English' },
-        { value: 'ja-JP', label: '日本語' }
+        { value: 'ja-JP', label: '日本語' },
+        { value: 'de-DE', label: 'Deutsch' }
     ];
 
     return (
@@ -1763,9 +1800,9 @@ const LanguageSwitcher: React.FC<{
 
 const PIPreview: React.FC<{
     piData: PIData;
-    language: 'original' | 'zh-CN' | 'en-US' | 'ja-JP';
+    language: 'original' | 'zh-CN' | 'en-US' | 'ja-JP' | 'de-DE';
     translations: Record<string, Record<string, any>>;
-    onLanguageChange: (lang: 'original' | 'zh-CN' | 'en-US' | 'ja-JP') => void;
+    onLanguageChange: (lang: 'original' | 'zh-CN' | 'en-US' | 'ja-JP' | 'de-DE') => void;
 }> = ({ piData, language, translations, onLanguageChange }) => {
     // 获取UI标签
     const t = PREVIEW_LABELS[language] || PREVIEW_LABELS['original'];
