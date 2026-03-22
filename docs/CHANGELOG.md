@@ -1,6 +1,15 @@
 # Changelog
 
-## [12.1.37] - 2026-02-24
+## [12.3.410] - 2026-03-22
+### Fixed
+- **Repair Report**: Fixed inconsistent currency symbols for USD (standardized to `US $`).
+- **Repair Report**: Fixed an issue where labor subtotals were incorrectly displayed as 0 due to missing default rates.
+- **Repair Report**: Fixed a bug where deleted parts were re-imported from background records, preventing deletions from being saved.
+- **Repair Report**: Corrected `shipping_total` binding in the save payload to use the calculated `other_fees` total.
+### Changed
+- **Repair Report**: Enhanced price snapshotting logic to lock unit prices for `published` and `approved` reports.
+
+## [12.3.358] - 2026-03-22
 ### Added (Article Manager)
 - **Safe Delete Confirmation**: 实现了全新的批量/单篇文章删除确认弹窗，包含待删标题清单及 10 秒强制倒计时安全机制。
 - **Select All Refinement**: 优化了文章管理页的全选逻辑，使其仅对当前搜索过滤后的可见文章生效，防止误选后台项目。

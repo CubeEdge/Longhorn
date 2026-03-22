@@ -255,7 +255,7 @@ export const PartsSelector: React.FC<PartsSelectorProps> = ({
 
     // 格式化价格
     const formatPrice = (amount: number) => {
-        const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '¥';
+        const symbol = currency === 'USD' ? 'US $' : currency === 'EUR' ? '€' : '¥';
         return `${symbol}${amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 

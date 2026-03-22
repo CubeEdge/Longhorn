@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Wrench, AlertCircle, Save, X, Download, Send, FileText, Stethoscope, Plus, Trash2, Settings, ChevronDown, ChevronUp, DollarSign, Package, Globe, Check, Sparkles } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -6,8 +6,8 @@ import { useToast } from '../../store/useToast';
 import { exportToPDF } from '../../utils/pdfExport';
 import ConfirmModal from '../Service/ConfirmModal';
 import { CustomDatePicker } from '../UI/CustomDatePicker';
-import { PartsSelector } from './PartsSelector';
-import type { PartUsed } from './PartsSelector';
+// Duplicated import removed
+// Local PartUsed definition removed to use the one from PartsSelector.tsx
 
 interface RepairReportEditorProps {
     isOpen: boolean;
@@ -19,9 +19,7 @@ interface RepairReportEditorProps {
     onSuccess: () => void;
 }
 
-// PartUsed interface is imported from PartsSelector
-// Re-export for backward compatibility
-export type { PartUsed } from './PartsSelector';
+import { PartsSelector, type PartUsed } from './PartsSelector';
 
 interface LaborCharge {
     description: string;
@@ -659,7 +657,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                         if (rp) {
                             setReportData(prev => {
                                 const newContent = { ...prev.content };
-                                if (rp.parts_replaced && rp.parts_replaced.length > 0) {
+                                if (rp.parts_replaced && rp.parts_replaced.length > 0 && prev.content.repair_process.parts_replaced.length === 0) {
                                     newContent.repair_process = {
                                         ...newContent.repair_process,
                                         parts_replaced: rp.parts_replaced.map((part: any) => ({
@@ -675,11 +673,12 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     };
                                 }
                                 if (rp.labor_hours && rp.labor_hours > 0 && prev.content.labor_charges.length === 0) {
+                                    const initialRate = defaultLaborRate;
                                     newContent.labor_charges = [{
                                         description: '维修工时',
                                         hours: rp.labor_hours,
-                                        rate: 0,
-                                        total: 0
+                                        rate: initialRate,
+                                        total: initialRate * rp.labor_hours
                                     }];
                                 }
                                 return { ...prev, content: newContent };
@@ -690,9 +689,10 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                     console.error('Failed to sync op_repair_report parts:', e);
                 }
 
-                // ★ 最后一步：同步服务端最新配件货币价格（未发布状态下）
-                // 使用 part_number（SKU）匹配，因为 part_id 可能不存在
-                if (['draft', 'pending_review', 'rejected', ''].includes(incomingData.status || '')) {
+                // ★ 最后一步：同步服务端最新配件货币价格（未发布状态下，确保草稿准确）
+                // 关键修复：已发布状态直接读取 content 快照，不再同步，实现“财务锁定”
+                const isPublishedFlag = incomingData.status === 'published' || incomingData.status === 'approved';
+                if (!isPublishedFlag && ['draft', 'pending_review', 'rejected', ''].includes(incomingData.status || '')) {
                     try {
                         // 收集所有配件的 SKU（part_number）
                         const allSkus: string[] = [];
@@ -1004,39 +1004,25 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         });
     };
 
-    const calculateTotals = useCallback(() => {
-        const partsTotal = reportData.content.repair_process.parts_replaced.reduce(
-            (sum: number, part: PartUsed) => sum + (part.quantity * (part.unit_price || 0)), 0
+    // 使用 useMemo 进行高性能合计计算，消除 useEffect 导致的自循环渲染
+    const totals = useMemo(() => {
+        const partsTotal = (reportData.content?.repair_process?.parts_replaced || []).reduce(
+            (sum: number, part: PartUsed) => sum + (Number(part.quantity || 0) * (Number(part.unit_price || 0))), 0
         );
-        const laborTotal = reportData.content.labor_charges.reduce(
-            (sum: number, labor: LaborCharge) => sum + labor.total, 0
+        const laborTotal = (reportData.content?.labor_charges || []).reduce(
+            (sum: number, labor: LaborCharge) => sum + (Number(labor.total || 0)), 0
         );
-        const otherFeesTotal = reportData.content.other_fees.reduce(
-            (sum: number, fee: OtherFee) => sum + fee.amount, 0
+        const otherFeesTotal = (reportData.content?.other_fees || []).reduce(
+            (sum: number, fee: OtherFee) => sum + (Number(fee.amount || 0)), 0
         );
         
-        // 财务汇总计算
         const subtotal = partsTotal + laborTotal + otherFeesTotal;
-        const taxRate = reportData.tax_rate || 0;
-        const discountAmount = reportData.discount_amount || 0;
-        const taxAmount = subtotal * (taxRate / 100);
+        const taxRate = Number(reportData.tax_rate || 0);
+        const discountAmount = Number(reportData.discount_amount || 0);
+        const taxAmount = (subtotal * taxRate) / 100;
         const total = subtotal + taxAmount - discountAmount;
 
-        setReportData((prev: ReportData) => ({
-            ...prev,
-            parts_total: partsTotal,
-            labor_total: laborTotal,
-            shipping_total: otherFeesTotal,
-            tax_amount: taxAmount,
-            total_cost: total
-        }));
-
         return { partsTotal, laborTotal, otherFeesTotal, subtotal, taxAmount, total };
-    }, [reportData.content.repair_process.parts_replaced, reportData.content.labor_charges, reportData.content.other_fees, reportData.tax_rate, reportData.discount_amount]);
-
-    // Real-time fee calculation when parts, labor, other fees, tax_rate or discount changes
-    useEffect(() => {
-        calculateTotals();
     }, [reportData.content.repair_process.parts_replaced, reportData.content.labor_charges, reportData.content.other_fees, reportData.tax_rate, reportData.discount_amount]);
 
     // 一键导入维修记录的配件和工时，覆盖当前数据
@@ -1069,7 +1055,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             name: part.name || '',
                             part_number: part.part_number || '',
                             quantity: part.quantity || 1,
-                            unit_price: part.price || part.unit_price || 0,
+                            unit_price: part.unit_price || part.price || 0,
                             status: part.status || 'new',
                             source_type: 'hq_inventory'
                         }))
@@ -1148,21 +1134,74 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
         // Auto-save is now enabled for both new and existing reports
         if (!silent) setSaving(true);
         try {
-            const { total } = calculateTotals();
+            // 在保存/发布前，如果是草稿状态，强制校准一遍 SKU 价格（防止烧录错误数值）
+            // 关键修复：已发布或审批通过的报告不再重复校准，实现“价格锁定”
+            let currentContent = { ...reportData.content };
+            const isUnpublished = ['draft', 'rejected', ''].includes(reportData.status || '');
+            if (isUnpublished) {
+                const skus = currentContent.repair_process.parts_replaced
+                                .filter(p => p.part_number)
+                                .map(p => p.part_number);
+                if (skus.length > 0) {
+                    const pricesRes = await axios.post(`/api/v1/parts-master/batch`, { skus }, {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (pricesRes.data?.success) {
+                        const priceMap = pricesRes.data.data.reduce((acc: any, part: any) => {
+                            let targetPrice = part.price_cny;
+                            if (reportData.currency === 'USD') targetPrice = part.price_usd;
+                            else if (reportData.currency === 'EUR') targetPrice = part.price_eur;
+                            acc[part.sku] = Number(targetPrice || 0);
+                            return acc;
+                        }, {});
+
+                        currentContent.repair_process.parts_replaced = currentContent.repair_process.parts_replaced.map(part => {
+                            if (part.part_number && priceMap[part.part_number] !== undefined) {
+                                const newPrice = priceMap[part.part_number];
+                                return { ...part, unit_price: newPrice, total: Number(part.quantity || 1) * newPrice };
+                            }
+                            return part;
+                        });
+                        
+                        // 同步更新状态，以便 UI 保持一致
+                        setReportData(prev => ({ 
+                            ...prev, 
+                            content: currentContent,
+                            parts_total: totals.partsTotal, // 顺便同步合计
+                            total_cost: totals.total
+                        }));
+                    }
+                }
+            }
+
+            // 使用最新的 currentContent 计算合计，避免依赖异步的 state
+            const partsTotal = currentContent.repair_process.parts_replaced.reduce((sum: number, p: any) => sum + (Number(p.total) || 0), 0);
+            const laborTotal = currentContent.labor_charges.reduce((sum: number, l: any) => sum + (Number(l.total) || 0), 0);
+            const otherTotal = currentContent.other_fees.reduce((sum: number, f: any) => sum + (Number(f.amount) || 0), 0);
+            
+            const subtotal = partsTotal + laborTotal + otherTotal;
+            const taxAmount = (subtotal * (Number(reportData.tax_rate) || 0)) / 100;
+            const discountAmount = Number(reportData.discount_amount) || 0;
+            const totalCost = subtotal + taxAmount - discountAmount;
+
             const payload = {
                 ticket_id: ticketId,
-                content: reportData.content,
+                content: currentContent,
                 service_type: reportData.service_type,
-                total_cost: total,
+                total_cost: totalCost,
                 currency: reportData.currency,
+                status: reportData.status, // 显式传递当前状态
                 warranty_status: reportData.warranty_status,
                 repair_warranty_days: reportData.repair_warranty_days,
                 payment_status: reportData.payment_status,
-                parts_total: reportData.parts_total,
-                labor_total: reportData.labor_total,
-                shipping_total: reportData.shipping_total,
+                parts_total: partsTotal,
+                labor_total: laborTotal,
+                shipping_total: otherTotal,
                 prepared_by: reportData.prepared_by,
-                translations: translations
+                translations: translations,
+                tax_rate: reportData.tax_rate,
+                tax_amount: taxAmount,
+                discount_amount: discountAmount
             };
 
             if (localReportId) {
@@ -1194,8 +1233,10 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
     };
 
     const submitForReview = async () => {
+        // 先执行保存，确保最新的校准价格（快照）已写入后端数据库
         setSubmitting(true);
         try {
+            await saveDraft(true); 
             await axios.post(`/api/v1/rma-documents/repair-reports/${localReportId}/submit`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
@@ -1318,7 +1359,6 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     if (editScrollRef.current) {
                                         setEditScrollPosition(editScrollRef.current.scrollTop);
                                     }
-                                    calculateTotals();
                                     setActiveTab('preview');
                                 }}
                                 style={{
@@ -1340,8 +1380,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 width: 32,
                                 height: 32,
                                 borderRadius: '50%',
-                                background: 'rgba(255,255,255,0.1)',
-                                border: '1px solid rgba(255,255,255,0.15)',
+                                background: 'var(--glass-bg-hover)',
+                                border: '1px solid var(--glass-border)',
                                 color: 'var(--text-secondary)',
                                 cursor: 'pointer',
                                 display: 'flex',
@@ -1355,9 +1395,9 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                 e.currentTarget.style.borderColor = 'rgba(239,68,68,0.3)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                                e.currentTarget.style.background = 'var(--glass-bg-hover)';
                                 e.currentTarget.style.color = 'var(--text-secondary)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                                e.currentTarget.style.borderColor = 'var(--glass-border)';
                             }}
                         >
                             <X size={16} />
@@ -1679,7 +1719,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                         <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>更换零件</label>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                             {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => (
-                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', background: 'var(--glass-bg-light)', borderRadius: 6, border: '1px solid var(--glass-border)' }}>
                                                     <span style={{ flex: 1, color: 'var(--text-main)', fontSize: 13 }}>{part.name}</span>
                                                     {part.part_number && <span style={{ color: 'var(--text-tertiary)', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{part.part_number}</span>}
                                                     <span style={{ color: 'var(--text-main)', fontSize: 12, fontWeight: 500 }}>x{part.quantity}</span>
@@ -1705,7 +1745,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                     disabled={importingFromRepair}
                                                     style={{
                                                         padding: '4px 12px',
-                                                        background: '#FFD200',
+                                                        background: '#EAB308',
                                                         border: 'none',
                                                         borderRadius: 4,
                                                         color: '#000',
@@ -1726,7 +1766,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                         <FeeSubSection 
                                             title="更换零件" 
                                             icon={<Package size={14} />}
-                                            subtotal={reportData.parts_total}
+                                            subtotal={totals.partsTotal}
                                             currency={reportData.currency}
                                             defaultOpen={true}
                                         >
@@ -1746,7 +1786,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                         <FeeSubSection 
                                             title="工时费用" 
                                             icon={<Wrench size={14} />}
-                                            subtotal={reportData.labor_total}
+                                            subtotal={totals.laborTotal}
                                             currency={reportData.currency}
                                             defaultOpen={true}
                                         >
@@ -1770,7 +1810,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                 </div>
                                             )}
                                             {reportData.content.labor_charges.map((charge: LaborCharge, index: number) => (
-                                                <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8, padding: 10, background: 'rgba(255,255,255,0.03)', borderRadius: 6 }}>
+                                                <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8, padding: 10, background: 'var(--glass-bg-light)', borderRadius: 6 }}>
                                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                                         <input
                                                             type="text"
@@ -1795,7 +1835,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                             style={{ width: 80, padding: 8, background: 'var(--glass-bg-light)', border: '1px solid var(--glass-border)', borderRadius: 4, color: 'var(--text-main)', fontSize: 13, textAlign: 'right' }}
                                                         />
                                                         <div style={{ width: 80, textAlign: 'right', color: 'var(--text-main)', fontWeight: 600, fontSize: 13 }}>
-                                                            {reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(charge.total || 0).toFixed(2)}
+                                                            {reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(charge.total || 0).toFixed(2)}
                                                         </div>
                                                         {canEdit && (
                                                             <button onClick={() => removeLaborCharge(index)} style={{ padding: 6, background: 'rgba(239,68,68,0.2)', border: 'none', borderRadius: 4, color: '#EF4444', cursor: 'pointer' }}>
@@ -1823,7 +1863,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                         <FeeSubSection 
                                             title="其他费用" 
                                             icon={<DollarSign size={14} />}
-                                            subtotal={reportData.content.other_fees.reduce((sum, fee) => sum + fee.amount, 0)}
+                                            subtotal={totals.otherFeesTotal}
                                             currency={reportData.currency}
                                             defaultOpen={true}
                                         >
@@ -1893,7 +1933,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)' }}>
                                                     <span>小计</span>
-                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>{reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{Number((reportData.parts_total || 0) + (reportData.labor_total || 0) + (reportData.shipping_total || 0)).toFixed(2)}</span>
+                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(totals.subtotal).toFixed(2)}</span>
                                                 </div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
                                                     <span style={{ color: 'var(--text-secondary)' }}>税率 (%)</span>
@@ -1907,7 +1947,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                 </div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-secondary)' }}>
                                                     <span>税额</span>
-                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>{reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(reportData.tax_amount || 0).toFixed(2)}</span>
+                                                    <span style={{ color: 'var(--text-main)', fontWeight: 500 }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(totals.taxAmount).toFixed(2)}</span>
                                                 </div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
                                                     <span style={{ color: 'var(--text-secondary)' }}>优惠金额</span>
@@ -1934,8 +1974,8 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                                         </select>
                                                     </div>
                                                     <span style={{ color: 'var(--text-main)', fontSize: 18, fontWeight: 700 }}>
-                                                        {reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}
-                                                        {Number(reportData.total_cost || 0).toFixed(2)}
+                                                        {reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}
+                                                        {Number(totals.total).toFixed(2)}
                                                     </span>
                                                 </div>
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 8, borderTop: '1px solid var(--glass-border)' }}>
@@ -2007,7 +2047,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             height: 36,
                             borderRadius: '50%',
                             background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            border: '1px solid var(--glass-border)',
                             color: 'var(--text-secondary)',
                             cursor: 'pointer',
                             display: 'flex',
@@ -2016,13 +2056,13 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                             transition: 'all 0.2s'
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                            e.currentTarget.style.background = 'var(--glass-bg-hover)';
+                            e.currentTarget.style.borderColor = 'var(--accent-blue-subtle)';
                             e.currentTarget.style.color = 'var(--text-main)';
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.background = 'transparent';
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                            e.currentTarget.style.borderColor = 'var(--glass-border)';
                             e.currentTarget.style.color = 'var(--text-secondary)';
                         }}
                     >
@@ -2200,7 +2240,7 @@ export const RepairReportEditor: React.FC<RepairReportEditorProps> = ({
                                     onClick={handleConfirmedRetranslate}
                                     disabled={retranslateConfirm.countdown > 0}
                                     style={{ 
-                                        padding: '10px 20px', borderRadius: 8, background: '#FFA500', border: 'none', 
+                                        padding: '10px 20px', borderRadius: 8, background: '#EAB308', border: 'none', 
                                         color: '#000', fontSize: 13, cursor: retranslateConfirm.countdown > 0 ? 'not-allowed' : 'pointer',
                                         opacity: retranslateConfirm.countdown > 0 ? 0.6 : 1,
                                         display: 'flex', alignItems: 'center', gap: 6,
@@ -2809,12 +2849,30 @@ const ReportPreview = React.forwardRef<HTMLDivElement, {
         );
     };
 
+    // 计算费用总计
+    const totals = useMemo(() => {
+        const partsTotal = (reportData.content?.repair_process?.parts_replaced || []).reduce(
+            (sum, part) => sum + (part.quantity || 0) * (part.unit_price || 0),
+            0
+        );
+        const laborTotal = (reportData.content?.labor_charges || []).reduce(
+            (sum, charge) => sum + (charge.total || 0),
+            0
+        );
+        const otherFeesTotal = (reportData.content?.other_fees || []).reduce(
+            (sum, fee) => sum + (fee.amount || 0),
+            0
+        );
+        const total = partsTotal + laborTotal + otherFeesTotal;
+        return { partsTotal, laborTotal, otherFeesTotal, total };
+    }, [reportData.content]);
+
     return (
         <div ref={ref} style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}>
             {/* 语言切换按钮 */}
             <LanguageSwitcher currentLanguage={language} onLanguageChange={onLanguageChange} />
             
-            <div id="repair-report-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', color: '#333', fontSize: 13 }}>
+            <div id="repair-report-preview-content" style={{ maxWidth: 800, margin: '0 auto', background: '#fff', padding: 60, borderRadius: 8, boxShadow: 'var(--glass-shadow-lg)', color: '#333', fontSize: 13 }}>
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: 40, borderBottom: '3px solid #333', paddingBottom: 20 }}>
                     <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#333' }}>{t.title}</h1>
@@ -2981,8 +3039,7 @@ const ReportPreview = React.forwardRef<HTMLDivElement, {
                             </tr>
                         </thead>
                         <tbody>
-                            {reportData.content.repair_process.parts_replaced.map((part: PartUsed, i: number) => {
-                                // 非中文/原文时，通过 SKU 查找英文名称
+                            {(reportData.content?.repair_process?.parts_replaced || []).map((part: PartUsed, i: number) => {
                                 const displayName = (language !== 'zh-CN' && language !== 'original' && part.part_number && partNamesEnBySku[part.part_number])
                                     ? partNamesEnBySku[part.part_number]
                                     : part.name;
@@ -2991,44 +3048,38 @@ const ReportPreview = React.forwardRef<HTMLDivElement, {
                                         <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.part}: {displayName}</td>
                                         <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>{part.part_number || '-'}</td>
                                         <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{part.quantity}</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>{reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(part.unit_price || 0).toFixed(2)}</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(part.unit_price || 0).toFixed(2)}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{((part.quantity || 1) * (part.unit_price || 0)).toFixed(2)}</td>
                                     </tr>
                                 );
                             })}
-                            {reportData.content.labor_charges.map((charge: LaborCharge, i: number) => {
+                            {(reportData.content?.labor_charges || []).map((charge: LaborCharge, i: number) => {
                                 const isNonChinese = language !== 'zh-CN' && language !== 'original';
-                                const laborDesc = isNonChinese
-                                    ? (charge.description_en || charge.description)
-                                    : charge.description;
+                                const laborDesc = isNonChinese ? (charge.description_en || charge.description) : charge.description;
                                 return (
                                     <tr key={`labor-${i}`}>
                                         <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.labor}</td>
                                         <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{laborDesc}</td>
                                         <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{charge.hours}</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>{reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(charge.rate || 0).toFixed(2)}</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(charge.total || 0).toFixed(2)}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(charge.rate || 0).toFixed(2)}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(charge.total || 0).toFixed(2)}</td>
                                     </tr>
                                 );
                             })}
-                            {reportData.content.other_fees.map((fee: OtherFee, i: number) => {
+                            {(reportData.content?.other_fees || []).map((fee: OtherFee, i: number) => {
                                 const isNonChinese = language !== 'zh-CN' && language !== 'original';
-                                const feeDesc = isNonChinese
-                                    ? (fee.description_en || fee.description || 'Unnamed Fee')
-                                    : (fee.description || '未命名费用');
+                                const feeDesc = isNonChinese ? (fee.description_en || fee.description || 'Unnamed Fee') : (fee.description || '未命名费用');
                                 return (
                                     <tr key={`fee-${i}`}>
                                         <td style={{ padding: 8, borderBottom: '1px solid #ddd' }}>{t.other}</td>
                                         <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>{feeDesc}</td>
                                         <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'center' }}>1</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>{reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(fee.amount || 0).toFixed(2)}</td>
-                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(fee.amount || 0).toFixed(2)}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right' }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(fee.amount || 0).toFixed(2)}</td>
+                                        <td style={{ padding: 8, borderBottom: '1px solid #ddd', textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(fee.amount || 0).toFixed(2)}</td>
                                     </tr>
                                 );
                             })}
-                            {reportData.content.repair_process.parts_replaced.length === 0 && 
-                             reportData.content.labor_charges.length === 0 && 
-                             reportData.content.other_fees.length === 0 && (
+                            {(!reportData.content?.repair_process?.parts_replaced?.length && !reportData.content?.labor_charges?.length && !reportData.content?.other_fees?.length) && (
                                 <tr>
                                     <td colSpan={5} style={{ padding: 20, textAlign: 'center', color: '#a0aec0' }}>{t.noFees}</td>
                                 </tr>
@@ -3038,24 +3089,24 @@ const ReportPreview = React.forwardRef<HTMLDivElement, {
                             <tr style={{ background: '#fafafa' }}>
                                 <td colSpan={3} style={{ padding: 10 }}></td>
                                 <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#666' }}>{t.partsSubtotal}:</td>
-                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(reportData.parts_total || 0).toFixed(2)}</td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(totals.partsTotal || 0).toFixed(2)}</td>
                             </tr>
                             <tr style={{ background: '#fafafa' }}>
                                 <td colSpan={3} style={{ padding: 10 }}></td>
                                 <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#666' }}>{t.laborSubtotal}:</td>
-                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(reportData.labor_total || 0).toFixed(2)}</td>
+                                <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(totals.laborTotal || 0).toFixed(2)}</td>
                             </tr>
-                            {reportData.content.other_fees.length > 0 && (
+                            {totals.otherFeesTotal > 0 && (
                                 <tr style={{ background: '#fafafa' }}>
                                     <td colSpan={3} style={{ padding: 10 }}></td>
                                     <td style={{ padding: 10, textAlign: 'right', fontWeight: 600, color: '#666' }}>{t.otherFees}:</td>
-                                    <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? '$' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(reportData.content.other_fees.reduce((sum, fee) => sum + (Number(fee.amount) || 0), 0)).toFixed(2)}</td>
+                                    <td style={{ padding: 10, textAlign: 'right', fontWeight: 600 }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(totals.otherFeesTotal || 0).toFixed(2)}</td>
                                 </tr>
                             )}
                             <tr style={{ background: '#ffffff', borderTop: '2px solid #333' }}>
                                 <td colSpan={3} style={{ padding: 12 }}></td>
                                 <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: '#333', fontSize: 14 }}>{t.totalAmount}:</td>
-                                <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: '#333', fontSize: 14 }}>{reportData.currency} {Number(reportData.total_cost || 0).toLocaleString()}</td>
+                                <td style={{ padding: 12, textAlign: 'right', fontWeight: 700, color: '#333', fontSize: 14 }}>{reportData.currency === 'USD' ? 'US $' : reportData.currency === 'EUR' ? '€' : '¥'}{Number(totals.total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                         </tfoot>
                     </table>
@@ -3100,15 +3151,15 @@ const FeeSubSection: React.FC<{
     defaultOpen?: boolean; 
     children: React.ReactNode 
 }> = ({ title, icon, subtotal, currency = 'CNY', defaultOpen = true, children }) => {
-    const [isOpen, setIsOpen] = React.useState(defaultOpen);
+    const [isOpen, setIsOpen] = useState(defaultOpen);
     
     return (
-        <div style={{ marginBottom: 12, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ marginBottom: 12, border: '1px solid var(--glass-border)', borderRadius: 8, overflow: 'hidden' }}>
             <div 
                 onClick={() => setIsOpen(!isOpen)}
                 style={{ 
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '10px 14px', background: 'rgba(255,255,255,0.03)', cursor: 'pointer'
+                    padding: '10px 14px', background: 'var(--glass-bg-light)', cursor: 'pointer'
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -3116,7 +3167,7 @@ const FeeSubSection: React.FC<{
                     <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
                     <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 500 }}>{title}</span>
                 </div>
-                <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 600 }}>小计 {currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '¥'}{Number(subtotal || 0).toFixed(2)}</span>
+                <span style={{ fontSize: 13, color: 'var(--text-main)', fontWeight: 600 }}>小计 {currency === 'USD' ? 'US $' : currency === 'EUR' ? '€' : '¥'}{Number(subtotal || 0).toFixed(2)}</span>
             </div>
             {isOpen && (
                 <div style={{ padding: 12 }}>
